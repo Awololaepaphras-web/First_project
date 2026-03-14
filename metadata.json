@@ -1,0 +1,9 @@
+{
+  "name": "Proph - Federal Universities Past Questions Hub",
+  "description": "A comprehensive repository for Nigerian Federal University students to access past questions, study materials, and AI-powered academic assistance. Designed for high performance and Google AdSense optimization.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}

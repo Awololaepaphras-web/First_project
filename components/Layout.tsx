@@ -24,7 +24,10 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications = [], onSelectTrend, appLogo, onSaveConfig }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('proph_theme');
+    return saved ? saved === 'dark' : true;
+  });
   const [showNotifs, setShowNotifs] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -34,8 +37,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     const root = window.document.documentElement;
     if (isDark) {
       root.classList.add('dark');
+      localStorage.setItem('proph_theme', 'dark');
     } else {
       root.classList.remove('dark');
+      localStorage.setItem('proph_theme', 'light');
     }
   }, [isDark]);
 

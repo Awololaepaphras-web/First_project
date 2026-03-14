@@ -158,15 +158,30 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
+    const isBundled = __dirname.endsWith('dist');
+    const staticPath = isBundled ? __dirname : path.join(__dirname, "dist");
+    app.use(express.static(staticPath));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(staticPath, "index.html"));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+
+  return app;
 }
 
-startServer();
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
+
+if (!isVercel) {
+  startServer();
+}
+
+export default async (req: any, res: any) => {
+  const app = await startServer();
+  return app(req, res);
+};

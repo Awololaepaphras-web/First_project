@@ -10,7 +10,12 @@ const KEYS = {
   USERS: 'proph_db_users',
   CONFIG: 'proph_db_config',
   SESSION: 'proph_db_session',
-  PAYMENTS: 'proph_db_payments'
+  PAYMENTS: 'proph_db_payments',
+  MESSAGES: 'proph_db_messages',
+  ADS: 'proph_db_ads',
+  WITHDRAWALS: 'proph_db_withdrawals',
+  TASKS: 'proph_db_tasks',
+  UNIVERSITIES: 'proph_db_universities'
 };
 
 export const Database = {
@@ -156,56 +161,105 @@ export const Database = {
 
   // Advertisements
   getAds: async (): Promise<any[]> => {
-    return await SupabaseService.getAds();
+    const remoteData = await SupabaseService.getAds();
+    if (remoteData.length > 0) {
+      localStorage.setItem(KEYS.ADS, JSON.stringify(remoteData));
+      return remoteData;
+    }
+    const data = localStorage.getItem(KEYS.ADS);
+    return data ? JSON.parse(data) : [];
   },
   saveAd: async (ad: any) => {
     await SupabaseService.saveAd(ad);
+    const current = await Database.getAds();
+    localStorage.setItem(KEYS.ADS, JSON.stringify([ad, ...current.filter(a => a.id !== ad.id)]));
   },
   deleteAd: async (id: string) => {
     await SupabaseService.deleteAd(id);
+    const current = await Database.getAds();
+    localStorage.setItem(KEYS.ADS, JSON.stringify(current.filter(a => a.id !== id)));
   },
 
   // Withdrawal Requests
   getWithdrawalRequests: async (): Promise<any[]> => {
-    return await SupabaseService.getWithdrawalRequests();
+    const remoteData = await SupabaseService.getWithdrawalRequests();
+    if (remoteData.length > 0) {
+      localStorage.setItem(KEYS.WITHDRAWALS, JSON.stringify(remoteData));
+      return remoteData;
+    }
+    const data = localStorage.getItem(KEYS.WITHDRAWALS);
+    return data ? JSON.parse(data) : [];
   },
   saveWithdrawalRequest: async (req: any) => {
     await SupabaseService.saveWithdrawalRequest(req);
+    const current = await Database.getWithdrawalRequests();
+    localStorage.setItem(KEYS.WITHDRAWALS, JSON.stringify([req, ...current.filter(w => w.id !== req.id)]));
   },
   updateWithdrawalStatus: async (id: string, status: string) => {
     await SupabaseService.updateWithdrawalStatus(id, status);
+    const current = await Database.getWithdrawalRequests();
+    localStorage.setItem(KEYS.WITHDRAWALS, JSON.stringify(current.map(w => w.id === id ? { ...w, status } : w)));
   },
 
   // Tasks
   getTasks: async (): Promise<any[]> => {
-    return await SupabaseService.getTasks();
+    const remoteData = await SupabaseService.getTasks();
+    if (remoteData.length > 0) {
+      localStorage.setItem(KEYS.TASKS, JSON.stringify(remoteData));
+      return remoteData;
+    }
+    const data = localStorage.getItem(KEYS.TASKS);
+    return data ? JSON.parse(data) : [];
   },
   saveTask: async (task: any) => {
     await SupabaseService.saveTask(task);
+    const current = await Database.getTasks();
+    localStorage.setItem(KEYS.TASKS, JSON.stringify([task, ...current.filter(t => t.id !== task.id)]));
   },
   deleteTask: async (id: string) => {
     await SupabaseService.deleteTask(id);
+    const current = await Database.getTasks();
+    localStorage.setItem(KEYS.TASKS, JSON.stringify(current.filter(t => t.id !== id)));
   },
 
   // Universities
   getUniversities: async (): Promise<any[]> => {
-    return await SupabaseService.getUniversities();
+    const remoteData = await SupabaseService.getUniversities();
+    if (remoteData.length > 0) {
+      localStorage.setItem(KEYS.UNIVERSITIES, JSON.stringify(remoteData));
+      return remoteData;
+    }
+    const data = localStorage.getItem(KEYS.UNIVERSITIES);
+    return data ? JSON.parse(data) : [];
   },
   saveUniversity: async (uni: any) => {
     await SupabaseService.saveUniversity(uni);
+    const current = await Database.getUniversities();
+    localStorage.setItem(KEYS.UNIVERSITIES, JSON.stringify([uni, ...current.filter(u => u.id !== uni.id)]));
   },
   deleteUniversity: async (id: string) => {
     await SupabaseService.deleteUniversity(id);
+    const current = await Database.getUniversities();
+    localStorage.setItem(KEYS.UNIVERSITIES, JSON.stringify(current.filter(u => u.id !== id)));
   },
 
   // Messages
   getMessages: async (userId: string): Promise<any[]> => {
-    return await SupabaseService.getMessages(userId);
+    const remoteData = await SupabaseService.getMessages(userId);
+    if (remoteData.length > 0) {
+      localStorage.setItem(`${KEYS.MESSAGES}_${userId}`, JSON.stringify(remoteData));
+      return remoteData;
+    }
+    const data = localStorage.getItem(`${KEYS.MESSAGES}_${userId}`);
+    return data ? JSON.parse(data) : [];
   },
   subscribeToMessages: (userId: string, callback: (payload: any) => void) => {
     return SupabaseService.subscribeToMessages(userId, callback);
   },
   sendMessage: async (message: any) => {
     await SupabaseService.sendMessage(message);
+    const userId = message.sender_id;
+    const current = await Database.getMessages(userId);
+    localStorage.setItem(`${KEYS.MESSAGES}_${userId}`, JSON.stringify([...current, message]));
   }
 };

@@ -45,6 +45,7 @@ interface AdminDashboardProps {
   onAddAd: (ad: Advertisement) => void;
   onDeleteAd: (id: string) => void;
   onUpdateUniversity: (uniId: string, updates: Partial<University>) => void;
+  onUpdateAd: (ad: Advertisement) => void;
   onUpdateLogo: (logoUrl: string) => void;
   onLogout: () => void;
 }
@@ -56,7 +57,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   universities, universityColleges, collegeDepartments,
   onAddUniversity, onRemoveUniversity, onAddCollege, onRemoveCollege, onAddDept, onRemoveDept,
   onApproveQuestion, onRejectQuestion, onApproveWithdrawal, onRejectWithdrawal,
-  globalAds, onAddAd, onDeleteAd, onUpdateUniversity, onUpdateLogo, onLogout
+  globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('command');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -190,6 +191,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'submissions', label: 'Asset Review', icon: <FileCheck className="w-5 h-5" /> },
     { id: 'payouts', label: 'Payout Flow', icon: <CreditCard className="w-5 h-5" /> },
     { id: 'ad-engine', label: 'Advert Engine', icon: <Monitor className="w-5 h-5" /> },
+    { id: 'ad-review', label: 'Ad Verification', icon: <Target className="w-5 h-5" /> },
     { id: 'academic', label: 'Inst. Map', icon: <Building2 className="w-5 h-5" /> },
     { id: 'users', label: 'Nodes', icon: <Users className="w-5 h-5" /> },
     { id: 'broadcast', label: 'Signals', icon: <Megaphone className="w-5 h-5" /> },
@@ -757,6 +759,105 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
              </div>
           </div>
+        )}
+
+        {activeTab === 'ad-review' && (
+          <div className="space-y-10 animate-fade-in">
+             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Ad Verification & Placement</h1>
+             <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                   <thead className="bg-gray-800 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      <tr><th className="p-8">Ad Asset</th><th className="p-8">Details</th><th className="p-8">Placement Logic</th><th className="p-8 text-right">Command</th></tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-800">
+                      {globalAds.filter(ad => ad.status === 'pending_review').map(ad => (
+                        <tr key={ad.id} className="hover:bg-white/5 transition-colors">
+                           <td className="p-8">
+                             <div className="flex items-center gap-4">
+                               <div className="w-20 h-20 rounded-2xl bg-gray-800 overflow-hidden border border-gray-700">
+                                 {ad.type === 'image' ? <img src={ad.mediaUrl} className="w-full h-full object-cover" /> : <PlayCircle className="w-full h-full p-4 text-green-500" />}
+                               </div>
+                               <div>
+                                 <p className="font-black italic text-base text-white break-words max-w-[200px]">{ad.title}</p>
+                                 <p className="text-[10px] text-blue-400 font-black uppercase">{ad.adType}</p>
+                               </div>
+                             </div>
+                           </td>
+                           <td className="p-8">
+                             <div className="space-y-1">
+                               <p className="text-xs font-bold text-gray-300">Duration: {ad.campaignDuration} {ad.campaignUnit}</p>
+                               <p className="text-[10px] text-gray-500 uppercase">Target: {ad.targetLocation}</p>
+                               <p className="text-[10px] text-gray-500 uppercase">Reach: {ad.targetReach === 'all' ? 'Global' : ad.targetReach}</p>
+                             </div>
+                           </td>
+                           <td className="p-8">
+                             <div className="space-y-4">
+                               <div>
+                                 <label className="text-[9px] font-black uppercase text-gray-500 block mb-1">Set Placement</label>
+                                 <select 
+                                   value={ad.placement} 
+                                   onChange={(e) => onUpdateAd({ ...ad, placement: e.target.value as AdPlacement })}
+                                   className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-3 py-2 rounded-xl outline-none text-white w-full focus:border-brand-proph transition-colors"
+                                 >
+                                   <option value="timeline">Timeline (Main Feed)</option>
+                                   <option value="search">Search Results</option>
+                                   <option value="post">Inside Posts</option>
+                                   <option value="profile">User Profiles</option>
+                                   <option value="video">Video Stream</option>
+                                   <option value="replies">Post Replies</option>
+                                 </select>
+                               </div>
+                               <div>
+                                 <label className="text-[9px] font-black uppercase text-gray-500 block mb-1">Set Ad Type</label>
+                                 <select 
+                                   value={ad.adType} 
+                                   onChange={(e) => onUpdateAd({ ...ad, adType: e.target.value as AdType })}
+                                   className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-3 py-2 rounded-xl outline-none text-white w-full focus:border-brand-proph transition-colors"
+                                 >
+                                   <option value="native">Native (X-Style)</option>
+                                   <option value="banner">Banner</option>
+                                   <option value="popup">Pop-up</option>
+                                 </select>
+                               </div>
+                             </div>
+                           </td>
+                           <td className="p-8 text-right">
+                             <div className="flex justify-end gap-3">
+                               <button 
+                                 onClick={() => onUpdateAd({ ...ad, status: 'active' })}
+                                 className="p-4 bg-green-600/10 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white transition-all group relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)]"
+                                 title="Approve & Deploy"
+                               >
+                                 <CheckCircle2 className="w-6 h-6 relative z-10" />
+                                 <div className="absolute inset-0 bg-green-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                               </button>
+                               <button 
+                                 onClick={() => onUpdateAd({ ...ad, status: 'rejected' })}
+                                 className="p-4 bg-red-600/10 text-red-500 rounded-2xl hover:bg-red-600 hover:text-white transition-all"
+                                 title="Reject Campaign"
+                               >
+                                 <XCircle className="w-6 h-6" />
+                               </button>
+                             </div>
+                           </td>
+                        </tr>
+                      ))}
+                      {globalAds.filter(ad => ad.status === 'pending_review').length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="p-20 text-center">
+                            <div className="flex flex-col items-center gap-4 opacity-20">
+                              <Target className="w-16 h-16" />
+                              <p className="text-sm font-black uppercase tracking-widest">No Campaigns Pending Verification</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+         </div>
         )}
 
         {activeTab === 'academic' && (

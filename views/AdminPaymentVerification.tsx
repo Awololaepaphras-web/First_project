@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, XCircle, Clock, Search, Filter, 
   CreditCard, User, Calendar, ExternalLink, ArrowLeft,
-  ShieldCheck, AlertCircle, RefreshCw
+  ShieldCheck, AlertCircle, RefreshCw, Building2
 } from 'lucide-react';
 import { PaymentVerification, User as UserType } from '../types';
 import { Database } from '../src/services/database';
@@ -55,7 +55,7 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
             const allAds = await Database.getAds();
             const targetAd = allAds.find(a => a.id === verification.details.adId);
             if (targetAd) {
-              const updatedAd = { ...targetAd, status: 'active' };
+              const updatedAd = { ...targetAd, status: 'pending_review' };
               await Database.saveAd(updatedAd);
             }
           }
@@ -141,6 +141,7 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
               <tr className="bg-brand-black/50">
                 <th className="p-6 text-[10px] font-black text-brand-muted uppercase tracking-widest">User Node</th>
                 <th className="p-6 text-[10px] font-black text-brand-muted uppercase tracking-widest">Intel Type</th>
+                <th className="p-6 text-[10px] font-black text-brand-muted uppercase tracking-widest">Method</th>
                 <th className="p-6 text-[10px] font-black text-brand-muted uppercase tracking-widest">Amount</th>
                 <th className="p-6 text-[10px] font-black text-brand-muted uppercase tracking-widest">Reference</th>
                 <th className="p-6 text-[10px] font-black text-brand-muted uppercase tracking-widest">Timestamp</th>
@@ -169,6 +170,18 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
                     }`}>
                       {v.type}
                     </span>
+                  </td>
+                  <td className="p-6">
+                    <div className="flex items-center gap-2">
+                      {v.details?.paymentMethod === 'card' ? (
+                        <CreditCard className="w-4 h-4 text-brand-proph" />
+                      ) : (
+                        <Building2 className="w-4 h-4 text-blue-400" />
+                      )}
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                        {v.details?.paymentMethod || 'Transfer'}
+                      </span>
+                    </div>
                   </td>
                   <td className="p-6">
                     <p className="text-sm font-black text-white">₦{v.amount.toLocaleString()}</p>

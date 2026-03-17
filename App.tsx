@@ -428,6 +428,11 @@ const App: React.FC = () => {
     DB.deleteAd(id);
   };
 
+  const handleUpdateAd = (ad: Advertisement) => {
+    setGlobalAds(prev => prev.map(a => a.id === ad.id ? ad : a));
+    DB.saveAd(ad);
+  };
+
   const handleAddTask = (task: EarnTask) => {
     setTasks([task, ...tasks]);
     DB.saveTask(task);
@@ -467,6 +472,7 @@ const App: React.FC = () => {
     else if (hour >= 18) currentTimeFrame = '6pm-12am';
 
     const validAds = globalAds.filter(ad => {
+      if (ad.status !== 'active') return false;
       if (!ad.timeFrames || ad.timeFrames.length === 0) return true;
       return ad.timeFrames.includes(currentTimeFrame);
     });
@@ -714,7 +720,7 @@ const App: React.FC = () => {
                 onRejectQuestion={handleRejectQuestion}
                 onApproveWithdrawal={handleApproveWithdrawal}
                 onRejectWithdrawal={handleRejectWithdrawal}
-                globalAds={globalAds} onAddAd={handleAddAd} onDeleteAd={handleDeleteAd}
+                globalAds={globalAds} onAddAd={handleAddAd} onDeleteAd={handleDeleteAd} onUpdateAd={handleUpdateAd}
                 onUpdateUniversity={(uid, up) => setUniversities(prev => prev.map(u => u.id === uid ? {...u, ...up} : u))}
                 onUpdateLogo={setAppLogo}
                 onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }}

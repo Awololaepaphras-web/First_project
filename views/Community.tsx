@@ -5,7 +5,7 @@ import {
   MessageCircle, Heart, Share2, ShieldCheck, 
   MoreHorizontal, Repeat2, X, Trash2, Loader2, 
   BarChart, Image as ImageIcon, Twitter, Facebook, Instagram, Ghost, MessageSquare,
-  Search, Edit3, Check, AlertCircle, TrendingUp
+  Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone
 } from 'lucide-react';
 import { User, Post, Comment, Advertisement } from '../types';
 import BannerAd from '../components/BannerAd';
@@ -36,6 +36,50 @@ const formatRelativeTime = (timestamp: number) => {
   const days = Math.floor(hours / 24);
   return `${days}d`;
 };
+
+const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
+  <div className="p-4 border-b border-brand-border hover:bg-black/[0.05] dark:hover:bg-brand-black transition-colors cursor-pointer group relative overflow-hidden">
+    <div className="absolute top-0 left-0 w-1 h-full bg-brand-proph shadow-[0_0_15px_rgba(0,186,124,0.6)]" />
+    <div className="flex gap-3">
+      <div className="w-12 h-12 rounded-full bg-brand-proph/20 flex-shrink-0 flex items-center justify-center font-black overflow-hidden shadow-[inset_0_0_10px_rgba(0,186,124,0.2)]">
+        <Megaphone className="w-6 h-6 text-brand-proph drop-shadow-[0_0_8px_rgba(0,186,124,0.4)]" />
+      </div>
+      <div className="flex-grow min-w-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="font-black text-[15px] truncate text-gray-900 dark:text-white flex items-center gap-1">
+              Promoted
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-proph animate-pulse shadow-[0_0_8px_rgba(0,186,124,0.8)]" />
+            </span>
+            <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
+            <span className="text-brand-muted text-[15px] truncate">@sponsor</span>
+          </div>
+        </div>
+        <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal font-bold italic break-words">{ad.title}</div>
+        {ad.mediaUrl && (
+          <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner relative group/media">
+            <div className="absolute inset-0 bg-brand-proph/5 opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none" />
+            {ad.type === 'image' ? (
+              <img src={ad.mediaUrl} className="w-full h-auto max-h-[600px] object-cover" alt="Ad" />
+            ) : (
+              <video src={ad.mediaUrl} className="w-full h-auto max-h-[600px]" controls />
+            )}
+          </div>
+        )}
+        <div className="mt-4">
+          <a 
+            href={ad.link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block w-full text-center py-3 bg-brand-proph text-black font-black rounded-2xl text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,186,124,0.2)] hover:shadow-[0_0_30px_rgba(0,186,124,0.4)]"
+          >
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost }) => {
   const location = useLocation();
@@ -288,10 +332,15 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
           filteredPosts.map((post, index) => (
           <React.Fragment key={post.id}>
             {/* Timeline Ad Insertion */}
-            {index > 0 && index % 5 === 0 && globalAds.filter(ad => ad.placement === 'timeline' && ad.adType === 'banner').length > 0 && (
+            {index > 0 && index % 5 === 0 && globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'banner').length > 0 && (
               <div className="p-4 border-b border-brand-border bg-brand-proph/5">
-                <BannerAd ad={globalAds.filter(ad => ad.placement === 'timeline' && ad.adType === 'banner')[Math.floor(Math.random() * globalAds.filter(ad => ad.placement === 'timeline' && ad.adType === 'banner').length)]} />
+                <BannerAd ad={globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'banner')[Math.floor(Math.random() * globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'banner').length)]} />
               </div>
+            )}
+
+            {/* Native Ad Insertion */}
+            {index > 0 && index % 3 === 0 && globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'native').length > 0 && (
+               <NativeAd ad={globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'native')[Math.floor(Math.random() * globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'native').length)]} />
             )}
             
             <div className="p-4 hover:bg-black/[0.05] dark:hover:bg-brand-black transition-colors cursor-pointer group relative">
@@ -379,7 +428,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap">{post.content}</div>
+                  <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words">{post.content}</div>
                 )}
                 {post.mediaUrl && (
                   <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner" title="Media Preview">

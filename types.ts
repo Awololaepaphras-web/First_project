@@ -234,7 +234,7 @@ export interface Advertisement {
   timesPerDay?: number;
   targetReach?: number | 'all';
   timeFrames?: AdTimeFrame[];
-  status: 'pending' | 'active' | 'paused' | 'completed' | 'payment_pending';
+  status: 'pending' | 'active' | 'paused' | 'completed' | 'payment_pending' | 'pending_review' | 'rejected';
   analytics?: {
     impressions: number;
     clicks: number;

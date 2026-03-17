@@ -359,7 +359,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
         </nav>
       )}
       {user && <StudyTimer />}
-      {user && (user.role === 'admin' || user.role === 'sub-admin') && (
+      {user && user.role === 'admin' && (
         <div className="fixed bottom-6 right-6 flex flex-col gap-4 z-[100]">
           {onSaveConfig && (
             <button 

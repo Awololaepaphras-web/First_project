@@ -699,7 +699,7 @@ const App: React.FC = () => {
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
 
           <Route path="/admin" element={
-            user && (user.role === 'admin' || user.role === 'sub-admin') ? (
+            user && user.role === 'admin' ? (
               <AdminDashboard 
                 user={user} config={config} allUsers={allUsers} questions={questions} withdrawalRequests={withdrawalRequests} tasks={tasks}
                 onUpdateConfig={handleSaveConfig} onUpdateUsers={(users) => { setAllUsers(users); DB.saveUsers(users); }} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask}
@@ -721,7 +721,7 @@ const App: React.FC = () => {
               />
             ) : ( <AdminLogin onLogin={setUser} allUsers={allUsers} /> )
           } />
-          <Route path="/admin/payments" element={user && (user.role === 'admin' || user.role === 'sub-admin') ? <AdminPaymentVerification user={user} /> : <Navigate to="/admin" />} />
+          <Route path="/admin/payments" element={user && user.role === 'admin' ? <AdminPaymentVerification user={user} /> : <Navigate to="/admin" />} />
         </Routes>
       </Layout>
       {showAd && currentAd && (

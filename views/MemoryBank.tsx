@@ -75,7 +75,7 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12 pb-32">
+    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12 pb-32">
       {/* Neural Hub Modules - ONLY ACCESS HERE */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <div className="bg-gradient-to-r from-brand-proph to-green-600 rounded-[3rem] p-10 text-black flex justify-between items-center shadow-2xl relative overflow-hidden group">

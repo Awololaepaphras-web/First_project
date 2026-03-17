@@ -16,7 +16,7 @@ const Tasks: React.FC<TasksProps> = ({ user, tasks, onCompleteTask }) => {
   const activeTasks = tasks.filter(t => !user.completedTasks?.includes(t.id));
 
   return (
-    <div className="min-h-screen py-16 px-4 max-w-6xl mx-auto space-y-12 animate-fade-in">
+    <div className="min-h-screen py-16 px-4 max-w-full mx-auto space-y-12 animate-fade-in">
        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           <div>
             <h1 className="text-4xl md:text-6xl font-black dark:text-white tracking-tighter">Bounty <span className="text-brand-proph">Board</span></h1>

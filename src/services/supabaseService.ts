@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, Video, PastQuestion, SystemConfig, PaymentVerification } from '../../types';
+import { User, Post, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -34,12 +34,104 @@ export const SupabaseService = {
       console.error('Error fetching users:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(u => ({
+      ...u,
+      themePreference: u.theme_preference,
+      isSugVerified: u.is_sug_verified,
+      staffPermissions: u.staff_permissions,
+      isPremium: u.is_premium,
+      premiumExpiry: u.premium_until,
+      referralCode: u.referral_code,
+      referralStats: u.referral_stats,
+      bankDetails: u.bank_details,
+      gladiatorEarnings: u.gladiator_earnings,
+      isVerified: u.is_verified,
+      verificationCode: u.verification_code,
+      referredBy: u.referred_by,
+      engagementStats: u.engagement_stats,
+      createdAt: new Date(u.created_at).getTime()
+    }));
   },
 
   async saveUser(user: User) {
-    const { error } = await supabase.from('users').upsert(user);
+    const { 
+      themePreference, isSugVerified, staffPermissions, isPremium, 
+      premiumExpiry, referralCode, referralStats, bankDetails, 
+      gladiatorEarnings, isVerified, verificationCode, referredBy,
+      engagementStats, ...rest 
+    } = user;
+    
+    const dbUser = { 
+      ...rest, 
+      theme_preference: themePreference,
+      is_sug_verified: isSugVerified,
+      staff_permissions: staffPermissions,
+      is_premium: isPremium,
+      premium_until: premiumExpiry,
+      referral_code: referralCode,
+      referral_stats: referralStats,
+      bank_details: bankDetails,
+      gladiator_earnings: gladiatorEarnings,
+      is_verified: isVerified,
+      verification_code: verificationCode,
+      referred_by: referredBy,
+      engagement_stats: engagementStats
+    };
+    const { error } = await supabase.from('users').upsert(dbUser);
     if (error) console.error('Error saving user:', error);
+  },
+
+  async followUser(followerId: string, followingId: string) {
+    try {
+      // Add followingId to follower's following list
+      const { data: follower, error: fErr } = await supabase.from('users').select('following').eq('id', followerId).single();
+      if (fErr) throw fErr;
+      const following = [...new Set([...(follower?.following || []), followingId])];
+      const { error: u1Err } = await supabase.from('users').update({ following }).eq('id', followerId);
+      if (u1Err) throw u1Err;
+
+      // Add followerId to following's followers list
+      const { data: followingUser, error: fgErr } = await supabase.from('users').select('followers').eq('id', followingId).single();
+      if (fgErr) throw fgErr;
+      const followers = [...new Set([...(followingUser?.followers || []), followerId])];
+      const { error: u2Err } = await supabase.from('users').update({ followers }).eq('id', followingId);
+      if (u2Err) throw u2Err;
+
+      // Send notification
+      await this.sendNotification(followingId, {
+        type: 'info',
+        title: 'New Follower',
+        message: 'Someone just followed you!',
+        data: { followerId }
+      });
+    } catch (error) {
+      console.error('Error in followUser:', error);
+    }
+  },
+
+  async unfollowUser(followerId: string, followingId: string) {
+    try {
+      // Remove followingId from follower's following list
+      const { data: follower, error: fErr } = await supabase.from('users').select('following').eq('id', followerId).single();
+      if (fErr) throw fErr;
+      const following = (follower?.following || []).filter((id: string) => id !== followingId);
+      const { error: u1Err } = await supabase.from('users').update({ following }).eq('id', followerId);
+      if (u1Err) throw u1Err;
+
+      // Remove followerId from following's followers list
+      const { data: followingUser, error: fgErr } = await supabase.from('users').select('followers').eq('id', followingId).single();
+      if (fgErr) throw fgErr;
+      const followers = (followingUser?.followers || []).filter((id: string) => id !== followerId);
+      const { error: u2Err } = await supabase.from('users').update({ followers }).eq('id', followingId);
+      if (u2Err) throw u2Err;
+    } catch (error) {
+      console.error('Error in unfollowUser:', error);
+    }
+  },
+
+  async updateUserTheme(userId: string, theme: 'light' | 'dark') {
+    const { error } = await supabase.from('users').update({ theme_preference: theme }).eq('id', userId);
+    if (error) console.error('Error updating user theme:', error);
   },
 
   // Feed
@@ -47,23 +139,58 @@ export const SupabaseService = {
     const { data, error } = await supabase
       .from('posts')
       .select('*')
-      .order('createdAt', { ascending: false });
+      .order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching feed:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(p => ({
+      ...p,
+      userId: p.user_id,
+      userName: p.user_name,
+      userNickname: p.user_nickname,
+      userAvatar: p.user_avatar,
+      mediaUrl: p.media_url,
+      mediaType: p.media_type,
+      createdAt: new Date(p.created_at).getTime()
+    }));
   },
 
   subscribeToFeed(callback: (payload: any) => void) {
     return supabase
       .channel('public:posts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, callback)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload: any) => {
+        if (payload.new) {
+          const p = payload.new;
+          payload.new = {
+            ...p,
+            userId: p.user_id,
+            userName: p.user_name,
+            userNickname: p.user_nickname,
+            userAvatar: p.user_avatar,
+            mediaUrl: p.media_url,
+            mediaType: p.media_type,
+            createdAt: new Date(p.created_at).getTime()
+          };
+        }
+        callback(payload);
+      })
       .subscribe();
   },
 
   async savePost(post: Post) {
-    const { error } = await supabase.from('posts').upsert(post);
+    const { userId, userName, userNickname, userAvatar, mediaUrl, mediaType, createdAt, ...rest } = post as any;
+    const dbPost = {
+      ...rest,
+      user_id: userId,
+      user_name: userName,
+      user_nickname: userNickname,
+      user_avatar: userAvatar,
+      media_url: mediaUrl,
+      media_type: mediaType,
+      created_at: new Date(createdAt).toISOString()
+    };
+    const { error } = await supabase.from('posts').upsert(dbPost);
     if (error) console.error('Error saving post:', error);
   },
 
@@ -77,31 +204,6 @@ export const SupabaseService = {
     if (error) console.error('Error updating post:', error);
   },
 
-  // TV
-  async getTV(): Promise<Video[]> {
-    const { data, error } = await supabase
-      .from('videos')
-      .select('*')
-      .order('createdAt', { ascending: false });
-    if (error) {
-      console.error('Error fetching TV:', error);
-      return [];
-    }
-    return data || [];
-  },
-
-  subscribeToTV(callback: (payload: any) => void) {
-    return supabase
-      .channel('public:videos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, callback)
-      .subscribe();
-  },
-
-  async saveVideo(video: Video) {
-    const { error } = await supabase.from('videos').upsert(video);
-    if (error) console.error('Error saving video:', error);
-  },
-
   // Documents
   async getDocuments(): Promise<PastQuestion[]> {
     const { data, error } = await supabase.from('documents').select('*');
@@ -109,30 +211,65 @@ export const SupabaseService = {
       console.error('Error fetching documents:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(d => ({
+      ...d,
+      universityId: d.university_id,
+      courseCode: d.course_code,
+      courseTitle: d.course_title,
+      fileUrl: d.file_url,
+      uploadedBy: d.uploaded_by,
+      createdAt: new Date(d.created_at).getTime()
+    }));
   },
 
   async saveDocument(doc: PastQuestion) {
-    const { error } = await supabase.from('documents').upsert(doc);
+    const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc;
+    const dbDoc = {
+      ...rest,
+      university_id: universityId,
+      course_code: courseCode,
+      course_title: courseTitle,
+      file_url: fileUrl,
+      uploaded_by: uploadedBy,
+      created_at: new Date(createdAt).toISOString()
+    };
+    const { error } = await supabase.from('documents').upsert(dbDoc);
     if (error) console.error('Error saving document:', error);
   },
   async saveDocuments(docs: PastQuestion[]) {
-    const { error } = await supabase.from('documents').upsert(docs);
+    const dbDocs = docs.map(doc => {
+      const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc;
+      return {
+        ...rest,
+        university_id: universityId,
+        course_code: courseCode,
+        course_title: courseTitle,
+        file_url: fileUrl,
+        uploaded_by: uploadedBy,
+        created_at: new Date(createdAt).toISOString()
+      };
+    });
+    const { error } = await supabase.from('documents').upsert(dbDocs);
     if (error) console.error('Error saving documents:', error);
+  },
+
+  async updateDocumentStatus(id: string, status: 'approved' | 'rejected') {
+    const { error } = await supabase.from('documents').update({ status }).eq('id', id);
+    if (error) console.error('Error updating document status:', error);
   },
 
   // Config
   async getConfig(): Promise<SystemConfig | null> {
-    const { data, error } = await supabase.from('system_config').select('data').eq('id', 'default').single();
+    const { data, error } = await supabase.from('system_config').select('config').eq('id', 'default').single();
     if (error) {
       console.error('Error fetching config:', error);
       return null;
     }
-    return data?.data || null;
+    return data?.config || null;
   },
 
   async saveConfig(config: SystemConfig) {
-    const { error } = await supabase.from('system_config').upsert({ id: 'default', data: config });
+    const { error } = await supabase.from('system_config').upsert({ id: 'default', config: config });
     if (error) console.error('Error saving config:', error);
   },
 
@@ -141,16 +278,30 @@ export const SupabaseService = {
     const { data, error } = await supabase
       .from('payment_verifications')
       .select('*')
-      .order('createdAt', { ascending: false });
+      .order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching payment verifications:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(v => ({
+      ...v,
+      userId: v.user_id,
+      userName: v.user_name,
+      userEmail: v.user_email,
+      createdAt: new Date(v.created_at).getTime()
+    }));
   },
 
   async savePaymentVerification(verification: PaymentVerification) {
-    const { error } = await supabase.from('payment_verifications').upsert(verification);
+    const { userId, userName, userEmail, createdAt, ...rest } = verification;
+    const dbVerification = {
+      ...rest,
+      user_id: userId,
+      user_name: userName,
+      user_email: userEmail,
+      created_at: new Date(createdAt).toISOString()
+    };
+    const { error } = await supabase.from('payment_verifications').upsert(dbVerification);
     if (error) console.error('Error saving payment verification:', error);
   },
 
@@ -165,7 +316,7 @@ export const SupabaseService = {
       .from('messages')
       .select('*')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .order('created_at', { ascending: true });
+      .order('timestamp', { ascending: true });
     if (error) {
       console.error('Error fetching messages:', error);
       return [];
@@ -179,8 +330,7 @@ export const SupabaseService = {
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
-        table: 'messages',
-        filter: `receiver_id=eq.${userId}`
+        table: 'messages'
       }, callback)
       .subscribe();
   },
@@ -188,5 +338,196 @@ export const SupabaseService = {
   async sendMessage(message: any) {
     const { error } = await supabase.from('messages').insert(message);
     if (error) console.error('Error sending message:', error);
+  },
+
+  // Gladiator Hub
+  async getGladiatorVault(): Promise<any[]> {
+    const { data, error } = await supabase.from('gladiator_vault').select('*');
+    if (error) {
+      console.error('Error fetching gladiator vault:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async saveGladiatorItem(item: any) {
+    const { error } = await supabase.from('gladiator_vault').upsert(item);
+    if (error) console.error('Error saving gladiator item:', error);
+  },
+
+  // Advertisements
+  async getAds(): Promise<any[]> {
+    const { data, error } = await supabase.from('advertisements').select('*');
+    if (error) {
+      console.error('Error fetching ads:', error);
+      return [];
+    }
+    return (data || []).map(a => ({
+      ...a,
+      userId: a.user_id,
+      mediaUrl: a.media_url,
+      type: a.media_type,
+      adType: a.ad_type,
+      targetLocation: a.target_location,
+      campaignDuration: a.campaign_duration,
+      campaignUnit: a.campaign_unit,
+      timesPerDay: a.times_per_day,
+      targetReach: a.target_reach,
+      timeFrames: a.time_frames
+    }));
+  },
+
+  async saveAd(ad: any) {
+    const { userId, mediaUrl, type, adType, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, ...rest } = ad;
+    const dbAd = {
+      ...rest,
+      user_id: userId,
+      media_url: mediaUrl,
+      media_type: type,
+      ad_type: adType,
+      target_location: targetLocation,
+      campaign_duration: campaignDuration,
+      campaign_unit: campaignUnit,
+      times_per_day: timesPerDay,
+      target_reach: targetReach,
+      time_frames: timeFrames
+    };
+    const { error } = await supabase.from('advertisements').upsert(dbAd);
+    if (error) console.error('Error saving ad:', error);
+  },
+
+  async deleteAd(adId: string) {
+    const { error } = await supabase.from('advertisements').delete().eq('id', adId);
+    if (error) console.error('Error deleting ad:', error);
+  },
+
+  // Withdrawal Requests
+  async getWithdrawalRequests(): Promise<any[]> {
+    const { data, error } = await supabase.from('withdrawal_requests').select('*');
+    if (error) {
+      console.error('Error fetching withdrawal requests:', error);
+      return [];
+    }
+    return (data || []).map(r => ({
+      ...r,
+      userId: r.user_id,
+      userName: r.user_name,
+      bankDetails: {
+        bankName: r.bank_name,
+        accountNumber: r.account_number,
+        accountName: r.account_name
+      },
+      createdAt: new Date(r.created_at).getTime()
+    }));
+  },
+
+  async saveWithdrawalRequest(req: WithdrawalRequest) {
+    const { userId, userName, bankDetails, createdAt, ...rest } = req;
+    const dbReq = {
+      ...rest,
+      user_id: userId,
+      user_name: userName,
+      bank_name: bankDetails.bankName,
+      account_number: bankDetails.accountNumber,
+      account_name: bankDetails.accountName,
+      created_at: new Date(createdAt).toISOString()
+    };
+    const { error } = await supabase.from('withdrawal_requests').upsert(dbReq);
+    if (error) console.error('Error saving withdrawal request:', error);
+  },
+
+  async updateWithdrawalStatus(id: string, status: string) {
+    const { error } = await supabase.from('withdrawal_requests').update({ status }).eq('id', id);
+    if (error) console.error('Error updating withdrawal status:', error);
+  },
+
+  // Notifications
+  async getNotifications(userId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async sendNotification(userId: string, notification: any) {
+    const { error } = await supabase.from('notifications').insert({
+      user_id: userId,
+      ...notification,
+      created_at: new Date().toISOString()
+    });
+    if (error) console.error('Error sending notification:', error);
+  },
+
+  async markNotificationAsRead(notificationId: string) {
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+    if (error) console.error('Error marking notification as read:', error);
+  },
+
+  // Tasks
+  async getTasks(): Promise<any[]> {
+    const { data, error } = await supabase.from('tasks').select('*');
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      return [];
+    }
+    return (data || []).map(t => ({
+      ...t,
+      completedBy: t.completed_by,
+      createdAt: new Date(t.created_at).getTime(),
+      expiryDate: t.expiry_date ? new Date(t.expiry_date).getTime() : undefined
+    }));
+  },
+
+  async saveTask(task: any) {
+    const { completedBy, expiryDate, ...rest } = task;
+    const dbTask = {
+      ...rest,
+      completed_by: completedBy,
+      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null
+    };
+    const { error } = await supabase.from('tasks').upsert(dbTask);
+    if (error) console.error('Error saving task:', error);
+  },
+
+  async deleteTask(taskId: string) {
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (error) console.error('Error deleting task:', error);
+  },
+
+  // Universities
+  async getUniversities(): Promise<any[]> {
+    const { data, error } = await supabase.from('universities').select('*');
+    if (error) {
+      console.error('Error fetching universities:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async saveUniversity(uni: any) {
+    const { error } = await supabase.from('universities').upsert(uni);
+    if (error) console.error('Error saving university:', error);
+  },
+
+  async deleteUniversity(uniId: string) {
+    const { error } = await supabase.from('universities').delete().eq('id', uniId);
+    if (error) console.error('Error deleting university:', error);
+  },
+
+  subscribeToTable(table: string, callback: (payload: any) => void) {
+    return supabase
+      .channel(`public:${table}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: table
+      }, callback)
+      .subscribe();
   }
 };

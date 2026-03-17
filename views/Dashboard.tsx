@@ -2,12 +2,12 @@
 import React, { useState } from 'react';
 import { 
   Search, FileText, Share2, MessageSquareCode, Image as ImageIcon, 
-  ChevronDown, Info, Layers, BookOpen, ExternalLink, Megaphone, Video,
+  ChevronDown, Info, Layers, BookOpen, ExternalLink, Megaphone,
   Trophy, Star, Award, Clock, Brain, Upload, Users, Lock, ChevronRight,
   GraduationCap, Zap, LayoutGrid, List, Plus, Wallet, Database,
   Swords, Shield, Heart, Activity, Camera, Book, ListChecks
 } from 'lucide-react';
-import { User, PastQuestion, Announcement, Badge } from '../types';
+import { User, PastQuestion, Announcement, Badge, Advertisement } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
 
 interface DashboardProps {
@@ -15,9 +15,10 @@ interface DashboardProps {
   questions: PastQuestion[];
   announcements?: Announcement[];
   activeBadges: Badge[];
+  globalAds: Advertisement[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = [], activeBadges = [] }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = [], activeBadges = [], globalAds }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -38,11 +39,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
     { name: 'Memory Bank', icon: <Database className="w-5 h-5" />, path: '/memory-bank', color: 'bg-purple-500', desc: 'Archival storage' },
     { name: 'Financial Hub', icon: <Wallet className="w-5 h-5" />, path: '/withdraw', color: 'bg-green-600', desc: 'Convert rewards' },
     { name: 'Earn Manual', icon: <Book className="w-5 h-5" />, path: '/earn-manual', color: 'bg-orange-500', desc: 'How to earn' },
-    { name: 'Proph TV', icon: <Video className="w-5 h-5" />, path: '/video-hub', color: 'bg-red-500', desc: 'Video Masterclass' },
   ];
 
+  const approvedAds = globalAds.filter(ad => ad.status === 'active');
+
   return (
-    <div className="p-4 md:p-8 space-y-12 animate-fade-in pb-32">
+    <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-12 animate-fade-in pb-32">
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
         <div>
            <h1 className="text-4xl font-black tracking-tighter italic uppercase text-gray-900 dark:text-white">Scholar Mainframe</h1>
@@ -97,6 +99,42 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
            ))}
         </div>
       </div>
+
+      {approvedAds.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-black italic uppercase tracking-widest flex items-center gap-2 text-gray-900 dark:text-white px-1">
+            <Megaphone className="w-5 h-5 text-brand-proph" /> Promoted Intel
+          </h2>
+          <div className="flex gap-6 overflow-x-auto no-scrollbar snap-x pb-4">
+            {approvedAds.map(ad => (
+              <a 
+                key={ad.id} 
+                href={ad.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-white dark:bg-brand-card rounded-[2.5rem] border border-brand-border overflow-hidden group hover:border-brand-proph transition-all flex-shrink-0 w-[85vw] sm:w-[400px] snap-center shadow-2xl"
+              >
+                <div className="aspect-video bg-gray-100 dark:bg-brand-border relative">
+                  {ad.type === 'video' ? (
+                    <video src={ad.mediaUrl} className="w-full h-full object-cover" muted loop autoPlay />
+                  ) : (
+                    <img src={ad.mediaUrl} className="w-full h-full object-cover" alt={ad.title} />
+                  )}
+                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-white/10">
+                    Sponsored
+                  </div>
+                </div>
+                <div className="p-6">
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase italic truncate">{ad.title}</h3>
+                  <div className="flex items-center gap-2 mt-2 text-brand-proph font-black text-[10px] uppercase tracking-widest">
+                    Learn More <ChevronRight className="w-3 h-3" />
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between border-b border-brand-border pb-6 mt-12">
          <div className="flex items-center gap-4">

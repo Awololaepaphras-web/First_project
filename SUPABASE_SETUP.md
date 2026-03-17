@@ -43,25 +43,7 @@ create table posts (
 );
 ```
 
-## 3. Videos Table
-```sql
-create table videos (
-  "id" text primary key,
-  "userId" text references users("id"),
-  "userName" text,
-  "title" text,
-  "description" text,
-  "videoUrl" text,
-  "thumbnailUrl" text,
-  "views" integer default 0,
-  "likes" text[] default '{}',
-  "shares" integer default 0,
-  "category" text,
-  "createdAt" bigint
-);
-```
-
-## 4. Documents Table
+## 3. Documents Table
 ```sql
 create table documents (
   "id" text primary key,
@@ -82,7 +64,7 @@ create table documents (
 );
 ```
 
-## 5. System Config Table
+## 4. System Config Table
 ```sql
 create table system_config (
   "id" text primary key,
@@ -123,6 +105,6 @@ insert into system_config (id, data) values ('default', '{
 }'::jsonb);
 ```
 
-## 6. Security Rules (RLS)
+## 5. Security Rules (RLS)
 For a quick start, you can disable RLS or add policies that allow authenticated users to read/write.
 In a production app, you should define strict RLS policies.

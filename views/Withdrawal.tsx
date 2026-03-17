@@ -54,27 +54,27 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
   };
 
   return (
-    <div className="min-h-screen bg-brand-black text-white py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-12">
+    <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto space-y-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Institutional Purse</h1>
             <p className="text-brand-muted font-medium italic">Convert your scholarly contributions into verified rewards.</p>
           </div>
           
-          <div className="bg-brand-card p-6 rounded-[2rem] shadow-2xl border border-brand-border flex items-center gap-6">
+          <div className="bg-brand-border/20 dark:bg-brand-card p-6 rounded-[2rem] shadow-2xl border border-brand-border flex items-center gap-6">
             <div className="w-14 h-14 bg-brand-proph rounded-2xl flex items-center justify-center shadow-lg shadow-brand-proph/20">
               <Wallet className="w-7 h-7 text-black" />
             </div>
             <div>
               <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest leading-none mb-1">Available Points</p>
-              <span className="text-3xl font-black text-white italic">{userPoints.toLocaleString()}</span>
+              <span className="text-3xl font-black text-gray-900 dark:text-white italic">{userPoints.toLocaleString()}</span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-brand-card p-10 rounded-[3rem] shadow-2xl border border-brand-border relative overflow-hidden">
+          <div className="bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] shadow-2xl border border-brand-border relative overflow-hidden">
             {!isEnabled && (
               <div className="absolute inset-0 z-20 bg-brand-black/60 backdrop-blur-[2px] flex items-center justify-center p-8 text-center">
                 <div className="bg-brand-card p-8 rounded-[2.5rem] shadow-2xl border border-brand-border max-w-xs animate-in zoom-in">
@@ -87,7 +87,7 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
               </div>
             )}
 
-            <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3 italic">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-8 flex items-center gap-3 italic">
               <Banknote className="w-7 h-7 text-brand-proph" /> Payout Request
             </h2>
 
@@ -100,7 +100,7 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
                     required
                     min={MIN_WITHDRAWAL_POINTS}
                     max={userPoints}
-                    className="w-full pl-6 pr-20 py-5 bg-brand-black border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-black text-xl italic text-white transition-all shadow-inner"
+                    className="w-full pl-6 pr-20 py-5 bg-white dark:bg-brand-black border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-black text-xl italic text-gray-900 dark:text-white transition-all shadow-inner"
                     placeholder="e.g. 5000"
                     value={amount || ''}
                     onChange={(e) => setAmount(parseInt(e.target.value))}
@@ -114,9 +114,9 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
               <div className="pt-6 border-t border-brand-border/50">
                 <h3 className="text-[10px] font-black text-brand-muted uppercase tracking-widest mb-4 px-1">Bank Destination Node</h3>
                 <div className="space-y-4">
-                  <input required className="w-full px-6 py-4 bg-brand-black border border-brand-border rounded-2xl text-sm font-bold focus:ring-1 focus:ring-brand-proph outline-none transition-all" placeholder="Account Holder Name" value={bankDetails.accountName} onChange={(e) => setBankDetails({...bankDetails, accountName: e.target.value})} />
-                  <input required maxLength={10} className="w-full px-6 py-4 bg-brand-black border border-brand-border rounded-2xl text-sm font-bold focus:ring-1 focus:ring-brand-proph outline-none transition-all" placeholder="Account Number (10 digits)" value={bankDetails.accountNumber} onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})} />
-                  <input required className="w-full px-6 py-4 bg-brand-black border border-brand-border rounded-2xl text-sm font-bold focus:ring-1 focus:ring-brand-proph outline-none transition-all" placeholder="Institutional Bank Name" value={bankDetails.bankName} onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})} />
+                  <input required className="w-full px-6 py-4 bg-white dark:bg-brand-black border border-brand-border rounded-2xl text-sm font-bold focus:ring-1 focus:ring-brand-proph outline-none transition-all dark:text-white" placeholder="Account Holder Name" value={bankDetails.accountName} onChange={(e) => setBankDetails({...bankDetails, accountName: e.target.value})} />
+                  <input required maxLength={10} className="w-full px-6 py-4 bg-white dark:bg-brand-black border border-brand-border rounded-2xl text-sm font-bold focus:ring-1 focus:ring-brand-proph outline-none transition-all dark:text-white" placeholder="Account Number (10 digits)" value={bankDetails.accountNumber} onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})} />
+                  <input required className="w-full px-6 py-4 bg-white dark:bg-brand-black border border-brand-border rounded-2xl text-sm font-bold focus:ring-1 focus:ring-brand-proph outline-none transition-all dark:text-white" placeholder="Institutional Bank Name" value={bankDetails.bankName} onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})} />
                 </div>
               </div>
 

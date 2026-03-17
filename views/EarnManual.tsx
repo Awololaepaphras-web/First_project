@@ -2,7 +2,7 @@
 import React from 'react';
 import { 
   Trophy, Zap, Wallet, Users, ArrowLeft, 
-  CheckCircle2, Video, Database, Swords, 
+  CheckCircle2, Database, Swords, 
   TrendingUp, ShieldCheck, DollarSign, Award,
   Sparkles, Star, ArrowRight
 } from 'lucide-react';
@@ -30,13 +30,6 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
       desc: 'Build your scholar downline. Multi-stage point rewards for every student you link to the Proph ecosystem.',
       points: `Up to ${config.earnRates.referral} pts per Referral`,
       status: 'Exponential'
-    },
-    {
-      title: 'Proph TV Revenue',
-      icon: <Video className="w-8 h-8 text-red-500" />,
-      desc: 'Broadcast scholarly visual intel. Creators with high engagement qualify for our Institutional Revenue Share program.',
-      points: `Revenue per ${config.earnRates.tv} PT / 1k Views`,
-      status: 'Passive'
     },
     {
       title: 'Arena Commissions',

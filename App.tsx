@@ -14,7 +14,9 @@ import UniversityList from './views/UniversityList';
 import UniversityDetail from './views/UniversityDetail';
 import AdminDashboard from './views/AdminDashboard';
 import AdminLogin from './views/AdminLogin';
+import Profile from './views/Profile';
 import UserUpload from './views/UserUpload';
+import SplashScreen from './components/SplashScreen';
 import Withdrawal from './views/Withdrawal';
 import MemoryBank from './views/MemoryBank';
 import Premium from './views/Premium';
@@ -23,9 +25,6 @@ import Tasks from './views/Tasks';
 import Messages from './views/Messages';
 import Settings from './views/Settings';
 import IncomeAnalysis from './views/IncomeAnalysis';
-import VideoHub from './views/VideoHub';
-import VideoDetail from './views/VideoDetail';
-import VideoUpload from './views/VideoUpload';
 import AnonymousUpload from './views/AnonymousUpload';
 import LocalHub from './views/GladiatorHub';
 import GladiatorLanding from './views/GladiatorLanding';
@@ -40,7 +39,8 @@ import AdminPaymentVerification from './views/AdminPaymentVerification';
 import FullscreenAd from './components/FullscreenAd';
 import BannerAd from './components/BannerAd';
 import { Database as DB } from './src/services/database';
-import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, Video, UserAnalytics, AdTimeFrame } from './types';
+import { SupabaseService } from './src/services/supabaseService';
+import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, UserAnalytics, AdTimeFrame, PaymentVerification } from './types';
 import { MOCK_QUESTIONS, UNIVERSITIES as INITIAL_UNIVERSITIES, UNIVERSITY_COLLEGES as INITIAL_COLLEGES, COLLEGE_DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants';
 
 const DEFAULT_CONFIG: SystemConfig = {
@@ -52,13 +52,10 @@ const DEFAULT_CONFIG: SystemConfig = {
   isAdsEnabled: true,
   isUserAdsEnabled: true,
   feedWeights: { engagement: 0.4, recency: 0.3, relationship: 0.1, quality: 0.1, eduRelevance: 0.1 },
-  tvWeights: { views: 0.4, likes: 0.3, recency: 0.2, categoryMatch: 0.1, adEngagement: 0.1 },
   adWeights: { budget: 0.5, relevance: 0.2, performance: 0.2, targetMatch: 0.1 },
   earnRates: {
     contribution: 50,
     referral: 80,
-    tvView: 100, // per 1k views
-    tvLike: 50, // per 1k likes
     adClick: 200, // per 1k clicks
     arena: 5
   },
@@ -93,8 +90,8 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<EarnTask[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
   const [globalAds, setGlobalAds] = useState<Advertisement[]>([]);
+  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerification[]>([]);
   const [universities, setUniversities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [universityColleges, setUniversityColleges] = useState<Record<string, string[]>>(INITIAL_COLLEGES);
   const [collegeDepartments, setCollegeDepartments] = useState<Record<string, string[]>>(INITIAL_DEPARTMENTS);
@@ -104,6 +101,12 @@ const App: React.FC = () => {
   const [showAd, setShowAd] = useState(false);
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [hasShownInitialAd, setHasShownInitialAd] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const splashTimer = setTimeout(() => setShowSplash(false), 8000);
+    return () => clearTimeout(splashTimer);
+  }, []);
 
   useEffect(() => {
     const initData = async () => {
@@ -131,19 +134,40 @@ const App: React.FC = () => {
       const savedMessages = localStorage.getItem('proph_messages');
       if (savedMessages) setMessages(JSON.parse(savedMessages));
       
-      const savedVideos = await DB.getTV();
-      if (savedVideos.length > 0) setVideos(savedVideos);
-      
       const savedDocs = await DB.getDocuments();
       if (savedDocs.length > 0) setQuestions(savedDocs);
       
-      const savedAds = localStorage.getItem('proph_ads');
-      if (savedAds) setGlobalAds(JSON.parse(savedAds));
+      const savedAds = await DB.getAds();
+      if (savedAds.length > 0) setGlobalAds(savedAds);
+
+      const savedTasks = await DB.getTasks();
+      if (savedTasks.length > 0) setTasks(savedTasks);
+
+      const savedWithdrawals = await DB.getWithdrawalRequests();
+      if (savedWithdrawals.length > 0) setWithdrawalRequests(savedWithdrawals);
+
+      const savedUnis = await DB.getUniversities();
+      if (savedUnis.length > 0) setUniversities(savedUnis);
+
+      const savedPayments = await DB.getPaymentVerifications();
+      if (savedPayments.length > 0) setPaymentVerifications(savedPayments);
+
+      if (savedUser) {
+        const initialNotifs = await SupabaseService.getNotifications(savedUser.id);
+        setNotifications(initialNotifs.map(n => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: n.type as any,
+          createdAt: new Date(n.created_at).getTime(),
+          read: n.is_read
+        })));
+      }
     };
 
     initData();
 
-    // Realtime Subscriptions
+    // Global Subscriptions (don't depend on user)
     const feedSub = DB.subscribeToFeed((payload) => {
       if (payload.eventType === 'INSERT') {
         setPosts(prev => [payload.new as Post, ...prev.filter(p => p.id !== payload.new.id)]);
@@ -154,21 +178,189 @@ const App: React.FC = () => {
       }
     });
 
-    const tvSub = DB.subscribeToTV((payload) => {
-      if (payload.eventType === 'INSERT') {
-        setVideos(prev => [payload.new as Video, ...prev.filter(v => v.id !== payload.new.id)]);
-      } else if (payload.eventType === 'UPDATE') {
-        setVideos(prev => prev.map(v => v.id === payload.new.id ? payload.new as Video : v));
-      } else if (payload.eventType === 'DELETE') {
-        setVideos(prev => prev.filter(v => v.id !== payload.old.id));
+    const adsSub = SupabaseService.subscribeToTable('advertisements', (payload: any) => {
+      if (payload.new) {
+        const a = payload.new;
+        const mappedAd = {
+          ...a,
+          userId: a.user_id,
+          mediaUrl: a.media_url,
+          type: a.media_type,
+          adType: a.ad_type,
+          placement: a.placement,
+          link: a.link,
+          duration: a.duration,
+          targetLocation: a.target_location,
+          campaignDuration: a.campaign_duration,
+          campaignUnit: a.campaign_unit,
+          timesPerDay: a.times_per_day,
+          targetReach: a.target_reach,
+          timeFrames: a.time_frames
+        };
+        if (payload.eventType === 'INSERT') setGlobalAds(prev => [mappedAd, ...prev]);
+        if (payload.eventType === 'UPDATE') setGlobalAds(prev => prev.map(item => item.id === mappedAd.id ? mappedAd : item));
       }
+      if (payload.eventType === 'DELETE') setGlobalAds(prev => prev.filter(a => a.id === payload.old.id));
+    });
+
+    const tasksSub = SupabaseService.subscribeToTable('tasks', (payload: any) => {
+      if (payload.new) {
+        const t = payload.new;
+        const mappedTask = {
+          ...t,
+          completedBy: t.completed_by,
+          createdAt: new Date(t.created_at).getTime(),
+          expiryDate: t.expiry_date ? new Date(t.expiry_date).getTime() : undefined
+        };
+        if (payload.eventType === 'INSERT') setTasks(prev => [mappedTask, ...prev]);
+        if (payload.eventType === 'UPDATE') setTasks(prev => prev.map(item => item.id === mappedTask.id ? mappedTask : item));
+      }
+      if (payload.eventType === 'DELETE') setTasks(prev => prev.filter(t => t.id === payload.old.id));
+    });
+
+    const withdrawalsSub = SupabaseService.subscribeToTable('withdrawal_requests', (payload: any) => {
+      if (payload.new) {
+        const r = payload.new;
+        const mappedReq = {
+          ...r,
+          userId: r.user_id,
+          userName: r.user_name,
+          bankDetails: {
+            bankName: r.bank_name,
+            accountNumber: r.account_number,
+            accountName: r.account_name
+          },
+          createdAt: new Date(r.created_at).getTime()
+        };
+        if (payload.eventType === 'INSERT') setWithdrawalRequests(prev => [mappedReq, ...prev]);
+        if (payload.eventType === 'UPDATE') setWithdrawalRequests(prev => prev.map(w => w.id === mappedReq.id ? mappedReq : w));
+      }
+    });
+
+    const configSub = SupabaseService.subscribeToTable('system_config', (payload: any) => {
+      if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+        const newConfig = payload.new.config;
+        setConfig(prev => ({ ...prev, ...newConfig }));
+        localStorage.setItem('proph_system_config', JSON.stringify(newConfig));
+      }
+    });
+
+    const docsSub = SupabaseService.subscribeToTable('documents', (payload: any) => {
+      if (payload.new) {
+        const d = payload.new;
+        const mappedDoc = {
+          ...d,
+          universityId: d.university_id,
+          courseCode: d.course_code,
+          courseTitle: d.course_title,
+          fileUrl: d.file_url,
+          uploadedBy: d.uploaded_by,
+          createdAt: new Date(d.created_at).getTime()
+        };
+        if (payload.eventType === 'INSERT') setQuestions(prev => [mappedDoc, ...prev]);
+        if (payload.eventType === 'UPDATE') setQuestions(prev => prev.map(item => item.id === mappedDoc.id ? mappedDoc : item));
+      }
+      if (payload.eventType === 'DELETE') setQuestions(prev => prev.filter(q => q.id === payload.old.id));
+    });
+
+    const paymentsSub = SupabaseService.subscribeToTable('payment_verifications', (payload: any) => {
+      if (payload.new) {
+        const v = payload.new;
+        const mappedPayment = {
+          ...v,
+          userId: v.user_id,
+          userName: v.user_name,
+          userEmail: v.user_email,
+          createdAt: new Date(v.created_at).getTime()
+        };
+        if (payload.eventType === 'INSERT') setPaymentVerifications(prev => [mappedPayment, ...prev]);
+        if (payload.eventType === 'UPDATE') setPaymentVerifications(prev => prev.map(item => item.id === mappedPayment.id ? mappedPayment : item));
+      }
+    });
+
+    const unisSub = SupabaseService.subscribeToTable('universities', (payload: any) => {
+      if (payload.new) {
+        if (payload.eventType === 'INSERT') setUniversities(prev => [payload.new, ...prev]);
+        if (payload.eventType === 'UPDATE') setUniversities(prev => prev.map(u => u.id === payload.new.id ? payload.new : u));
+      }
+      if (payload.eventType === 'DELETE') setUniversities(prev => prev.filter(u => u.id === payload.old.id));
     });
 
     return () => {
       feedSub.unsubscribe();
-      tvSub.unsubscribe();
+      adsSub.unsubscribe();
+      tasksSub.unsubscribe();
+      withdrawalsSub.unsubscribe();
+      configSub.unsubscribe();
+      docsSub.unsubscribe();
+      paymentsSub.unsubscribe();
+      unisSub.unsubscribe();
     };
   }, []);
+
+  // User-specific Subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    const notifsSub = SupabaseService.subscribeToTable('notifications', (payload: any) => {
+      if (payload.eventType === 'INSERT' && payload.new.user_id === user.id) {
+        const newNotif: Notification = {
+          id: payload.new.id,
+          title: payload.new.title,
+          message: payload.new.message,
+          type: payload.new.type as any,
+          createdAt: new Date(payload.new.created_at).getTime(),
+          read: payload.new.is_read
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      }
+    });
+
+    const usersSub = SupabaseService.subscribeToTable('users', (payload: any) => {
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        const u = payload.new;
+        const mappedUser = {
+          ...u,
+          themePreference: u.theme_preference,
+          isSugVerified: u.is_sug_verified,
+          staffPermissions: u.staff_permissions,
+          isPremium: u.is_premium,
+          premiumExpiry: u.premium_until,
+          referralCode: u.referral_code,
+          referralStats: u.referral_stats,
+          bankDetails: u.bank_details,
+          gladiatorEarnings: u.gladiator_earnings,
+          isVerified: u.is_verified,
+          verificationCode: u.verification_code,
+          referredBy: u.referred_by,
+          engagementStats: u.engagement_stats,
+          createdAt: new Date(u.created_at).getTime()
+        };
+        
+        setAllUsers(prev => prev.map(usr => usr.id === mappedUser.id ? { ...usr, ...mappedUser } : usr));
+        
+        // Update current user if it's them
+        if (mappedUser.id === user.id) {
+          // Only update if something actually changed to avoid loops
+          setUser(prev => {
+            if (!prev) return mappedUser;
+            // Check for differences (shallow check)
+            const hasChanged = Object.keys(mappedUser).some(key => (mappedUser as any)[key] !== (prev as any)[key]);
+            if (hasChanged) {
+              DB.saveSession(mappedUser);
+              return mappedUser;
+            }
+            return prev;
+          });
+        }
+      }
+    });
+
+    return () => {
+      notifsSub.unsubscribe();
+      usersSub.unsubscribe();
+    };
+  }, [user?.id]);
 
   // Real-time Messages Subscription
   useEffect(() => {
@@ -212,20 +404,58 @@ const App: React.FC = () => {
 
   useEffect(() => { DB.saveFeed(posts); }, [posts]);
   useEffect(() => { DB.saveUsers(allUsers); }, [allUsers]);
-  useEffect(() => { DB.saveTV(videos); }, [videos]);
   useEffect(() => { DB.saveDocuments(questions); }, [questions]);
   useEffect(() => { localStorage.setItem('proph_ads', JSON.stringify(globalAds)); }, [globalAds]);
   useEffect(() => { localStorage.setItem('proph_system_config', JSON.stringify(config)); }, [config]);
   useEffect(() => { DB.saveSession(user); }, [user]);
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = async (newConfig: SystemConfig) => {
+    setConfig(newConfig);
     try {
-      await DB.saveConfig(config);
-      alert("System Matrix Synchronized with Supabase.");
+      await DB.saveConfig(newConfig);
     } catch (error) {
       console.error("Sync Error:", error);
-      alert("Synchronization Failed. Check network connection.");
     }
+  };
+
+  const handleAddAd = (ad: Advertisement) => {
+    setGlobalAds([ad, ...globalAds]);
+    DB.saveAd(ad);
+  };
+
+  const handleDeleteAd = (id: string) => {
+    setGlobalAds(globalAds.filter(a => a.id !== id));
+    DB.deleteAd(id);
+  };
+
+  const handleAddTask = (task: EarnTask) => {
+    setTasks([task, ...tasks]);
+    DB.saveTask(task);
+  };
+
+  const handleDeleteTask = (id: string) => {
+    setTasks(tasks.filter(t => t.id !== id));
+    DB.deleteTask(id);
+  };
+
+  const handleAddUniversity = (uni: University) => {
+    setUniversities([...universities, uni]);
+    DB.saveUniversity(uni);
+  };
+
+  const handleRemoveUniversity = (id: string) => {
+    setUniversities(universities.filter(u => u.id !== id));
+    DB.deleteUniversity(id);
+  };
+
+  const handleApproveWithdrawal = (id: string) => {
+    setWithdrawalRequests(prev => prev.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+    DB.updateWithdrawalStatus(id, 'approved');
+  };
+
+  const handleRejectWithdrawal = (id: string) => {
+    setWithdrawalRequests(prev => prev.map(w => w.id === id ? { ...w, status: 'rejected' } : w));
+    DB.updateWithdrawalStatus(id, 'rejected');
   };
 
   const triggerAd = useCallback(() => {
@@ -252,10 +482,20 @@ const App: React.FC = () => {
     }
   }, [globalAds]);
 
+  const handleApproveQuestion = (id: string) => {
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'approved' } : q));
+    DB.updateDocumentStatus(id, 'approved');
+  };
+
+  const handleRejectQuestion = (id: string) => {
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'rejected' } : q));
+    DB.updateDocumentStatus(id, 'rejected');
+  };
+
   const handlePost = (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string) => {
     if (!user) return;
     const newPost: Post = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       userId: user.id,
       userName: user.name,
       userNickname: user.nickname,
@@ -272,27 +512,6 @@ const App: React.FC = () => {
     };
     setPosts([newPost, ...posts]);
     DB.savePost(newPost);
-  };
-
-  const handleLikeVideo = (videoId: string) => {
-    if (!user) return;
-    setVideos(prev => prev.map(v => {
-      if (v.id !== videoId) return v;
-      const alreadyLiked = v.likes.includes(user.id);
-      const newLikes = alreadyLiked ? v.likes.filter(id => id !== user.id) : [...v.likes, user.id];
-      const updatedVideo = { ...v, likes: newLikes };
-      DB.saveVideo(updatedVideo);
-      return updatedVideo;
-    }));
-  };
-
-  const handleShareVideo = (videoId: string) => {
-    setVideos(prev => prev.map(v => {
-      if (v.id !== videoId) return v;
-      const updatedVideo = { ...v, shares: v.shares + 1 };
-      DB.saveVideo(updatedVideo);
-      return updatedVideo;
-    }));
   };
 
   const trackEngagement = (postId: string, type: 'like' | 'repost' | 'reply' | 'link' | 'profile' | 'media', text?: string) => {
@@ -334,14 +553,25 @@ const App: React.FC = () => {
       if (type === 'link') es.totalLinkClicks++;
       if (type === 'profile') es.totalProfileClicks++;
       if (type === 'media') es.totalMediaViews++;
-      return { ...u, engagementStats: es };
+      const updatedUser = { ...u, engagementStats: es };
+      DB.saveUser(updatedUser);
+      return updatedUser;
     }));
   };
 
-  const handleFollow = (targetUserId: string) => {
+  const handleFollow = async (targetUserId: string) => {
     if (!user || user.id === targetUserId) return;
     
     const isFollowing = user.following?.includes(targetUserId);
+    
+    if (isFollowing) {
+      await SupabaseService.unfollowUser(user.id, targetUserId);
+    } else {
+      await SupabaseService.followUser(user.id, targetUserId);
+    }
+
+    // The state will be updated by real-time listeners on the users table if we had them,
+    // but for now let's update locally for immediate feedback
     const newFollowing = isFollowing 
       ? user.following?.filter(id => id !== targetUserId) 
       : [...(user.following || []), targetUserId];
@@ -396,22 +626,24 @@ const App: React.FC = () => {
             (user ? <Navigate to="/dashboard" /> : <Signup onSignup={u => { setUser(u); setAllUsers([...allUsers, u]); setLoginTime(Date.now()); }} allUsers={allUsers} onReferralClick={()=>{}} />)
           } />
           
-          <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={user ? <Community user={user} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
+          <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} /> : <Navigate to="/login" />} />
+          <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
+          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} messages={messages} onSendMessage={async (t, r) => {
             const newMsg = {
+              id: crypto.randomUUID(),
               sender_id: user.id,
               receiver_id: r,
-              text: t
+              text: t,
+              timestamp: Date.now()
             };
             // Optimistic update
-            const tempId = Math.random().toString();
             setMessages([...messages, { 
-              id: tempId, 
+              id: newMsg.id, 
               senderId: user.id, 
               receiverId: r, 
               text: t, 
-              timestamp: Date.now() 
+              timestamp: newMsg.timestamp
             }]);
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
@@ -424,9 +656,6 @@ const App: React.FC = () => {
           <Route path="/gladiator-hub/creator" element={user ? <GladiatorCreatorDashboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub/advertiser" element={user ? <GladiatorAdDashboard user={user} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub/competition" element={user ? <GladiatorPool user={user} onCommit={()=>{}} /> : <Navigate to="/login" />} />
-          <Route path="/video-hub" element={user ? <VideoHub videos={videos} /> : <Navigate to="/login" />} />
-          <Route path="/video/upload" element={user ? <VideoUpload user={user} onUpload={(v) => { setVideos([v, ...videos]); DB.saveVideo(v); }} /> : <Navigate to="/login" />} />
-          <Route path="/video/:id" element={user ? <VideoDetail videos={videos} user={user} onLike={handleLikeVideo} onShare={handleShareVideo} /> : <Navigate to="/login" />} />
           <Route path="/income-analysis" element={user ? <IncomeAnalysis user={user} analytics={[]} /> : <Navigate to="/login" />} />
           <Route path="/monetization" element={user ? <AdRevenueSharing user={user} /> : <Navigate to="/login" />} />
           <Route path="/settings" element={user ? <Settings user={user} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
@@ -435,14 +664,23 @@ const App: React.FC = () => {
           <Route path="/anonymous-upload" element={<AnonymousUpload isEnabled={config.isUploadEnabled} onUpload={q => setQuestions([q, ...questions])} universityColleges={universityColleges} collegeDepartments={collegeDepartments} />} />
           <Route path="/tasks" element={user ? <Tasks user={user} tasks={tasks} /> : <Navigate to="/login" />} />
           <Route path="/universities" element={user ? <UniversityList user={user} universities={universities} /> : <Navigate to="/login" />} />
-          <Route path="/university/:id" element={user ? <UniversityDetail user={user} questions={questions} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments} /> : <Navigate to="/login" />} />
+          <Route path="/university/:id" element={user ? <UniversityDetail user={user} questions={questions} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments} globalAds={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/advertise" element={
             user ? (
               config.isUserAdsEnabled ? (
                 <UserAds 
                   user={user} 
                   pricing={config.adPricing} 
-                  onDeploy={(ad) => setGlobalAds([{ ...ad, id: Math.random().toString(), createdAt: Date.now() } as Advertisement, ...globalAds])} 
+                  config={config}
+                  onVerifyPayment={(verification) => {
+                    setPaymentVerifications([verification, ...paymentVerifications]);
+                    DB.savePaymentVerification(verification);
+                  }}
+                  onDeploy={(ad) => {
+                    const fullAd = { ...ad, id: ad.id || Math.random().toString(), createdAt: Date.now() } as Advertisement;
+                    setGlobalAds([fullAd, ...globalAds]);
+                    DB.saveAd(fullAd);
+                  }} 
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full space-y-4 p-12 text-center">
@@ -464,18 +702,19 @@ const App: React.FC = () => {
             user && (user.role === 'admin' || user.role === 'sub-admin') ? (
               <AdminDashboard 
                 user={user} config={config} allUsers={allUsers} questions={questions} withdrawalRequests={withdrawalRequests} tasks={tasks}
-                onUpdateConfig={setConfig} onUpdateUsers={setAllUsers} onAddTask={t => setTasks([t, ...tasks])} onDeleteTask={id => setTasks(tasks.filter(t => t.id !== id))}
-                onDeleteQuestion={id => setQuestions(questions.filter(q => q.id !== id))} onDeleteUser={id => setAllUsers(allUsers.filter(u => u.id !== id))}
+                onUpdateConfig={handleSaveConfig} onUpdateUsers={(users) => { setAllUsers(users); DB.saveUsers(users); }} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask}
+                onDeleteQuestion={handleDeletePost} onDeleteUser={(id) => { setAllUsers(allUsers.filter(u => u.id !== id)); }}
                 onBroadcast={n => setNotifications([n, ...notifications])} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments}
-                onAddUniversity={(u) => setUniversities([...universities, u])} onRemoveUniversity={(id) => setUniversities(universities.filter(u => u.id !== id))}
+                onAddUniversity={handleAddUniversity} onRemoveUniversity={handleRemoveUniversity}
                 onAddCollege={(uid, c) => setUniversityColleges({...universityColleges, [uid]: [...(universityColleges[uid] || []), c]})}
                 onRemoveCollege={(uid, c) => setUniversityColleges({...universityColleges, [uid]: (universityColleges[uid] || []).filter(x => x !== c)})}
                 onAddDept={(c, d) => setCollegeDepartments({...collegeDepartments, [c]: [...(collegeDepartments[c] || []), d]})}
                 onRemoveDept={(c, d) => setCollegeDepartments({...collegeDepartments, [c]: (collegeDepartments[c] || []).filter(x => x !== d)})}
-                onApproveQuestion={(id) => setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'approved' } : q))}
-                onApproveWithdrawal={(id) => setWithdrawalRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' } : r))}
-                onRejectWithdrawal={(id) => setWithdrawalRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' } : r))}
-                globalAds={globalAds} onAddAd={(ad) => setGlobalAds([ad, ...globalAds])} onDeleteAd={(id) => setGlobalAds(globalAds.filter(a => a.id !== id))}
+                onApproveQuestion={handleApproveQuestion}
+                onRejectQuestion={handleRejectQuestion}
+                onApproveWithdrawal={handleApproveWithdrawal}
+                onRejectWithdrawal={handleRejectWithdrawal}
+                globalAds={globalAds} onAddAd={handleAddAd} onDeleteAd={handleDeleteAd}
                 onUpdateUniversity={(uid, up) => setUniversities(prev => prev.map(u => u.id === uid ? {...u, ...up} : u))}
                 onUpdateLogo={setAppLogo}
                 onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }}
@@ -507,7 +746,6 @@ const AdController: React.FC<{
                       pathname.startsWith('/community') || 
                       pathname.startsWith('/messages') || 
                       pathname.startsWith('/memory-bank') || 
-                      pathname.startsWith('/video-hub') || 
                       pathname.startsWith('/withdraw') || 
                       pathname.startsWith('/upload') || 
                       pathname.startsWith('/tasks') || 

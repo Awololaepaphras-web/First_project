@@ -55,24 +55,6 @@ CREATE TABLE IF NOT EXISTS posts (
   comments JSONB DEFAULT '[]'
 );
 
--- Videos Table
-CREATE TABLE IF NOT EXISTS videos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  user_name TEXT,
-  title TEXT NOT NULL,
-  thumbnail_url TEXT,
-  video_url TEXT NOT NULL,
-  duration INTEGER,
-  views INTEGER DEFAULT 0,
-  likes TEXT[] DEFAULT '{}',
-  shares INTEGER DEFAULT 0,
-  dolz_tag TEXT,
-  description TEXT,
-  category TEXT,
-  created_at BIGINT
-);
-
 -- Documents Table (Past Questions)
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -100,7 +82,7 @@ CREATE TABLE IF NOT EXISTS advertisements (
   title TEXT NOT NULL,
   type TEXT, -- image, video
   ad_type TEXT, -- banner, popup, native
-  placement TEXT, -- timeline, search, post, profile, video, replies
+  placement TEXT, -- timeline, search, post, profile, replies
   media_url TEXT NOT NULL,
   duration INTEGER,
   link TEXT,
@@ -152,7 +134,6 @@ CREATE TABLE IF NOT EXISTS system_config (
   is_ads_enabled BOOLEAN DEFAULT TRUE,
   is_user_ads_enabled BOOLEAN DEFAULT TRUE,
   feed_weights JSONB,
-  tv_weights JSONB,
   ad_weights JSONB,
   earn_rates JSONB,
   naira_per_point DECIMAL,
@@ -196,7 +177,6 @@ WITH CHECK (auth.uid() = sender_id);
 -- Row Level Security (RLS) - Basic Setup
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE advertisements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_verifications ENABLE ROW LEVEL SECURITY;

@@ -1,5 +1,5 @@
 
-import { PastQuestion, Post, Video, User, SystemConfig, PaymentVerification } from '../../types';
+import { PastQuestion, Post, User, SystemConfig, PaymentVerification } from '../../types';
 import { SupabaseService } from './supabaseService';
 
 const KEYS = {
@@ -29,6 +29,11 @@ export const Database = {
     if (docs.length > 0) {
       await SupabaseService.saveDocuments(docs);
     }
+  },
+  updateDocumentStatus: async (id: string, status: 'approved' | 'rejected') => {
+    await SupabaseService.updateDocumentStatus(id, status);
+    const current = await Database.getDocuments();
+    localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify(current.map(d => d.id === id ? { ...d, status } : d)));
   },
 
   // Proph Feed (Posts)
@@ -61,37 +66,19 @@ export const Database = {
     await SupabaseService.updatePost(postId, content);
   },
 
-  // Proph TV (Videos)
-  getTV: async (): Promise<Video[]> => {
-    const remoteData = await SupabaseService.getTV();
-    if (remoteData.length > 0) {
-      localStorage.setItem(KEYS.TV, JSON.stringify(remoteData));
-      return remoteData;
-    }
-    const data = localStorage.getItem(KEYS.TV);
-    return data ? JSON.parse(data) : [];
-  },
-  subscribeToTV: (callback: (payload: any) => void) => {
-    return SupabaseService.subscribeToTV(callback);
-  },
-  saveTV: async (videos: Video[]) => {
-    localStorage.setItem(KEYS.TV, JSON.stringify(videos));
-    if (videos.length > 0) {
-      await SupabaseService.saveVideo(videos[0]);
-    }
-  },
-  saveVideo: async (video: Video) => {
-    await SupabaseService.saveVideo(video);
-  },
-
   // Gladiator Hub
   getGladiatorData: async () => {
-    // For now, we'll keep Gladiator data in local storage but we could easily move it to Supabase
+    const remoteVault = await SupabaseService.getGladiatorVault();
     const data = localStorage.getItem(KEYS.GLADIATOR);
-    return data ? JSON.parse(data) : { vault: [], history: [], stats: {} };
+    const local = data ? JSON.parse(data) : { vault: [], history: [], stats: {} };
+    return { ...local, vault: remoteVault.length > 0 ? remoteVault : local.vault };
   },
   saveGladiatorData: async (data: any) => {
     localStorage.setItem(KEYS.GLADIATOR, JSON.stringify(data));
+    if (data.vault && data.vault.length > 0) {
+      // Save the latest item as an example or sync all
+      await SupabaseService.saveGladiatorItem(data.vault[0]);
+    }
   },
 
   // Users
@@ -106,7 +93,10 @@ export const Database = {
   },
   saveUsers: async (users: User[]) => {
     localStorage.setItem(KEYS.USERS, JSON.stringify(users));
-    // In a real app we'd sync all, but for now we'll assume the caller might have updated one
+    // Sync all users to remote
+    for (const user of users) {
+      await SupabaseService.saveUser(user);
+    }
   },
   saveUser: async (user: User) => {
     await SupabaseService.saveUser(user);
@@ -162,6 +152,50 @@ export const Database = {
     await SupabaseService.updatePaymentVerificationStatus(id, status);
     const current = await Database.getPaymentVerifications();
     localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(current.map(p => p.id === id ? { ...p, status } : p)));
+  },
+
+  // Advertisements
+  getAds: async (): Promise<any[]> => {
+    return await SupabaseService.getAds();
+  },
+  saveAd: async (ad: any) => {
+    await SupabaseService.saveAd(ad);
+  },
+  deleteAd: async (id: string) => {
+    await SupabaseService.deleteAd(id);
+  },
+
+  // Withdrawal Requests
+  getWithdrawalRequests: async (): Promise<any[]> => {
+    return await SupabaseService.getWithdrawalRequests();
+  },
+  saveWithdrawalRequest: async (req: any) => {
+    await SupabaseService.saveWithdrawalRequest(req);
+  },
+  updateWithdrawalStatus: async (id: string, status: string) => {
+    await SupabaseService.updateWithdrawalStatus(id, status);
+  },
+
+  // Tasks
+  getTasks: async (): Promise<any[]> => {
+    return await SupabaseService.getTasks();
+  },
+  saveTask: async (task: any) => {
+    await SupabaseService.saveTask(task);
+  },
+  deleteTask: async (id: string) => {
+    await SupabaseService.deleteTask(id);
+  },
+
+  // Universities
+  getUniversities: async (): Promise<any[]> => {
+    return await SupabaseService.getUniversities();
+  },
+  saveUniversity: async (uni: any) => {
+    await SupabaseService.saveUniversity(uni);
+  },
+  deleteUniversity: async (id: string) => {
+    await SupabaseService.deleteUniversity(id);
   },
 
   // Messages

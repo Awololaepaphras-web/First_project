@@ -79,7 +79,7 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
   };
 
   return (
-    <div className="min-h-screen bg-brand-black text-white py-12 px-4 sm:px-6 lg:px-8 selection:bg-brand-proph/30">
+    <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white py-12 px-4 sm:px-6 lg:px-8 selection:bg-brand-proph/30">
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -87,7 +87,7 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-proph/10 text-brand-proph text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-brand-proph/20">
               <DollarSign className="w-4 h-4" /> REVENUE SYNDICATE
             </div>
-            <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">Ad Revenue <span className="text-brand-proph">Sharing</span></h1>
+            <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none text-gray-900 dark:text-white">Ad Revenue <span className="text-brand-proph">Sharing</span></h1>
             <p className="text-brand-muted font-medium italic">Monetize your neural contributions through the Federal Ad Stream.</p>
           </div>
           
@@ -116,9 +116,9 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
         </div>
 
         {/* Eligibility Progress */}
-        <div className="bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl space-y-8">
+        <div className="bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl space-y-8">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+            <h3 className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3 text-gray-900 dark:text-white">
               <Activity className="w-6 h-6 text-brand-proph" /> Eligibility Matrix
             </h3>
             <div className="flex gap-3">
@@ -138,7 +138,7 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
                   <span>Followers (Points at 700, Full at 1000)</span>
                   <span className="text-brand-proph italic">{eligibility.followers.current} / {eligibility.followers.target}</span>
                 </div>
-                <div className="h-2 bg-brand-black rounded-full overflow-hidden border border-brand-border relative">
+                <div className="h-2 bg-brand-border dark:bg-brand-black rounded-full overflow-hidden border border-brand-border relative">
                   <div className="h-full bg-brand-proph shadow-[0_0_10px_#00ba7c] transition-all duration-1000" style={{ width: `${Math.min(100, (eligibility.followers.current / eligibility.followers.target) * 100)}%` }} />
                   <div className="absolute top-0 left-[70%] w-0.5 h-full bg-yellow-500/50" title="Points Threshold"></div>
                 </div>
@@ -149,14 +149,14 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
                   <span>Impressions (Last 3 Months)</span>
                   <span className="text-brand-primary italic">{eligibility.impressions.current.toLocaleString()} / {eligibility.impressions.target.toLocaleString()}</span>
                 </div>
-                <div className="h-2 bg-brand-black rounded-full overflow-hidden border border-brand-border">
+                <div className="h-2 bg-brand-border dark:bg-brand-black rounded-full overflow-hidden border border-brand-border">
                   <div className="h-full bg-brand-primary shadow-[0_0_10px_#1d9bf0] transition-all duration-1000" style={{ width: `${Math.min(100, (eligibility.impressions.current / eligibility.impressions.target) * 100)}%` }} />
                 </div>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="p-6 bg-brand-black/40 rounded-3xl border border-brand-border space-y-4">
+              <div className="p-6 bg-brand-border/30 dark:bg-brand-black/40 rounded-3xl border border-brand-border space-y-4">
                 <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest">Monetization Status</p>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -184,14 +184,14 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
             { label: 'Active Ad Nodes', val: userStats.activeNodes, icon: <Users className="w-5 h-5 text-purple-500" />, trend: '+2' },
             { label: 'Syndicate Rank', val: userStats.rank, icon: <ShieldCheck className="w-5 h-5 text-yellow-500" />, trend: 'Top 5%' }
           ].map((s, i) => (
-            <div key={i} className="bg-brand-card p-8 rounded-[2.5rem] border border-brand-border space-y-4 shadow-2xl group hover:border-brand-proph transition-all">
+            <div key={i} className="bg-brand-border/20 dark:bg-brand-card p-8 rounded-[2.5rem] border border-brand-border space-y-4 shadow-2xl group hover:border-brand-proph transition-all">
               <div className="flex justify-between items-start">
-                <div className="bg-brand-black p-4 rounded-2xl group-hover:scale-110 transition-transform">{s.icon}</div>
+                <div className="bg-brand-border/30 dark:bg-brand-black p-4 rounded-2xl group-hover:scale-110 transition-transform">{s.icon}</div>
                 <span className="text-[10px] font-bold text-brand-proph bg-brand-proph/10 px-2 py-1 rounded-lg">{s.trend}</span>
               </div>
               <div>
                 <p className="text-[9px] font-black text-brand-muted uppercase tracking-widest leading-none mb-1">{s.label}</p>
-                <p className="text-3xl font-black italic tracking-tighter">{s.val}</p>
+                <p className="text-3xl font-black italic tracking-tighter text-gray-900 dark:text-white">{s.val}</p>
               </div>
             </div>
           ))}
@@ -200,9 +200,9 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Revenue Trend */}
-          <div className="lg:col-span-2 bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col">
+          <div className="lg:col-span-2 bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="font-black text-xl italic uppercase flex items-center gap-3 tracking-tighter">
+              <h3 className="font-black text-xl italic uppercase flex items-center gap-3 tracking-tighter text-gray-900 dark:text-white">
                 <BarChart3 className="w-6 h-6 text-brand-proph" /> Network Revenue Stream
               </h3>
               <div className="text-[10px] font-black text-brand-muted uppercase tracking-widest">Last 7 Cycles</div>
@@ -230,8 +230,8 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
           </div>
 
           {/* Distribution Pie */}
-          <div className="bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col">
-            <h3 className="font-black text-xl italic uppercase flex items-center gap-3 mb-8 tracking-tighter">
+          <div className="bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col">
+            <h3 className="font-black text-xl italic uppercase flex items-center gap-3 mb-8 tracking-tighter text-gray-900 dark:text-white">
               <PieChartIcon className="w-6 h-6 text-brand-primary" /> Distribution
             </h3>
             <div className="flex-grow relative">
@@ -257,7 +257,7 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
-                  <p className="text-2xl font-black italic">40%</p>
+                  <p className="text-2xl font-black italic text-gray-900 dark:text-white">40%</p>
                   <p className="text-[8px] font-black text-brand-muted uppercase">User Pool</p>
                 </div>
               </div>
@@ -269,7 +269,7 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
                     <span className="text-[10px] font-bold text-brand-muted uppercase">{d.name}</span>
                   </div>
-                  <span className="text-[10px] font-black italic">{d.value}%</span>
+                  <span className="text-[10px] font-black italic text-gray-900 dark:text-white">{d.value}%</span>
                 </div>
               ))}
             </div>
@@ -277,36 +277,36 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
         </div>
 
         {/* How it works */}
-        <div className="bg-brand-card p-12 rounded-[4rem] border border-brand-border shadow-2xl relative overflow-hidden group">
+        <div className="bg-brand-border/20 dark:bg-brand-card p-12 rounded-[4rem] border border-brand-border shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700"><Info className="w-48 h-48" /></div>
           <div className="max-w-3xl space-y-8 relative z-10">
-            <h3 className="text-3xl font-black italic uppercase tracking-tighter">The Monetization Protocol</h3>
+            <h3 className="text-3xl font-black italic uppercase tracking-tighter text-gray-900 dark:text-white">The Monetization Protocol</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-brand-proph/10 text-brand-proph rounded-xl flex items-center justify-center font-black">01</div>
-                  <h4 className="font-black uppercase italic text-sm">Contribution Weight</h4>
+                  <h4 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Contribution Weight</h4>
                 </div>
                 <p className="text-brand-muted text-sm font-medium italic leading-relaxed">Your share is calculated based on the quality and engagement of your uploaded past questions and study materials.</p>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center font-black">02</div>
-                  <h4 className="font-black uppercase italic text-sm">Network Activity</h4>
+                  <h4 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Network Activity</h4>
                 </div>
                 <p className="text-brand-muted text-sm font-medium italic leading-relaxed">Daily interactions, successful peer referrals, and node uptime contribute to your Syndicate multiplier.</p>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-xl flex items-center justify-center font-black">03</div>
-                  <h4 className="font-black uppercase italic text-sm">Ad Revenue Pool</h4>
+                  <h4 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Ad Revenue Pool</h4>
                 </div>
                 <p className="text-brand-muted text-sm font-medium italic leading-relaxed">40% of all platform ad revenue is distributed back to active contributors every 30-day cycle.</p>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-yellow-500/10 text-yellow-500 rounded-xl flex items-center justify-center font-black">04</div>
-                  <h4 className="font-black uppercase italic text-sm">Proph+ Multiplier</h4>
+                  <h4 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Proph+ Multiplier</h4>
                 </div>
                 <p className="text-brand-muted text-sm font-medium italic leading-relaxed">Premium nodes receive a 3x multiplier on all revenue distributions and priority syndicate ranking.</p>
               </div>
@@ -318,12 +318,12 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
         <div className="pb-32 flex flex-col md:flex-row gap-6">
           <div className="flex-grow bg-gradient-to-r from-brand-proph/20 to-transparent p-10 rounded-[3rem] border border-brand-proph/20 flex items-center justify-between">
             <div className="space-y-2">
-              <h4 className="text-xl font-black italic uppercase tracking-tighter">Ready to scale your impact?</h4>
+              <h4 className="text-xl font-black italic uppercase tracking-tighter text-gray-900 dark:text-white">Ready to scale your impact?</h4>
               <p className="text-brand-muted text-sm font-medium italic">Upgrade to Proph+ for maximum revenue sharing potential.</p>
             </div>
             <button onClick={() => navigate('/premium')} className="bg-brand-proph text-black px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:brightness-110 transition-all">Go Premium</button>
           </div>
-          <button onClick={() => navigate('/dashboard')} className="px-10 py-4 bg-brand-card border border-brand-border rounded-[2rem] font-black uppercase tracking-widest text-[10px] hover:bg-white/5 transition-all">Return to Terminal</button>
+          <button onClick={() => navigate('/dashboard')} className="px-10 py-4 bg-white dark:bg-brand-card border border-brand-border rounded-[2rem] font-black uppercase tracking-widest text-[10px] hover:bg-gray-100 dark:hover:bg-white/5 transition-all text-gray-900 dark:text-white">Return to Terminal</button>
         </div>
       </div>
     </div>

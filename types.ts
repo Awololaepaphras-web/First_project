@@ -42,23 +42,6 @@ export interface UserAnalytics {
   }
 }
 
-export interface Video {
-  id: string;
-  userId: string;
-  userName: string;
-  title: string;
-  thumbnailUrl: string;
-  videoUrl: string;
-  duration: number;
-  views: number;
-  likes: string[];
-  shares: number;
-  dolzTag: string;
-  description: string;
-  createdAt: number;
-  category: string;
-}
-
 export interface Post {
   id: string;
   userId: string;
@@ -100,10 +83,11 @@ export interface User {
   profilePicture?: string;
   university: string;
   level: string;
-  role: 'student' | 'admin' | 'moderator' | 'sub-admin';
+  role: 'student' | 'admin' | 'moderator' | 'sub-admin' | 'staff';
   status?: 'active' | 'suspended';
   points?: number;
   isPremium?: boolean;
+  isSugVerified?: boolean;
   premiumExpiry?: number;
   referralCode: string;
   followers?: string[];
@@ -120,6 +104,8 @@ export interface User {
     loginStreaks: number;
   };
   phone?: string;
+  themePreference?: 'light' | 'dark';
+  staffPermissions?: string[];
   lifetimeMinutes?: number;
   lifetimeNavigations?: number;
   engagementStats?: {
@@ -230,7 +216,7 @@ export interface EarnTask {
 export type AdTimeFrame = '12am-6am' | '6am-12pm' | '12pm-6pm' | '6pm-12am';
 
 export type AdType = 'banner' | 'popup' | 'native';
-export type AdPlacement = 'timeline' | 'search' | 'post' | 'profile' | 'video' | 'replies';
+export type AdPlacement = 'timeline' | 'search' | 'post' | 'profile' | 'replies';
 
 export interface Advertisement {
   id: string;
@@ -291,13 +277,10 @@ export interface SystemConfig {
   isAdsEnabled: boolean;
   isUserAdsEnabled: boolean;
   feedWeights: { engagement: number; recency: number; relationship: number; quality: number; eduRelevance: number };
-  tvWeights: { views: number; likes: number; recency: number; categoryMatch: number; adEngagement: number };
   adWeights: { budget: number; relevance: number; performance: number; targetMatch: number };
   earnRates: {
     contribution: number;
     referral: number;
-    tvView: number;
-    tvLike: number;
     adClick: number;
     arena: number;
   };

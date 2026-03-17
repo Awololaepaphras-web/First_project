@@ -51,8 +51,14 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
           if (verification.type === 'premium') {
             const updatedUser = { ...targetUser, isPremium: true, premiumExpiry: Date.now() + (30 * 24 * 60 * 60 * 1000) }; // 30 days
             await Database.saveUser(updatedUser);
+          } else if (verification.type === 'ad' && verification.details?.adId) {
+            const allAds = await Database.getAds();
+            const targetAd = allAds.find(a => a.id === verification.details.adId);
+            if (targetAd) {
+              const updatedAd = { ...targetAd, status: 'active' };
+              await Database.saveAd(updatedAd);
+            }
           }
-          // Handle other types if needed
         }
       }
 

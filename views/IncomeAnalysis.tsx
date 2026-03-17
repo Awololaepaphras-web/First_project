@@ -41,7 +41,7 @@ const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({ user, analytics }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-brand-black text-white py-12 px-4 sm:px-6 lg:px-8 selection:bg-brand-primary/30">
+    <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white py-12 px-4 sm:px-6 lg:px-8 selection:bg-brand-primary/30">
       <div className="max-w-7xl mx-auto space-y-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-2">
@@ -52,9 +52,9 @@ const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({ user, analytics }) => {
             <p className="text-brand-muted font-medium italic">Synchronizing neural impact across temporal horizons.</p>
           </div>
           
-          <div className="flex bg-brand-card p-1.5 rounded-2xl shadow-2xl border border-brand-border">
+          <div className="flex bg-brand-border/20 dark:bg-brand-card p-1.5 rounded-2xl shadow-2xl border border-brand-border">
             {(['Day', 'Week', 'Month', 'Year'] as TimeRange[]).map(t => (
-              <button key={t} onClick={() => setRange(t)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${range === t ? 'bg-brand-primary text-white shadow-lg' : 'text-brand-muted hover:text-white'}`}>
+              <button key={t} onClick={() => setRange(t)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${range === t ? 'bg-brand-primary text-white shadow-lg' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}>
                 {t}
               </button>
             ))}
@@ -63,38 +63,38 @@ const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({ user, analytics }) => {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
            {stats.map((s, i) => (
-             <div key={i} className="bg-brand-card p-8 rounded-[2.5rem] border border-brand-border flex flex-col gap-4 shadow-2xl group hover:border-brand-proph transition-all">
-                <div className="bg-brand-black p-4 rounded-2xl w-fit group-hover:scale-110 transition-transform">{s.icon}</div>
+             <div key={i} className="bg-brand-border/20 dark:bg-brand-card p-8 rounded-[2.5rem] border border-brand-border flex flex-col gap-4 shadow-2xl group hover:border-brand-proph transition-all">
+                <div className="bg-brand-border/30 dark:bg-brand-black p-4 rounded-2xl w-fit group-hover:scale-110 transition-transform">{s.icon}</div>
                 <div>
                    <p className="text-[9px] font-black text-brand-muted uppercase tracking-widest leading-none mb-1">{s.label}</p>
-                   <p className="text-3xl font-black italic tracking-tighter">{s.val}</p>
+                   <p className="text-3xl font-black italic tracking-tighter text-gray-900 dark:text-white">{s.val}</p>
                 </div>
              </div>
            ))}
         </div>
 
-        <div className="bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl relative overflow-hidden group">
+        <div className="bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl relative overflow-hidden group">
            <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-700"><Trophy className="w-48 h-48" /></div>
-           <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-10 flex items-center gap-3"><Trophy className="w-8 h-8 text-yellow-500" /> Milestone Tracking</h2>
+           <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-10 flex items-center gap-3 text-gray-900 dark:text-white"><Trophy className="w-8 h-8 text-yellow-500" /> Milestone Tracking</h2>
            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
              <div className="space-y-4">
                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-brand-muted"><span>Usage (2000h)</span><span className="text-brand-primary italic">{((user.lifetimeMinutes || 0) / 60).toFixed(1)}h</span></div>
-                <div className="h-2 bg-brand-black rounded-full overflow-hidden border border-brand-border"><div className="h-full bg-brand-primary shadow-[0_0_10px_#1d9bf0] transition-all duration-1000" style={{ width: `${Math.min(100, ((user.lifetimeMinutes || 0) / 120000) * 100)}%` }} /></div>
+                <div className="h-2 bg-brand-border dark:bg-brand-black rounded-full overflow-hidden border border-brand-border"><div className="h-full bg-brand-primary shadow-[0_0_10px_#1d9bf0] transition-all duration-1000" style={{ width: `${Math.min(100, ((user.lifetimeMinutes || 0) / 120000) * 100)}%` }} /></div>
              </div>
              <div className="space-y-4">
                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-brand-muted"><span>Navigations (1000)</span><span className="text-purple-500 italic">{user.lifetimeNavigations || 0}</span></div>
-                <div className="h-2 bg-brand-black rounded-full overflow-hidden border border-brand-border"><div className="h-full bg-purple-500 shadow-[0_0_10px_#a855f7] transition-all duration-1000" style={{ width: `${Math.min(100, ((user.lifetimeNavigations || 0) / 1000) * 100)}%` }} /></div>
+                <div className="h-2 bg-brand-border dark:bg-brand-black rounded-full overflow-hidden border border-brand-border"><div className="h-full bg-purple-500 shadow-[0_0_10px_#a855f7] transition-all duration-1000" style={{ width: `${Math.min(100, ((user.lifetimeNavigations || 0) / 1000) * 100)}%` }} /></div>
              </div>
              <div className="space-y-4">
                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-brand-muted"><span>Tasks (50)</span><span className="text-brand-proph italic">{(user.completedTasks || []).length}</span></div>
-                <div className="h-2 bg-brand-black rounded-full overflow-hidden border border-brand-border"><div className="h-full bg-brand-proph shadow-[0_0_10px_#00ba7c] transition-all duration-1000" style={{ width: `${Math.min(100, ((user.completedTasks || []).length / 50) * 100)}%` }} /></div>
+                <div className="h-2 bg-brand-border dark:bg-brand-black rounded-full overflow-hidden border border-brand-border"><div className="h-full bg-brand-proph shadow-[0_0_10px_#00ba7c] transition-all duration-1000" style={{ width: `${Math.min(100, ((user.completedTasks || []).length / 50) * 100)}%` }} /></div>
              </div>
            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-32">
-          <div className="bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col"><h3 className="font-black text-xl italic uppercase flex items-center gap-3 mb-8 tracking-tighter"><Navigation className="w-6 h-6 text-purple-500" /> Active Nodes</h3><div className="flex-grow"><ResponsiveContainer width="100%" height="100%"><BarChart data={processedData}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2f3336" /><XAxis dataKey="date" stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><YAxis stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><Tooltip cursor={{fill: '#2f3336'}} contentStyle={{ backgroundColor: '#161616', borderRadius: '20px', border: '1px solid #2f3336', color: 'white' }} /><Bar dataKey="navigations" fill="#a855f7" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
-          <div className="bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col"><h3 className="font-black text-xl italic uppercase flex items-center gap-3 mb-8 tracking-tighter"><Clock className="w-6 h-6 text-brand-primary" /> Active Engagement</h3><div className="flex-grow"><ResponsiveContainer width="100%" height="100%"><AreaChart data={processedData}><defs><linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#1d9bf0" stopOpacity={0.4}/><stop offset="95%" stopColor="#1d9bf0" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2f3336" /><XAxis dataKey="date" stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><YAxis stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><Tooltip contentStyle={{ backgroundColor: '#161616', borderRadius: '20px', border: '1px solid #2f3336', color: 'white' }} /><Area type="monotone" dataKey="timeSpentMinutes" stroke="#1d9bf0" fill="url(#colorTime)" strokeWidth={4} /></AreaChart></ResponsiveContainer></div></div>
+          <div className="bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col"><h3 className="font-black text-xl italic uppercase flex items-center gap-3 mb-8 tracking-tighter text-gray-900 dark:text-white"><Navigation className="w-6 h-6 text-purple-500" /> Active Nodes</h3><div className="flex-grow"><ResponsiveContainer width="100%" height="100%"><BarChart data={processedData}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2f3336" /><XAxis dataKey="date" stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><YAxis stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><Tooltip cursor={{fill: '#2f3336'}} contentStyle={{ backgroundColor: '#161616', borderRadius: '20px', border: '1px solid #2f3336', color: 'white' }} /><Bar dataKey="navigations" fill="#a855f7" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
+          <div className="bg-brand-border/20 dark:bg-brand-card p-10 rounded-[3rem] border border-brand-border shadow-2xl h-[500px] flex flex-col"><h3 className="font-black text-xl italic uppercase flex items-center gap-3 mb-8 tracking-tighter text-gray-900 dark:text-white"><Clock className="w-6 h-6 text-brand-primary" /> Active Engagement</h3><div className="flex-grow"><ResponsiveContainer width="100%" height="100%"><AreaChart data={processedData}><defs><linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#1d9bf0" stopOpacity={0.4}/><stop offset="95%" stopColor="#1d9bf0" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2f3336" /><XAxis dataKey="date" stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><YAxis stroke="#71767b" fontSize={10} tickLine={false} axisLine={false} /><Tooltip contentStyle={{ backgroundColor: '#161616', borderRadius: '20px', border: '1px solid #2f3336', color: 'white' }} /><Area type="monotone" dataKey="timeSpentMinutes" stroke="#1d9bf0" fill="url(#colorTime)" strokeWidth={4} /></AreaChart></ResponsiveContainer></div></div>
         </div>
       </div>
       

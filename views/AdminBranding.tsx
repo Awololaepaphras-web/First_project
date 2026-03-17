@@ -54,7 +54,7 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo }) => {
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 items-center">
-          <div className="w-48 h-48 bg-gray-950 rounded-[2rem] border border-gray-800 flex items-center justify-center overflow-hidden relative group">
+          <div className="w-48 h-48 bg-gray-950 rounded-full border border-gray-800 flex items-center justify-center overflow-hidden relative group">
             {previewLogo || currentLogo ? (
               <img src={previewLogo || currentLogo} alt="App Logo" className="w-full h-full object-contain p-4" />
             ) : (

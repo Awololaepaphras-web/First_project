@@ -1,16 +1,18 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   MessageCircle, Heart, Share2, ShieldCheck, 
   MoreHorizontal, Repeat2, X, Trash2, Loader2, 
   BarChart, Image as ImageIcon, Twitter, Facebook, Instagram, Ghost, MessageSquare,
-  Search, Edit3, Check, AlertCircle
+  Search, Edit3, Check, AlertCircle, TrendingUp
 } from 'lucide-react';
 import { User, Post, Comment, Advertisement } from '../types';
 import BannerAd from '../components/BannerAd';
 
 interface CommunityProps {
   user: User;
+  allUsers: User[];
   posts: Post[];
   globalAds?: Advertisement[];
   onPost: (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string) => void;
@@ -35,7 +37,9 @@ const formatRelativeTime = (timestamp: number) => {
   return `${days}d`;
 };
 
-const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost }) => {
+const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost }) => {
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'all' | 'following' | 'trends'>('all');
   const [newPostContent, setNewPostContent] = useState('');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
   const [showShareMenu, setShowShareMenu] = useState<string | null>(null);
@@ -47,11 +51,55 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
   const fileInputRef = useRef<HTMLInputElement>(null);
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const filteredPosts = posts.filter(p => 
-    p.userName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.userNickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Handle Trends tab from URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'trends') {
+      setActiveTab('trends');
+    }
+  }, [location.search]);
+
+  const filteredPosts = posts.filter(p => {
+    const matchesSearch = p.userName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.userNickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.content.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (activeTab === 'following') {
+      return matchesSearch && user.following?.includes(p.userId);
+    }
+    return matchesSearch;
+  });
+
+  const trendingPosts = [...posts]
+    .sort((a, b) => {
+      const bScore = (b.likes?.length || 0) + (b.comments?.length || 0);
+      const aScore = (a.likes?.length || 0) + (a.comments?.length || 0);
+      return bScore - aScore;
+    })
+    .slice(0, 5);
+
+  const extractKeywords = (content: string) => {
+    const words = content.split(/\s+/);
+    return words.filter(w => w.length > 4 && !['about', 'there', 'their', 'would'].includes(w.toLowerCase()));
+  };
+
+  const allKeywords = posts.flatMap(p => extractKeywords(p.content));
+  const keywordCounts = allKeywords.reduce((acc, word) => {
+    const cleanWord = word.replace(/[^a-zA-Z]/g, '');
+    if (cleanWord.length > 3) {
+      acc[cleanWord] = (acc[cleanWord] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  const trendingKeywords = Object.entries(keywordCounts)
+    .sort((a, b) => {
+      const valA = a[1] as number;
+      const valB = b[1] as number;
+      return valB - valA;
+    })
+    .slice(0, 6)
+    .map(([word, count]) => ({ tag: `$${word}`, posts: count, category: 'App' }));
 
   const handlePostSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +148,7 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto border-x border-brand-border min-h-screen bg-white dark:bg-brand-black pb-32">
+    <div className="w-full max-w-full mx-auto border-x border-brand-border min-h-screen bg-white dark:bg-brand-black pb-32">
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md border-b border-brand-border p-4 flex items-center justify-between gap-4">
          <h2 className="text-xl font-black italic tracking-tighter uppercase whitespace-nowrap">Social Hub</h2>
          <div className="relative flex-grow max-w-xs">
@@ -113,6 +161,30 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
               className="w-full bg-brand-border/30 dark:bg-white/5 border border-transparent focus:border-brand-proph/50 rounded-full py-2 pl-10 pr-4 text-xs font-bold outline-none transition-all dark:text-white"
             />
          </div>
+      </div>
+
+      <div className="flex border-b border-brand-border sticky top-[73px] lg:top-[81px] z-30 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md">
+        <button 
+          onClick={() => setActiveTab('all')}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'all' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+        >
+          All Feeds
+          {activeTab === 'all' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('following')}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'following' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+        >
+          Following
+          {activeTab === 'following' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('trends')}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'trends' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+        >
+          Trends
+          {activeTab === 'trends' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
+        </button>
       </div>
 
       <div className="p-4 border-b border-brand-border">
@@ -150,7 +222,70 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
       </div>
 
       <div className="divide-y divide-brand-border">
-        {filteredPosts.map((post, index) => (
+        {activeTab === 'trends' ? (
+          <div className="p-8 space-y-12">
+            <div className="space-y-6">
+              <h3 className="text-2xl font-black italic tracking-tighter uppercase">Trending Signals</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {trendingKeywords.map((trend, i) => (
+                  <div key={i} className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] font-black text-brand-proph uppercase tracking-widest">{trend.category}</span>
+                    </div>
+                    <h4 className="text-lg font-black tracking-tight mb-1">{trend.tag}</h4>
+                    <p className="text-xs text-brand-muted font-bold">{trend.posts} Nodes Interacting</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <h3 className="text-2xl font-black italic tracking-tighter uppercase">High Engagement Nodes</h3>
+              <div className="space-y-4">
+                {trendingPosts.map((post) => (
+                  <div key={post.id} className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group">
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-brand-border flex items-center justify-center font-black">{post.userName.charAt(0)}</div>
+                      <div>
+                        <h4 className="font-black text-sm">{post.userName}</h4>
+                        <p className="text-[10px] text-brand-muted uppercase tracking-widest">@{post.userNickname}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm line-clamp-2 mb-3">{post.content}</p>
+                    <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest text-brand-proph">
+                      <span>{post.likes.length} Likes</span>
+                      <span>{post.comments.length} Replies</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <h3 className="text-2xl font-black italic tracking-tighter uppercase">Top Nodes</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {allUsers.slice(0, 6).map((u, i) => (
+                  <div key={u.id} className="p-4 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border flex items-center gap-4 hover:border-brand-proph/50 transition-all group cursor-pointer">
+                    <div className="w-12 h-12 rounded-full bg-brand-border flex-shrink-0 flex items-center justify-center font-black text-lg shadow-inner overflow-hidden">
+                      {u.name.charAt(0)}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <h4 className="font-black truncate dark:text-white">{u.name}</h4>
+                      <p className="text-[10px] text-brand-muted font-bold uppercase tracking-widest">@{u.nickname}</p>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onFollow(u.id); }}
+                      className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all ${user.following?.includes(u.id) ? 'bg-brand-border text-brand-muted' : 'bg-brand-proph text-black hover:brightness-110'}`}
+                    >
+                      {user.following?.includes(u.id) ? 'Following' : 'Follow'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          filteredPosts.map((post, index) => (
           <React.Fragment key={post.id}>
             {/* Timeline Ad Insertion */}
             {index > 0 && index % 5 === 0 && globalAds.filter(ad => ad.placement === 'timeline' && ad.adType === 'banner').length > 0 && (
@@ -159,7 +294,7 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
               </div>
             )}
             
-            <div className="p-4 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors cursor-pointer group relative">
+            <div className="p-4 hover:bg-black/[0.05] dark:hover:bg-brand-black transition-colors cursor-pointer group relative">
             <div className="flex gap-3">
               <div className="w-12 h-12 rounded-full bg-brand-border flex-shrink-0 flex items-center justify-center font-black overflow-hidden shadow-inner">{post.userName.charAt(0)}</div>
               <div className="flex-grow min-w-0">
@@ -260,8 +395,12 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
                   </div>
                 )}
                 <div className="flex justify-between items-center mt-3 max-w-md text-brand-muted">
-                  <button onClick={(e) => { e.stopPropagation(); handleReplyClick(post.id); }} className="flex items-center gap-2 hover:text-brand-primary group/btn transition-colors" title="Reply">
-                    <div className="p-2 rounded-full group-hover/btn:bg-brand-primary/10"><MessageCircle className="w-4.5 h-4.5" /></div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleReplyClick(post.id); }} 
+                    className={`flex items-center gap-2 group/btn transition-colors ${post.comments.some(c => c.userId === user.id) ? 'text-brand-proph' : 'hover:text-brand-proph'}`} 
+                    title="Reply"
+                  >
+                    <div className="p-2 rounded-full group-hover/btn:bg-brand-proph/10"><MessageCircle className="w-4.5 h-4.5" /></div>
                     <span className="text-xs">{post.comments.length}</span>
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); onRepost(post.id); }} className={`flex items-center gap-2 group/btn transition-colors ${post.reposts.includes(user.id) ? 'text-green-500' : 'hover:text-green-500'}`} title="Repost">
@@ -323,9 +462,10 @@ const Community: React.FC<CommunityProps> = ({ user, posts, globalAds = [], onPo
             </div>
           </div>
         </React.Fragment>
-      ))}
-    </div>
-    </div>
+      ))
+    )}
+  </div>
+</div>
   );
 };
 

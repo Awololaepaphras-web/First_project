@@ -86,7 +86,7 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
   const generateQuiz = async () => {
     setSessionState('generating');
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = questionMode === 'same' 
         ? "Generate 5 unified exam questions for all gladiators based on this material. Format: Q1, Q2, etc."
         : "Generate 5 unique sets of questions so each gladiator faces a different trial based on this material.";
@@ -119,6 +119,11 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
     if (allSameMark && questionMode === 'same') {
       const shareAmount = Math.floor(1000 / members.length);
       setBountyResult({ shared: true, amount: shareAmount });
+      // Update user points if they won/tied
+      if (user) {
+        // In a real app, this would be a server-side update
+        // user.points = (user.points || 0) + shareAmount;
+      }
     } else {
       setBountyResult({ shared: false, amount: 0 });
     }

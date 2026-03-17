@@ -6,11 +6,12 @@ import {
   Database, Zap, Activity, ChevronDown, 
   BookOpen, Compass, PlusCircle, Wallet, MessageSquare,
   Search, Bell, User, MoreHorizontal, Home, Tv, Library, Star,
-  Sun, Moon, Megaphone, ListChecks, AtSign, Swords, Video, BarChart2,
-  Award, Camera, DollarSign
+  Sun, Moon, Megaphone, ListChecks, AtSign, Swords, BarChart2,
+  Award, Camera, DollarSign, TrendingUp
 } from 'lucide-react';
 import StudyTimer from './StudyTimer';
 import { Notification, User as UserType } from '../types';
+import { SupabaseService } from '../src/services/supabaseService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,8 +27,28 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('proph_theme');
-    return saved ? saved === 'dark' : true;
+    if (saved) return saved === 'dark';
+    return true; // Default to dark
   });
+
+  // Sync with user preference if available
+  useEffect(() => {
+    if (user?.themePreference) {
+      setIsDark(user.themePreference === 'dark');
+    }
+  }, [user?.themePreference]);
+
+  const toggleTheme = async () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    const themeStr = newTheme ? 'dark' : 'light';
+    localStorage.setItem('proph_theme', themeStr);
+    
+    if (user) {
+      await SupabaseService.updateUserTheme(user.id, themeStr);
+    }
+  };
+
   const [showNotifs, setShowNotifs] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -50,11 +71,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
   const navItems = [
     { name: 'Home', path: '/', icon: <Home className="w-6 h-6" /> },
     { name: 'Explore', path: '/universities', icon: <Compass className="w-6 h-6" /> },
+    ...(location.pathname === '/community' ? [{ name: 'Trends', path: '/community?tab=trends', icon: <TrendingUp className="w-6 h-6" /> }] : []),
     { name: 'Feeds', path: '/community', icon: <Tv className="w-6 h-6" /> },
     { name: 'Tasks', path: '/tasks', icon: <ListChecks className="w-6 h-6" /> },
     ...(user?.isPremium ? [{ name: 'Messages', path: '/messages', icon: <MessageSquare className="w-6 h-6" /> }] : []),
     { name: 'Memory Bank', path: '/memory-bank', icon: <Library className="w-6 h-6" /> },
-    { name: 'Proph TV', path: '/video-hub', icon: <Video className="w-6 h-6" /> },
     { name: 'Wallet', path: '/withdraw', icon: <Wallet className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
     { name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> },
@@ -66,12 +87,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
 
   const isAdminPage = location.pathname === '/admin';
   if (isAdminPage) {
-    return <div className="min-h-screen bg-brand-black text-white selection:bg-brand-proph/30">{children}</div>;
+    return <div className={`min-h-screen ${isDark ? 'bg-brand-black text-white' : 'bg-white text-black'} selection:bg-brand-proph/30 transition-colors`}>{children}</div>;
   }
 
   if (isAuthPage) {
     return (
-      <div className="min-h-screen bg-brand-black text-white selection:bg-brand-proph/30">
+      <div className={`min-h-screen ${isDark ? 'bg-brand-black text-white' : 'bg-white text-black'} selection:bg-brand-proph/30 transition-colors`}>
         <main>{children}</main>
       </div>
     );
@@ -79,41 +100,50 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
 
   if (isLandingPage) {
     return (
-      <div className="min-h-screen bg-brand-black text-white selection:bg-brand-proph/30">
-        <header className="fixed top-0 left-0 right-0 bg-brand-black/90 backdrop-blur-xl z-[100] border-b border-white/5">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+      <div className={`min-h-screen ${isDark ? 'bg-brand-black text-white' : 'bg-white text-black'} selection:bg-brand-proph/30 transition-colors`}>
+        <header className={`fixed top-0 left-0 right-0 ${isDark ? 'bg-brand-black/90' : 'bg-white/90'} backdrop-blur-xl z-[100] border-b ${isDark ? 'border-white/5' : 'border-black/5'} transition-colors`}>
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 sm:gap-3 group" title="Return Home">
-              <div className="bg-brand-proph p-2 rounded-xl group-hover:rotate-6 transition-transform shadow-[0_0_15px_rgba(0,186,124,0.3)] flex items-center justify-center overflow-hidden">
+              <div className="bg-brand-proph p-2 rounded-full group-hover:rotate-6 transition-transform shadow-[0_0_15px_rgba(0,186,124,0.3)] flex items-center justify-center overflow-hidden">
                 {appLogo ? (
                   <img src={appLogo} alt="App Logo" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
                 ) : (
                   <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
                 )}
               </div>
-              <span className="text-lg sm:text-2xl font-black italic tracking-tighter uppercase">PROPH</span>
+              <span className={`text-lg sm:text-2xl font-black italic tracking-tighter uppercase ${isDark ? 'text-white' : 'text-black'}`}>PROPH</span>
             </Link>
             <nav className="hidden lg:flex items-center gap-8">
               {user && (
                 <>
-                  <Link to="/universities" className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-muted hover:text-white transition-all">Repositories</Link>
-                  <Link to="/community" className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-muted hover:text-white transition-all">Social Grid</Link>
+                  <Link to="/universities" className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-brand-muted hover:text-white' : 'text-gray-500 hover:text-black'} transition-all`}>Repositories</Link>
+                  <Link to="/community" className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-brand-muted hover:text-white' : 'text-gray-500 hover:text-black'} transition-all`}>Social Grid</Link>
                   <Link to="/premium" className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-500 hover:text-yellow-400 transition-all">Premium</Link>
                 </>
               )}
+              <div className="flex items-center gap-4">
+              <button 
+                onClick={toggleTheme}
+                className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all"
+                title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDark ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-brand-muted" />}
+              </button>
               {user ? (
-                <Link to="/dashboard" className="bg-white text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-brand-proph transition-all active:scale-95 shadow-lg" title="Go to Dashboard">Console</Link>
-              ) : (
-                <Link to="/login" className="bg-brand-proph text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg" title="Login">Sync Node</Link>
-              )}
+                  <Link to="/dashboard" className={`${isDark ? 'bg-white text-black hover:bg-brand-proph' : 'bg-black text-white hover:bg-brand-proph'} px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-lg`} title="Go to Dashboard">Console</Link>
+                ) : (
+                  <Link to="/login" className="bg-brand-proph text-black px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg" title="Login">Sync Node</Link>
+                )}
+              </div>
             </nav>
             {user && (
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden p-2 text-brand-muted" title="Mobile Menu">
+              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className={`lg:hidden p-2 ${isDark ? 'text-brand-muted' : 'text-gray-500'}`} title="Mobile Menu">
                   {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             )}
           </div>
         </header>
-        <main>{children}</main>
+        <main className="transition-colors">{children}</main>
       </div>
     );
   }
@@ -121,9 +151,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
   return (
     <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white flex flex-col lg:flex-row transition-colors selection:bg-brand-proph/30 overflow-x-hidden">
       {user && (
-        <aside className="hidden lg:flex sticky top-0 h-screen w-[88px] xl:w-[275px] flex-col items-center xl:items-start px-3 py-4 border-r border-brand-border dark:border-brand-border z-50 bg-white dark:bg-brand-black">
-            <Link to="/" className="p-4 mb-4 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group" title="Return Home">
-              <div className="bg-brand-proph p-2.5 rounded-xl shadow-lg group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
+        <aside className="hidden lg:flex sticky top-0 h-screen w-[88px] xl:w-[300px] flex-col items-center xl:items-start px-4 py-6 border-r border-brand-border dark:border-brand-border z-50 bg-white dark:bg-brand-black transition-all">
+            <Link to="/" className="p-4 mb-6 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group" title="Return Home">
+              <div className="bg-brand-proph p-2.5 rounded-full shadow-lg group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
                 {appLogo ? (
                   <img src={appLogo} alt="App Logo" className="w-8 h-8 object-contain" />
                 ) : (
@@ -192,9 +222,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
       )}
       <div className="flex-grow flex flex-col min-w-0">
         <header className="h-16 lg:h-20 sticky top-0 bg-white/80 dark:bg-brand-black/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-40 border-b border-brand-border">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {user && (
-              <div className="lg:hidden relative">
+              <div className="lg:hidden relative flex-shrink-0">
                 <button 
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                   className="p-2 bg-brand-proph/10 text-brand-proph rounded-xl"
@@ -220,6 +250,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
                       ))}
                       <div className="h-px bg-brand-border my-2 opacity-50" />
                       <Link
+                        to={`/profile/${user.id}`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-4 p-4 rounded-2xl text-brand-muted hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                      >
+                        <User className="w-5 h-5" />
+                        <span className="text-sm font-black uppercase tracking-widest italic">View Profile</span>
+                      </Link>
+                      <Link
                         to="/settings"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="flex items-center gap-4 p-4 rounded-2xl text-brand-muted hover:bg-black/5 dark:hover:bg-white/5 transition-all"
@@ -239,25 +277,54 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
                 )}
               </div>
             )}
-            <h2 className="text-lg sm:text-2xl font-black italic uppercase tracking-tighter truncate">
+            <h2 className="text-sm sm:text-xl lg:text-2xl font-black italic uppercase tracking-tighter truncate max-w-[150px] sm:max-w-none">
                {location.pathname === '/community' ? 'Social Stream' : 
                 location.pathname.split('/')[1]?.replace('-', ' ').toUpperCase() || 'VAULT CORE'}
             </h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+             <button 
+               onClick={toggleTheme}
+               className="p-2 sm:p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all"
+               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+             >
+               {isDark ? <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" /> : <Moon className="w-5 h-5 sm:w-6 sm:h-6 text-brand-muted" />}
+             </button>
              {user && !user.isPremium && (
-               <Link to="/premium" className="hidden sm:flex items-center gap-2 bg-yellow-500 text-black px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-yellow-500/20">
+               <Link to="/premium" className="hidden md:flex items-center gap-2 bg-yellow-500 text-black px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-yellow-500/20">
                  <Award className="w-4 h-4" /> Go Premium
                </Link>
              )}
-             <button onClick={() => setIsDark(!isDark)} className="p-2.5 bg-black/5 dark:bg-white/5 rounded-full text-brand-muted hover:text-white transition-all" title="Toggle Mode">
-                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-             </button>
              {user && (
-               <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 sm:p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-full relative" title="Notifications">
+               <>
+                 <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 sm:p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-full relative" title="Notifications">
                 <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
                 {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full border-2 border-white dark:border-brand-black" />}
               </button>
+              {showNotifs && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-brand-card border border-brand-border rounded-3xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-4 border-b border-brand-border flex justify-between items-center">
+                    <h3 className="font-black uppercase tracking-widest text-xs italic">Signals</h3>
+                    <button onClick={() => setShowNotifs(false)} className="text-brand-muted hover:text-white"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                    {notifications.length > 0 ? (
+                      notifications.map(notif => (
+                        <div key={notif.id} className={`p-4 border-b border-brand-border/30 hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer ${!notif.read ? 'bg-brand-proph/5' : ''}`}>
+                          <h4 className="font-black text-sm italic">{notif.title}</h4>
+                          <p className="text-xs text-brand-muted mt-1">{notif.message}</p>
+                          <span className="text-[10px] text-brand-muted mt-2 block font-bold">{new Date(notif.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center">
+                        <p className="text-xs text-brand-muted font-black uppercase tracking-widest italic">No active signals detected.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+             </>
              )}
           </div>
         </header>

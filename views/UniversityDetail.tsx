@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, Share2, MapPin, ArrowLeft, Image as ImageIcon, BookOpen, Lock, Layers, FileText, GraduationCap, Zap, ShieldAlert } from 'lucide-react';
-import { PastQuestion, StudyDocument, User, University } from '../types';
+import { Search, Filter, ChevronDown, Share2, MapPin, ArrowLeft, Image as ImageIcon, BookOpen, Lock, Layers, FileText, GraduationCap, Zap, ShieldAlert, Megaphone, ChevronRight } from 'lucide-react';
+import { PastQuestion, StudyDocument, User, University, Advertisement } from '../types';
 import { COMMON_FACULTIES } from '../constants';
 
 interface UniversityDetailProps {
@@ -10,9 +10,10 @@ interface UniversityDetailProps {
   universities: University[];
   universityColleges: Record<string, string[]>;
   collegeDepartments: Record<string, string[]>;
+  globalAds: Advertisement[];
 }
 
-const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, universities, universityColleges, collegeDepartments }) => {
+const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, universities, universityColleges, collegeDepartments, globalAds }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +21,7 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
   const [activeDepartment, setActiveDepartment] = useState('All');
 
   const university = universities.find(u => u.id === id);
+  const approvedAds = globalAds.filter(ad => ad.status === 'active' && (ad.targetUniversity === 'all' || ad.targetUniversity === university?.id));
   
   if (!university) {
     return (
@@ -111,6 +113,42 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
           </div>
         </div>
       </div>
+
+      {approvedAds.length > 0 && (
+        <div className="mb-12">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+            <Megaphone className="w-4 h-4 text-brand-proph" /> Promoted Intel
+          </h3>
+          <div className="flex gap-6 overflow-x-auto no-scrollbar snap-x pb-4">
+            {approvedAds.map(ad => (
+              <a 
+                key={ad.id} 
+                href={ad.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-white dark:bg-brand-card rounded-[2.5rem] border border-gray-100 dark:border-brand-border overflow-hidden group hover:border-brand-proph transition-all flex-shrink-0 w-[85vw] sm:w-[400px] snap-center shadow-2xl"
+              >
+                <div className="aspect-video bg-gray-100 dark:bg-brand-border relative">
+                  {ad.type === 'video' ? (
+                    <video src={ad.mediaUrl} className="w-full h-full object-cover" muted loop autoPlay />
+                  ) : (
+                    <img src={ad.mediaUrl} className="w-full h-full object-cover" alt={ad.title} />
+                  )}
+                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-white/10">
+                    Sponsored
+                  </div>
+                </div>
+                <div className="p-6">
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase italic truncate">{ad.title}</h3>
+                  <div className="flex items-center gap-2 mt-2 text-brand-proph font-black text-[10px] uppercase tracking-widest">
+                    Learn More <ChevronRight className="w-3 h-3" />
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
         <aside className="lg:col-span-1 space-y-10">

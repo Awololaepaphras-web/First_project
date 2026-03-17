@@ -1,20 +1,24 @@
 
 import React, { useState, useRef } from 'react';
 import { Megaphone, Camera, Video, ChevronRight, CheckCircle2, Globe, Building2, Search, X, Link as LinkIcon, Upload, MapPin, CreditCard, BarChart3 } from 'lucide-react';
-import { User, AdPricing, Advertisement } from '../types';
+import { User, AdPricing, Advertisement, SystemConfig, PaymentVerification } from '../types';
 import { UNIVERSITIES } from '../constants';
 import { useNavigate } from 'react-router-dom';
 
 interface UserAdsProps {
   user: User;
   pricing: AdPricing;
+  config: SystemConfig;
   onDeploy: (ad: Partial<Advertisement>) => void;
+  onVerifyPayment: (verification: PaymentVerification) => void;
 }
 
-const UserAds: React.FC<UserAdsProps> = ({ user, pricing, onDeploy }) => {
+const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVerifyPayment }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+  const [paymentRef, setPaymentRef] = useState('');
+  const [isSubmittingRef, setIsSubmittingRef] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     mediaUrl: '',
@@ -47,35 +51,85 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, onDeploy }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user.isPremium) {
-      alert("Verification Required: Promotional campaigns are reserved for Proph+ Premium nodes.");
-      return;
-    }
     if (selectedSchools.length === 0) {
       alert("Targeting Error: Please select at least one university node.");
       return;
     }
-    setStep(3);
+    setStep(2); // Move to Payment first
   };
 
-  const handlePayment = () => {
-    // Simulate payment
+  const handlePayment = (method: 'card' | 'transfer') => {
+    if (method === 'card') {
+      // If card payment is enabled, we could trigger Paystack here
+      // For now, we'll just simulate success if it's card
+      setStep(3);
+    } else {
+      // Bank transfer requires reference submission
+      // Handled by the UI in step 2
+    }
+  };
+
+  const handleSubmitReference = () => {
+    if (!paymentRef.trim()) {
+      alert("Please enter your payment reference number.");
+      return;
+    }
+
+    setIsSubmittingRef(true);
+    
+    // Generate ID here so it can be used for both verification and ad
+    const adId = crypto.randomUUID();
+    setFormData(prev => ({ ...prev, id: adId }));
+    
+    const verification: PaymentVerification = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      type: 'ad',
+      amount: totalCost,
+      reference: paymentRef,
+      status: 'pending',
+      createdAt: Date.now(),
+      details: {
+        adId: adId,
+        adTitle: formData.title || 'Pending Ad',
+        schools: selectedSchools
+      }
+    };
+
+    onVerifyPayment(verification);
+    
+    setTimeout(() => {
+      setIsSubmittingRef(false);
+      setStep(3);
+    }, 1500);
+  };
+
+  const handleFinalDeploy = () => {
+    if (!formData.title || !formData.mediaUrl) {
+      alert("Asset Error: Please provide a title and campaign media.");
+      return;
+    }
     const newAd: Partial<Advertisement> = {
+      id: (formData as any).id || Math.random().toString(36).substr(2, 9),
       title: formData.title,
       mediaUrl: formData.mediaUrl,
       type: formData.mediaType,
       link: formData.link,
       userId: user.id,
-      status: 'pending',
-      timeFrames: ['12am-6am', '6am-12pm', '12pm-6pm', '6pm-12am'], // Default to all
-      analytics: []
+      status: 'payment_pending',
+      timeFrames: ['12am-6am', '6am-12pm', '12pm-6pm', '6pm-12am'],
+      analytics: [],
+      // @ts-ignore
+      paymentReference: paymentRef
     };
     onDeploy(newAd);
     setStep(4);
   };
 
   return (
-    <div className="py-16 px-4 max-w-5xl mx-auto space-y-16 animate-fade-in">
+    <div className="py-16 px-4 max-w-full mx-auto space-y-16 animate-fade-in">
       <div className="text-center space-y-4">
          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-proph/10 text-brand-proph text-[10px] font-black uppercase tracking-widest border border-brand-proph/20">
            <Megaphone className="w-4 h-4" />
@@ -162,19 +216,99 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, onDeploy }) => {
                      ))}
                   </div>
 
-                  <button onClick={() => setStep(2)} disabled={selectedSchools.length === 0} className="w-full bg-brand-proph text-black py-6 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all flex items-center justify-center gap-3 disabled:opacity-50">Campaign Assets <ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={() => setStep(2)} disabled={selectedSchools.length === 0} className="w-full bg-brand-proph text-black py-6 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all flex items-center justify-center gap-3 disabled:opacity-50">Proceed to Settlement <ChevronRight className="w-5 h-5" /></button>
                </div>
             )}
 
             {step === 2 && (
                <div className="space-y-10 animate-fade-in">
                   <div className="space-y-2">
-                     <h3 className="text-3xl font-black dark:text-white uppercase italic">2. Asset Definition</h3>
+                     <h3 className="text-3xl font-black dark:text-white uppercase italic">2. Settlement</h3>
+                     <p className="text-brand-muted font-medium italic text-sm">Secure payment for node deployment.</p>
+                  </div>
+
+                  <div className="p-8 bg-gray-950 rounded-[2.5rem] border border-brand-border space-y-6">
+                    <div className="flex justify-between items-center">
+                      <p className="text-gray-400 font-bold italic">Campaign Cost</p>
+                      <p className="text-2xl font-black text-white italic">₦{totalCost.toLocaleString()}</p>
+                    </div>
+                    <div className="h-px bg-white/5" />
+                    
+                    <div className="space-y-6">
+                      <div className="p-6 bg-brand-proph/5 border border-brand-proph/20 rounded-3xl space-y-4">
+                        <h4 className="text-brand-proph font-black text-xs uppercase tracking-widest">Bank Transfer Details</h4>
+                        <div className="grid grid-cols-1 gap-4 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 font-bold italic">Bank Name:</span>
+                            <span className="text-white font-black">{config.paymentAccount.bankName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 font-bold italic">Account Number:</span>
+                            <span className="text-white font-black tracking-widest">{config.paymentAccount.accountNumber}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 font-bold italic">Account Name:</span>
+                            <span className="text-white font-black">{config.paymentAccount.accountName}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Payment Reference / Transaction ID</p>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Enter Reference Number"
+                            value={paymentRef}
+                            onChange={e => setPaymentRef(e.target.value)}
+                            className="flex-grow bg-black/40 border border-white/5 p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-white"
+                          />
+                          <button 
+                            onClick={handleSubmitReference}
+                            disabled={isSubmittingRef || !paymentRef}
+                            className="px-8 bg-brand-proph text-black rounded-2xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 transition-all"
+                          >
+                            {isSubmittingRef ? 'Verifying...' : 'Verify'}
+                          </button>
+                        </div>
+                        <p className="text-[9px] text-gray-500 italic ml-2">Submit your transaction reference for manual verification by the Proph Matrix.</p>
+                      </div>
+                    </div>
+
+                    {config.isCardPaymentEnabled && (
+                      <>
+                        <div className="flex items-center gap-4">
+                          <div className="h-px flex-grow bg-white/5" />
+                          <span className="text-[10px] font-black text-gray-600 uppercase">OR</span>
+                          <div className="h-px flex-grow bg-white/5" />
+                        </div>
+                        <button onClick={() => handlePayment('card')} className="w-full flex items-center justify-center gap-4 p-6 bg-white/5 rounded-2xl border border-white/5 hover:border-brand-proph transition-all group">
+                          <CreditCard className="w-8 h-8 text-brand-proph group-hover:scale-110 transition-transform" />
+                          <div className="text-left">
+                            <p className="text-white font-black text-xs uppercase">Instant Card Payment</p>
+                            <p className="text-[10px] text-gray-500 font-bold italic">Paystack Secure Checkout</p>
+                          </div>
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button onClick={() => setStep(1)} className="px-10 py-5 bg-gray-800 text-brand-muted rounded-2xl font-black text-xs uppercase">Back</button>
+                  </div>
+               </div>
+            )}
+
+            {step === 3 && (
+               <div className="space-y-10 animate-fade-in">
+                  <div className="space-y-2">
+                     <h3 className="text-3xl font-black dark:text-white uppercase italic">3. Asset Definition</h3>
                      <p className="text-brand-muted font-medium italic text-sm">Define your visual outreach.</p>
                   </div>
                   
                   <div className="space-y-6">
                     <input className="w-full bg-gray-50 dark:bg-gray-900 border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-bold dark:text-white" placeholder="Campaign Identifier (e.g. Freshers' Discount)" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    <input className="w-full bg-gray-50 dark:bg-gray-900 border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-bold dark:text-white" placeholder="Destination Link (e.g. https://yourwebsite.com)" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
                     <div className="grid grid-cols-2 gap-4">
                        <button onClick={() => setFormData({...formData, mediaType: 'image'})} className={`p-4 rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${formData.mediaType === 'image' ? 'bg-brand-proph border-brand-proph text-black' : 'bg-gray-900 border-gray-800 text-gray-400'}`}><Camera className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">Image Ad</span></button>
                        <button onClick={() => setFormData({...formData, mediaType: 'video'})} className={`p-4 rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${formData.mediaType === 'video' ? 'bg-brand-proph border-brand-proph text-black' : 'bg-gray-900 border-gray-800 text-gray-400'}`}><Video className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">Video Ad</span></button>
@@ -186,42 +320,9 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, onDeploy }) => {
                     <input type="file" ref={fileInputRef} hidden accept={formData.mediaType === 'image' ? 'image/*' : 'video/*'} onChange={handleMediaUpload} />
                     
                     <div className="flex gap-4">
-                       <button onClick={() => setStep(1)} className="px-10 bg-gray-800 text-brand-muted rounded-2xl font-black text-xs uppercase">Back</button>
-                       <button onClick={handleSubmit} className="flex-grow bg-brand-proph text-black py-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">Deploy Across {selectedSchools.length} Nodes</button>
+                       <button onClick={() => setStep(2)} className="px-10 bg-gray-800 text-brand-muted rounded-2xl font-black text-xs uppercase">Back</button>
+                       <button onClick={handleFinalDeploy} className="flex-grow bg-brand-proph text-black py-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">Deploy Across {selectedSchools.length} Nodes</button>
                     </div>
-                  </div>
-               </div>
-            )}
-
-            {step === 3 && (
-               <div className="space-y-10 animate-fade-in">
-                  <div className="space-y-2">
-                     <h3 className="text-3xl font-black dark:text-white uppercase italic">3. Settlement</h3>
-                     <p className="text-brand-muted font-medium italic text-sm">Secure payment for node deployment.</p>
-                  </div>
-
-                  <div className="p-8 bg-gray-950 rounded-[2.5rem] border border-brand-border space-y-6">
-                    <div className="flex justify-between items-center">
-                      <p className="text-gray-400 font-bold italic">Campaign Cost</p>
-                      <p className="text-2xl font-black text-white italic">₦{totalCost.toLocaleString()}</p>
-                    </div>
-                    <div className="h-px bg-white/5" />
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                        <CreditCard className="w-6 h-6 text-brand-proph" />
-                        <div>
-                          <p className="text-white font-black text-xs uppercase">Paystack Secure</p>
-                          <p className="text-[10px] text-gray-500 font-bold italic">Instant node activation</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <button onClick={() => setStep(2)} className="px-10 bg-gray-800 text-brand-muted rounded-2xl font-black text-xs uppercase">Back</button>
-                    <button onClick={handlePayment} className="flex-grow bg-brand-proph text-black py-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3">
-                      Pay ₦{totalCost.toLocaleString()} & Deploy <ChevronRight className="w-5 h-5" />
-                    </button>
                   </div>
                </div>
             )}

@@ -10,7 +10,7 @@ import {
   PlayCircle, Monitor, Upload, Clock, CreditCard,
   FileCheck, AlertCircle, ChevronRight, Menu, Image as ImageIcon,
   Star, BarChart3, Target, Wallet,
-  Palette, Download, Tv
+  Palette, Download, Tv, Award, ShieldCheck
 } from 'lucide-react';
 import { User, PastQuestion, WithdrawalRequest, SystemConfig, EarnTask, Notification, University, Advertisement, AdTimeFrame, AdType, AdPlacement } from '../types';
 
@@ -38,6 +38,7 @@ interface AdminDashboardProps {
   onAddDept: (college: string, dept: string) => void;
   onRemoveDept: (college: string, dept: string) => void;
   onApproveQuestion: (id: string) => void;
+  onRejectQuestion: (id: string) => void;
   onApproveWithdrawal: (id: string) => void;
   onRejectWithdrawal: (id: string) => void;
   globalAds: Advertisement[];
@@ -54,7 +55,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onDeleteQuestion, onDeleteTask, onDeleteUser, onAddTask, onBroadcast,
   universities, universityColleges, collegeDepartments,
   onAddUniversity, onRemoveUniversity, onAddCollege, onRemoveCollege, onAddDept, onRemoveDept,
-  onApproveQuestion, onApproveWithdrawal, onRejectWithdrawal,
+  onApproveQuestion, onRejectQuestion, onApproveWithdrawal, onRejectWithdrawal,
   globalAds, onAddAd, onDeleteAd, onUpdateUniversity, onUpdateLogo, onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('command');
@@ -195,6 +196,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'tasks', label: 'Bounty Forge', icon: <Zap className="w-5 h-5" /> },
     { id: 'algorithms', label: 'Logic Matrix', icon: <Activity className="w-5 h-5" /> },
     { id: 'branding', label: 'App Branding', icon: <Palette className="w-5 h-5" /> },
+    { id: 'sug', label: 'SUG Verify', icon: <Award className="w-5 h-5" /> },
+    { id: 'staff', label: 'Staff Matrix', icon: <ShieldCheck className="w-5 h-5" /> },
     { id: 'payments', label: 'Payment Verify', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/admin/payments' },
   ];
 
@@ -311,6 +314,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </div>
           </div>
         )}
+
+        {/* Removed: Deploy System Protocol, Synchronize Matrix Configuration, Synchronize Engagement Matrix buttons */}
 
         {activeTab === 'financials' && (
           <div className="space-y-12 animate-fade-in">
@@ -473,6 +478,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
+        {/* Removed: Synchronize Matrix Configuration */}
+
         {/* ... Rest of the existing activeTab conditions (engagement, submissions, payouts, ad-engine, academic, users, broadcast, tasks) ... */}
         {activeTab === 'engagement' && (
           <div className="space-y-10 animate-fade-in">
@@ -484,7 +491,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <tr><th className="p-8">Scholar Identity</th><th className="p-8">Like/Rep/Rep</th><th className="p-8">Matrix Clicks</th><th className="p-8 text-right">Node Rating</th></tr>
                    </thead>
                    <tbody className="divide-y divide-gray-800">
-                      {allUsers.map(u => (
+                      {allUsers.filter(u => u.email !== 'awololaeo.22@student.funaab.edu.ng').map(u => (
                         <tr key={u.id} className="hover:bg-white/5 transition-colors">
                            <td className="p-8"><p className="font-black italic text-white">{u.name}</p><p className="text-[9px] text-gray-500 uppercase">@{u.nickname}</p></td>
                            <td className="p-8 font-mono text-gray-300">{(u.engagementStats?.totalLikesGiven || 0)} / {(u.engagementStats?.totalRepliesGiven || 0)} / {(u.engagementStats?.totalRepostsGiven || 0)}</td>
@@ -498,6 +505,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
          </div>
         )}
+
+        {/* Removed: Synchronize Engagement Matrix */}
 
         {activeTab === 'submissions' && (
           <div className="space-y-10 animate-fade-in">
@@ -523,7 +532,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 document.body.removeChild(link);
                               }} className="p-3 bg-blue-600/10 text-blue-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Download Asset"><Download className="w-4 h-4" /></button>
                               <button onClick={() => onApproveQuestion(q.id)} className="p-3 bg-green-600/10 text-green-500 rounded-xl hover:bg-green-600 hover:text-white transition-all" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
-                              <button onClick={() => onDeleteQuestion(q.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              <button onClick={() => onRejectQuestion(q.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Reject"><XCircle className="w-4 h-4" /></button>
+                              <button onClick={() => onDeleteQuestion(q.id)} className="p-3 bg-gray-600/10 text-gray-500 rounded-xl hover:bg-gray-600 hover:text-white transition-all" title="Delete"><Trash2 className="w-4 h-4" /></button>
                            </td>
                         </tr>
                       ))}
@@ -834,12 +844,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <tr><th className="p-8">Scholar Identity</th><th className="p-8">Email Node</th><th className="p-8">Role Assignment</th><th className="p-8 text-right">Command</th></tr>
                    </thead>
                    <tbody className="divide-y divide-gray-800">
-                      {allUsers.map(u => (
+                      {allUsers.filter(u => u.email !== 'awololaeo.22@student.funaab.edu.ng').map(u => (
                         <tr key={u.id} className="hover:bg-gray-800/30 transition-all">
                            <td className="p-8"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white">{u.name.charAt(0)}</div><div><p className="font-black italic text-base text-white">{u.name}</p><p className="text-[10px] text-green-500 font-black">@{u.nickname}</p></div></div></td>
                            <td className="p-8 font-mono text-[10px] text-gray-400">{u.email || 'N/A'}</td>
-                           <td className="p-8"><select value={u.role} onChange={(e) => onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, role: e.target.value as any } : usr))} className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-4 py-2 rounded-xl outline-none text-white">{['student', 'moderator', 'sub-admin', 'admin'].map(r => <option key={r} value={r}>{r}</option>)}</select></td>
-                           <td className="p-8 text-right"><button onClick={() => onDeleteUser(u.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button></td>
+                           <td className="p-8"><select value={u.role} onChange={(e) => onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, role: e.target.value as any } : usr))} className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-4 py-2 rounded-xl outline-none text-white">{['student', 'moderator', 'sub-admin', 'admin', 'staff'].map(r => <option key={r} value={r}>{r}</option>)}</select></td>
+                           <td className="p-8 text-right">
+                             {u.role === 'staff' && (
+                               <button 
+                                 onClick={() => {
+                                   const currentPerms = u.staffPermissions || [];
+                                   const hasAccess = currentPerms.includes('all');
+                                   const newPerms = hasAccess ? [] : ['all'];
+                                   onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, staffPermissions: newPerms } : usr));
+                                 }}
+                                 className={`p-3 mr-2 rounded-xl transition-all ${u.staffPermissions?.includes('all') ? 'bg-green-600/10 text-green-500' : 'bg-yellow-600/10 text-yellow-500'}`}
+                                 title={u.staffPermissions?.includes('all') ? 'Restrict Access' : 'Grant Access'}
+                               >
+                                 <Shield className="w-5 h-5" />
+                               </button>
+                             )}
+                             <button onClick={() => {
+                               if (u.email === 'awololaeo.22@student.funaab.edu.ng') {
+                                 alert("Security Protocol: Main Admin account cannot be terminated.");
+                                 return;
+                               }
+                               onDeleteUser(u.id);
+                             }} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
+                           </td>
                         </tr>
                       ))}
                    </tbody>
@@ -914,27 +946,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    </div>
                 </div>
 
-                {/* Proph TV Algorithms */}
-                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><PlayCircle className="w-5 h-5 text-green-500" /> TV Weights</h3>
-                   <div className="space-y-4">
-                      {Object.entries(config.tvWeights).map(([key, val]) => (
-                        <div key={key} className="space-y-2">
-                           <div className="flex justify-between items-center px-2">
-                             <label className="text-[9px] font-black uppercase text-gray-500">{key}</label>
-                             <span className="text-[10px] font-black text-green-400">{((val as number) * 100).toFixed(0)}%</span>
-                           </div>
-                           <input 
-                            type="range" min="0" max="1" step="0.05"
-                            className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-green-600" 
-                            value={val as number} 
-                            onChange={e => handleUpdateConfig({ tvWeights: { ...config.tvWeights, [key]: parseFloat(e.target.value) } })} 
-                           />
-                        </div>
-                      ))}
-                   </div>
-                </div>
-
                 {/* Advert Algorithms */}
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
                    <h3 className="text-xl font-black text-white flex items-center gap-3"><Megaphone className="w-5 h-5 text-red-500" /> Ad Weights</h3>
@@ -985,6 +996,115 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
              </div>
           </div>
+        )}
+
+        {activeTab === 'sug' && (
+          <div className="space-y-12 animate-fade-in">
+             <h1 className="text-4xl font-black tracking-tighter uppercase italic">SUG Premium Verification</h1>
+             <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                   <thead className="bg-gray-800 text-[10px] font-black text-gray-400 uppercase">
+                      <tr><th className="p-8">SUG Account</th><th className="p-8">University</th><th className="p-8">Status</th><th className="p-8 text-right">Command</th></tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-800">
+                      {allUsers.filter(u => u.nickname.toLowerCase().includes('sug')).map(u => (
+                        <tr key={u.id} className="hover:bg-gray-800/30 transition-all">
+                           <td className="p-8"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white">{u.name.charAt(0)}</div><div><p className="font-black italic text-base text-white">{u.name}</p><p className="text-[10px] text-green-500 font-black">@{u.nickname}</p></div></div></td>
+                           <td className="p-8 font-black uppercase text-gray-400">{u.university}</td>
+                           <td className="p-8">
+                             <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.isSugVerified ? 'bg-green-600/10 text-green-500' : 'bg-yellow-600/10 text-yellow-500'}`}>
+                               {u.isSugVerified ? 'Verified' : 'Pending'}
+                             </span>
+                           </td>
+                           <td className="p-8 text-right">
+                             <button 
+                               onClick={() => onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, isSugVerified: !u.isSugVerified, isPremium: !u.isSugVerified } : usr))}
+                               className={`p-3 rounded-xl transition-all ${u.isSugVerified ? 'bg-red-600/10 text-red-500' : 'bg-green-600/10 text-green-500'}`}
+                             >
+                               {u.isSugVerified ? <XCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                             </button>
+                           </td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+         </div>
+        )}
+
+        {activeTab === 'staff' && (
+          <div className="space-y-12 animate-fade-in">
+             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Staff Matrix</h1>
+             <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                   <thead className="bg-gray-800 text-[10px] font-black text-gray-400 uppercase">
+                      <tr><th className="p-8">Staff Node</th><th className="p-8">Role</th><th className="p-8">Permissions</th><th className="p-8 text-right">Command</th></tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-800">
+                      {allUsers.filter(u => u.role === 'staff' || u.role === 'admin' || u.role === 'sub-admin').map(u => (
+                        <tr key={u.id} className="hover:bg-gray-800/30 transition-all">
+                           <td className="p-8">
+                             <div className="flex items-center gap-4">
+                               <div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white">
+                                 {u.name.charAt(0)}
+                               </div>
+                               <div>
+                                 <p className="font-black italic text-base text-white">{u.name}</p>
+                                 <p className="text-[10px] text-blue-500 font-black">@{u.nickname}</p>
+                               </div>
+                             </div>
+                           </td>
+                           <td className="p-8">
+                             <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-red-600/10 text-red-500' : 'bg-blue-600/10 text-blue-500'}`}>
+                               {u.role}
+                             </span>
+                           </td>
+                           <td className="p-8">
+                             <div className="flex flex-wrap gap-2">
+                               {['command', 'financials', 'engagement', 'submissions', 'payouts', 'ad-engine', 'academic', 'users', 'broadcast', 'tasks', 'algorithms', 'branding', 'sug'].map(page => (
+                                 <button
+                                   key={page}
+                                   onClick={() => {
+                                     if (u.role === 'admin' && u.email === 'awololaeo.22@student.funaab.edu.ng') return;
+                                     const currentPerms = u.staffPermissions || [];
+                                     const newPerms = currentPerms.includes(page)
+                                       ? currentPerms.filter(p => p !== page)
+                                       : [...currentPerms, page];
+                                     onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, staffPermissions: newPerms } : usr));
+                                   }}
+                                   className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase transition-all ${
+                                     (u.staffPermissions || []).includes(page)
+                                       ? 'bg-brand-proph text-black'
+                                       : 'bg-gray-800 text-gray-400 hover:text-white'
+                                   }`}
+                                 >
+                                   {page}
+                                 </button>
+                               ))}
+                             </div>
+                           </td>
+                           <td className="p-8 text-right">
+                             <button 
+                               onClick={() => {
+                                 const newRole = u.role === 'admin' ? 'staff' : 'admin';
+                                 onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, role: newRole } : usr));
+                               }}
+                               className="p-3 bg-gray-800 text-gray-400 rounded-xl hover:bg-white/10 transition-all"
+                               title="Toggle Admin Status"
+                             >
+                               <Shield className="w-5 h-5" />
+                             </button>
+                           </td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
+             </div>
+          </div>
+         </div>
         )}
 
         {activeTab === 'branding' && (

@@ -4,6 +4,10 @@ import { User, Post, PastQuestion, SystemConfig, PaymentVerification, Withdrawal
 
 export const SupabaseService = {
   // Auth
+  async getSession() {
+    return await supabase.auth.getSession();
+  },
+
   async signUp(email: string, password: string, userData: Partial<User>) {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -152,7 +156,7 @@ export const SupabaseService = {
       userAvatar: p.user_avatar,
       mediaUrl: p.media_url,
       mediaType: p.media_type,
-      createdAt: new Date(p.created_at).getTime()
+      createdAt: Number(p.created_at)
     }));
   },
 
@@ -170,7 +174,7 @@ export const SupabaseService = {
             userAvatar: p.user_avatar,
             mediaUrl: p.media_url,
             mediaType: p.media_type,
-            createdAt: new Date(p.created_at).getTime()
+            createdAt: Number(p.created_at)
           };
         }
         callback(payload);
@@ -188,10 +192,13 @@ export const SupabaseService = {
       user_avatar: userAvatar,
       media_url: mediaUrl,
       media_type: mediaType,
-      created_at: new Date(createdAt).toISOString()
+      created_at: createdAt
     };
     const { error } = await supabase.from('posts').upsert(dbPost);
-    if (error) console.error('Error saving post:', error);
+    if (error) {
+      console.error('Error saving post:', error);
+      throw error;
+    }
   },
 
   async deletePost(postId: string) {
@@ -218,12 +225,12 @@ export const SupabaseService = {
       courseTitle: d.course_title,
       fileUrl: d.file_url,
       uploadedBy: d.uploaded_by,
-      createdAt: new Date(d.created_at).getTime()
+      createdAt: Number(d.created_at)
     }));
   },
 
   async saveDocument(doc: PastQuestion) {
-    const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc;
+    const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc as any;
     const dbDoc = {
       ...rest,
       university_id: universityId,
@@ -231,7 +238,7 @@ export const SupabaseService = {
       course_title: courseTitle,
       file_url: fileUrl,
       uploaded_by: uploadedBy,
-      created_at: new Date(createdAt).toISOString()
+      created_at: createdAt
     };
     const { error } = await supabase.from('documents').upsert(dbDoc);
     if (error) console.error('Error saving document:', error);
@@ -316,7 +323,7 @@ export const SupabaseService = {
       .from('messages')
       .select('*')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .order('timestamp', { ascending: true });
+      .order('created_at', { ascending: true });
     if (error) {
       console.error('Error fetching messages:', error);
       return [];

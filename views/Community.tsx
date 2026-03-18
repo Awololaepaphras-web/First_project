@@ -47,15 +47,16 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
       <div className="flex-grow min-w-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 min-w-0">
-            <span className="font-black text-[15px] truncate text-gray-900 dark:text-white flex items-center gap-1">
+            <span className="font-black text-[15px] truncate text-gray-900 dark:text-white flex items-center gap-1 relative">
               Promoted
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-proph animate-pulse shadow-[0_0_8px_rgba(0,186,124,0.8)]" />
+              <span className="absolute -inset-1 bg-brand-proph/10 blur-sm rounded-full -z-10" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-proph animate-pulse shadow-[0_0_12px_rgba(0,186,124,1)]" />
             </span>
             <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
             <span className="text-brand-muted text-[15px] truncate">@sponsor</span>
           </div>
         </div>
-        <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal font-bold italic break-words">{ad.title}</div>
+        <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal font-bold italic break-words break-all">{ad.title}</div>
         {ad.mediaUrl && (
           <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner relative group/media">
             <div className="absolute inset-0 bg-brand-proph/5 opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none" />
@@ -428,7 +429,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words">{post.content}</div>
+                  <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all">{post.content}</div>
                 )}
                 {post.mediaUrl && (
                   <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner" title="Media Preview">

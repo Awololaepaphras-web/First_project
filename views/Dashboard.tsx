@@ -48,7 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
         <div>
            <h1 className="text-4xl font-black tracking-tighter italic uppercase text-gray-900 dark:text-white">Scholar Mainframe</h1>
-           <p className="text-brand-muted font-medium italic mt-1">Status: <span className="text-brand-proph uppercase font-black">Online</span> • {user.university} Integrated Node</p>
+           <p className="text-brand-muted font-medium italic mt-1">Status: <span className="text-brand-proph uppercase font-black relative inline-block">Online<span className="absolute inset-0 bg-brand-proph/20 blur-md animate-pulse -z-10" /></span> • {user.university} Integrated Node</p>
         </div>
         <div className="flex gap-3">
            <button onClick={() => navigate('/upload')} className="bg-brand-proph text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-brand-proph/20">

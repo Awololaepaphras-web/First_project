@@ -98,15 +98,15 @@ export const Database = {
   },
   saveUsers: async (users: User[]) => {
     localStorage.setItem(KEYS.USERS, JSON.stringify(users));
-    // Sync all users to remote
-    for (const user of users) {
-      await SupabaseService.saveUser(user);
-    }
+    // We don't sync all users here to avoid spamming Supabase.
+    // Individual users are saved via saveUser.
   },
   saveUser: async (user: User) => {
     await SupabaseService.saveUser(user);
-    const users = await Database.getUsers();
-    const updatedUsers = users.map(u => u.id === user.id ? user : u);
+    const data = localStorage.getItem(KEYS.USERS);
+    const users = data ? JSON.parse(data) : [];
+    const updatedUsers = users.map((u: any) => u.id === user.id ? user : u);
+    if (!users.some((u: any) => u.id === user.id)) updatedUsers.push(user);
     localStorage.setItem(KEYS.USERS, JSON.stringify(updatedUsers));
   },
 
@@ -253,13 +253,17 @@ export const Database = {
     const data = localStorage.getItem(`${KEYS.MESSAGES}_${userId}`);
     return data ? JSON.parse(data) : [];
   },
+  saveMessages: (userId: string, messages: any[]) => {
+    localStorage.setItem(`${KEYS.MESSAGES}_${userId}`, JSON.stringify(messages));
+  },
   subscribeToMessages: (userId: string, callback: (payload: any) => void) => {
     return SupabaseService.subscribeToMessages(userId, callback);
   },
   sendMessage: async (message: any) => {
     await SupabaseService.sendMessage(message);
     const userId = message.sender_id;
-    const current = await Database.getMessages(userId);
+    const data = localStorage.getItem(`${KEYS.MESSAGES}_${userId}`);
+    const current = data ? JSON.parse(data) : [];
     localStorage.setItem(`${KEYS.MESSAGES}_${userId}`, JSON.stringify([...current, message]));
   }
 };

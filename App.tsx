@@ -110,7 +110,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initData = async () => {
-      const savedUser = DB.getSession();
+      // Restore Supabase session first
+      const { data: { session } } = await SupabaseService.getSession();
+      let savedUser = DB.getSession();
+      
+      if (session?.user) {
+        // If we have a Supabase session, try to get the full user profile
+        const users = await SupabaseService.getUsers();
+        const foundUser = users.find(u => u.id === session.user.id || u.email === session.user.email);
+        if (foundUser) {
+          savedUser = foundUser;
+          DB.saveSession(foundUser);
+        }
+      }
+
       if (savedUser) {
         setUser(savedUser);
         // Fetch monetization status from backend
@@ -120,6 +133,18 @@ const App: React.FC = () => {
             setUser(prev => prev ? { ...prev, monetization: data } : null);
           })
           .catch(err => console.error("Failed to fetch monetization status", err));
+          
+        // Load messages for this user
+        const savedMessages = await DB.getMessages(savedUser.id);
+        if (savedMessages.length > 0) {
+          setMessages(savedMessages.map(m => ({
+            id: m.id,
+            senderId: m.sender_id,
+            receiverId: m.receiver_id,
+            text: m.text,
+            timestamp: new Date(m.created_at || m.timestamp).getTime()
+          })));
+        }
       }
       
       const savedConfig = localStorage.getItem('proph_system_config');
@@ -130,9 +155,6 @@ const App: React.FC = () => {
       
       const savedUsers = await DB.getUsers();
       if (savedUsers.length > 0) setAllUsers(savedUsers);
-      
-      const savedMessages = localStorage.getItem('proph_messages');
-      if (savedMessages) setMessages(JSON.parse(savedMessages));
       
       const savedDocs = await DB.getDocuments();
       if (savedDocs.length > 0) setQuestions(savedDocs);
@@ -402,6 +424,21 @@ const App: React.FC = () => {
     };
   }, [user]);
 
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      // Map back to Supabase format for storage consistency
+      const mappedMessages = messages.map(m => ({
+        id: m.id,
+        sender_id: m.senderId,
+        receiver_id: m.receiverId,
+        text: m.text,
+        created_at: new Date(m.timestamp).toISOString()
+      }));
+      DB.saveMessages(user.id, mappedMessages);
+    }
+  }, [messages, user?.id]);
+
   useEffect(() => { DB.saveFeed(posts); }, [posts]);
   useEffect(() => { DB.saveUsers(allUsers); }, [allUsers]);
   useEffect(() => { DB.saveDocuments(questions); }, [questions]);
@@ -641,15 +678,15 @@ const App: React.FC = () => {
               sender_id: user.id,
               receiver_id: r,
               text: t,
-              timestamp: Date.now()
+              created_at: new Date().toISOString()
             };
             // Optimistic update
-            setMessages([...messages, { 
+            setMessages(prev => [...prev, { 
               id: newMsg.id, 
               senderId: user.id, 
               receiverId: r, 
               text: t, 
-              timestamp: newMsg.timestamp
+              timestamp: Date.now()
             }]);
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />

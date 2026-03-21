@@ -17,7 +17,7 @@ const GladiatorVault: React.FC<GladiatorVaultProps> = ({ user }) => {
 
   useEffect(() => {
     const loadData = async () => {
-      const gladiatorData = await DB.getGladiatorData();
+      const gladiatorData = await DB.getGladiatorData(user.id);
       const saved = gladiatorData.vault || [];
       if (saved.length > 0) {
         setItems(saved);
@@ -27,11 +27,11 @@ const GladiatorVault: React.FC<GladiatorVaultProps> = ({ user }) => {
           { id: 'v2', name: 'CSC 201 Programming Fundamentals', type: 'text/plain', uploadedBy: user.id, uploadedAt: Date.now() - 172800000, category: 'Engineering', textPreview: 'Logic, loops, and introductory programming logic for computer scientists...', arenaHistory: [] }
         ];
         setItems(mockItems);
-        await DB.saveGladiatorData({ ...gladiatorData, vault: mockItems });
+        await DB.saveGladiatorData(user.id, { ...gladiatorData, vault: mockItems });
       }
     };
     loadData();
-  }, []);
+  }, [user.id]);
 
   const categories = ['All', 'General', 'Science', 'Engineering', 'Social Sciences', 'Arts'];
 

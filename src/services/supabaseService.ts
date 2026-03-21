@@ -87,55 +87,61 @@ export const SupabaseService = {
 
   async followUser(followerId: string, followingId: string) {
     try {
-      // Add followingId to follower's following list
-      const { data: follower, error: fErr } = await supabase.from('users').select('following').eq('id', followerId).single();
-      if (fErr) throw fErr;
-      const following = [...new Set([...(follower?.following || []), followingId])];
-      const { error: u1Err } = await supabase.from('users').update({ following }).eq('id', followerId);
-      if (u1Err) throw u1Err;
-
-      // Add followerId to following's followers list
-      const { data: followingUser, error: fgErr } = await supabase.from('users').select('followers').eq('id', followingId).single();
-      if (fgErr) throw fgErr;
-      const followers = [...new Set([...(followingUser?.followers || []), followerId])];
-      const { error: u2Err } = await supabase.from('users').update({ followers }).eq('id', followingId);
-      if (u2Err) throw u2Err;
-
-      // Send notification
-      await this.sendNotification(followingId, {
-        type: 'info',
-        title: 'New Follower',
-        message: 'Someone just followed you!',
-        data: { followerId }
+      const { data, error } = await supabase.rpc('follow_user', {
+        follower_id: followerId,
+        following_id: followingId
       });
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
       console.error('Error in followUser:', error);
+      return { success: false, error };
     }
   },
 
   async unfollowUser(followerId: string, followingId: string) {
     try {
-      // Remove followingId from follower's following list
-      const { data: follower, error: fErr } = await supabase.from('users').select('following').eq('id', followerId).single();
-      if (fErr) throw fErr;
-      const following = (follower?.following || []).filter((id: string) => id !== followingId);
-      const { error: u1Err } = await supabase.from('users').update({ following }).eq('id', followerId);
-      if (u1Err) throw u1Err;
-
-      // Remove followerId from following's followers list
-      const { data: followingUser, error: fgErr } = await supabase.from('users').select('followers').eq('id', followingId).single();
-      if (fgErr) throw fgErr;
-      const followers = (followingUser?.followers || []).filter((id: string) => id !== followerId);
-      const { error: u2Err } = await supabase.from('users').update({ followers }).eq('id', followingId);
-      if (u2Err) throw u2Err;
+      const { data, error } = await supabase.rpc('unfollow_user', {
+        follower_id: followerId,
+        following_id: followingId
+      });
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
       console.error('Error in unfollowUser:', error);
+      return { success: false, error };
     }
   },
 
   async updateUserTheme(userId: string, theme: 'light' | 'dark') {
     const { error } = await supabase.from('users').update({ theme_preference: theme }).eq('id', userId);
     if (error) console.error('Error updating user theme:', error);
+  },
+
+  async transferPoints(senderId: string, receiverId: string, amount: number) {
+    try {
+      // We now use a secure RPC function that handles the transfer atomically on the server
+      // First, we need to get the receiver's referral code (Proph ID)
+      const { data: receiver, error: rErr } = await supabase
+        .from('users')
+        .select('referral_code')
+        .eq('id', receiverId)
+        .single();
+      
+      if (rErr) throw rErr;
+
+      const { data, error } = await supabase.rpc('transfer_points', {
+        receiver_proph_id: receiver.referral_code,
+        transfer_amount: amount
+      });
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error in transferPoints:', error);
+      return { success: false, error };
+    }
   },
 
   // Feed
@@ -337,7 +343,14 @@ export const SupabaseService = {
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
-        table: 'messages'
+        table: 'messages',
+        filter: `receiver_id=eq.${userId}`
+      }, callback)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `sender_id=eq.${userId}`
       }, callback)
       .subscribe();
   },
@@ -348,18 +361,29 @@ export const SupabaseService = {
   },
 
   // Gladiator Hub
-  async getGladiatorVault(): Promise<any[]> {
-    const { data, error } = await supabase.from('gladiator_vault').select('*');
-    if (error) {
+  async getGladiatorVault(userId: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('gladiator_vault')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
       console.error('Error fetching gladiator vault:', error);
-      return [];
+      return null;
     }
-    return data || [];
+    return data;
   },
 
-  async saveGladiatorItem(item: any) {
-    const { error } = await supabase.from('gladiator_vault').upsert(item);
-    if (error) console.error('Error saving gladiator item:', error);
+  async saveGladiatorVault(userId: string, vaultData: any[], arenaData: any = {}) {
+    const { error } = await supabase
+      .from('gladiator_vault')
+      .upsert({
+        user_id: userId,
+        vault_data: vaultData,
+        arena_data: arenaData,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+    if (error) console.error('Error saving gladiator vault:', error);
   },
 
   // Advertisements

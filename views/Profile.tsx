@@ -108,7 +108,11 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
             <h1 className="text-2xl font-black italic tracking-tighter uppercase">{user.name}</h1>
             <ShieldCheck className="w-6 h-6 text-brand-proph" />
           </div>
-          <p className="text-brand-muted font-black uppercase tracking-widest text-xs">@{user.nickname}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-brand-muted font-black uppercase tracking-widest text-xs">@{user.nickname}</p>
+            <div className="w-1 h-1 rounded-full bg-brand-border" />
+            <p className="text-brand-proph font-black uppercase tracking-widest text-[10px]">Proph ID: {user.referralCode}</p>
+          </div>
         </div>
 
         <p className="text-[15px] leading-relaxed dark:text-gray-200 italic">

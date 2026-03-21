@@ -70,7 +70,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
         university: formData.university,
         level: formData.level,
         role: 'student',
-        referralCode: Math.random().toString(36).substr(2, 6).toUpperCase(),
+        referralCode: (Math.random().toString(36).substr(2, 9) + Math.random().toString(36).substr(2, 8)).toUpperCase(),
         referredBy: referrer?.id,
         referralStats: { clicks: 0, signups: 0, withdrawals: 0, loginStreaks: 0 },
         points: 500 

@@ -36,6 +36,8 @@ import EarnManual from './views/EarnManual';
 import AdAnalytics from './views/AdAnalytics';
 import AdRevenueSharing from './views/AdRevenueSharing';
 import AdminPaymentVerification from './views/AdminPaymentVerification';
+import Referrals from './views/Referrals';
+import PointTransfer from './views/PointTransfer';
 import FullscreenAd from './components/FullscreenAd';
 import BannerAd from './components/BannerAd';
 import { Database as DB } from './src/services/database';
@@ -740,8 +742,10 @@ const App: React.FC = () => {
           <Route path="/ad-analytics" element={user ? <AdAnalytics user={user} ads={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/premium" element={user ? <Premium config={config} onUpgrade={(u) => setUser(u)} /> : <Navigate to="/login" />} />
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
+          <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />
+          <Route path="/transfer" element={user ? <PointTransfer user={user} /> : <Navigate to="/login" />} />
 
-          <Route path="/admin" element={
+          <Route path="/Epaphrastheadminofprophandloveforx" element={
             user && user.role === 'admin' ? (
               <AdminDashboard 
                 user={user} config={config} allUsers={allUsers} questions={questions} withdrawalRequests={withdrawalRequests} tasks={tasks}
@@ -764,7 +768,7 @@ const App: React.FC = () => {
               />
             ) : ( <AdminLogin onLogin={setUser} allUsers={allUsers} /> )
           } />
-          <Route path="/admin/payments" element={user && user.role === 'admin' ? <AdminPaymentVerification user={user} /> : <Navigate to="/admin" />} />
+          <Route path="/Epaphrastheadminofprophandloveforx/payments" element={user && user.role === 'admin' ? <AdminPaymentVerification user={user} /> : <Navigate to="/Epaphrastheadminofprophandloveforx" />} />
         </Routes>
       </Layout>
       {showAd && currentAd && (
@@ -798,6 +802,8 @@ const AdController: React.FC<{
                       pathname.startsWith('/monetization') || 
                       pathname.startsWith('/advertise') || 
                       pathname.startsWith('/premium') || 
+                      pathname.startsWith('/referrals') || 
+                      pathname.startsWith('/transfer') || 
                       pathname.startsWith('/earn-manual');
 
   useEffect(() => {

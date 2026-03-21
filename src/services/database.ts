@@ -72,18 +72,22 @@ export const Database = {
   },
 
   // Gladiator Hub
-  getGladiatorData: async () => {
-    const remoteVault = await SupabaseService.getGladiatorVault();
+  getGladiatorData: async (userId: string) => {
+    const remote = await SupabaseService.getGladiatorVault(userId);
     const data = localStorage.getItem(KEYS.GLADIATOR);
     const local = data ? JSON.parse(data) : { vault: [], history: [], stats: {} };
-    return { ...local, vault: remoteVault.length > 0 ? remoteVault : local.vault };
-  },
-  saveGladiatorData: async (data: any) => {
-    localStorage.setItem(KEYS.GLADIATOR, JSON.stringify(data));
-    if (data.vault && data.vault.length > 0) {
-      // Save the latest item as an example or sync all
-      await SupabaseService.saveGladiatorItem(data.vault[0]);
+    if (remote) {
+      return { 
+        ...local, 
+        vault: remote.vault_data || [], 
+        arena: remote.arena_data || {} 
+      };
     }
+    return local;
+  },
+  saveGladiatorData: async (userId: string, data: any) => {
+    localStorage.setItem(KEYS.GLADIATOR, JSON.stringify(data));
+    await SupabaseService.saveGladiatorVault(userId, data.vault || [], data.arena || {});
   },
 
   // Users
@@ -108,6 +112,9 @@ export const Database = {
     const updatedUsers = users.map((u: any) => u.id === user.id ? user : u);
     if (!users.some((u: any) => u.id === user.id)) updatedUsers.push(user);
     localStorage.setItem(KEYS.USERS, JSON.stringify(updatedUsers));
+  },
+  transferPoints: async (senderId: string, receiverId: string, amount: number) => {
+    return await SupabaseService.transferPoints(senderId, receiverId, amount);
   },
 
   // Session

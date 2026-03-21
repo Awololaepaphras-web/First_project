@@ -66,7 +66,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, allUsers }) => {
           status: 'active'
         };
         onLogin(adminUser);
-        navigate('/admin');
+        navigate('/Epaphrastheadminofprophandloveforx');
       } else {
         setError('Invalid identity or account does not exist.');
       }

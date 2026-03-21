@@ -14,7 +14,7 @@ interface ReferralsProps {
 const Referrals: React.FC<ReferralsProps> = ({ user }) => {
   const [copied, setCopied] = useState(false);
   
-  const referralLink = `${window.location.origin}/#/signup?ref=${user.referralCode}`;
+  const referralLink = `https://proph.app/signup?ref=${user.referralCode}`;
   const stats = user.referralStats || { clicks: 0, signups: 0, withdrawals: 0, loginStreaks: 0 };
   
   const copyToClipboard = () => {

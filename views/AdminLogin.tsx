@@ -39,7 +39,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, allUsers }) => {
           status: 'active'
         };
         onLogin(adminUser);
-        navigate('/admin');
+        navigate('/Epaphrastheadminofprophandloveforx');
       } else {
         setError('Master security key invalid. Access denied.');
       }
@@ -53,7 +53,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, allUsers }) => {
 
       if (staffUser) {
         onLogin(staffUser);
-        navigate('/admin');
+        navigate('/Epaphrastheadminofprophandloveforx');
       } else {
         setError('Identity not recognized or access key incorrect.');
       }

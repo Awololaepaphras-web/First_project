@@ -200,7 +200,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'branding', label: 'App Branding', icon: <Palette className="w-5 h-5" /> },
     { id: 'sug', label: 'SUG Verify', icon: <Award className="w-5 h-5" /> },
     { id: 'staff', label: 'Staff Matrix', icon: <ShieldCheck className="w-5 h-5" /> },
-    { id: 'payments', label: 'Payment Verify', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/admin/payments' },
+    { id: 'payments', label: 'Payment Verify', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/Epaphrastheadminofprophandloveforx/payments' },
   ];
 
   return (

@@ -5,7 +5,7 @@ import {
   Menu, X, GraduationCap, LogOut, Shield, 
   Database, Zap, Activity, ChevronDown, 
   BookOpen, Compass, PlusCircle, Wallet, MessageSquare,
-  Search, Bell, User, MoreHorizontal, Home, Tv, Library, Star,
+  Search, Bell, User, Users, Send, MoreHorizontal, Home, Tv, Library, Star,
   Sun, Moon, Megaphone, ListChecks, AtSign, Swords, BarChart2,
   Award, Camera, DollarSign, TrendingUp
 } from 'lucide-react';
@@ -77,6 +77,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     ...(user?.isPremium ? [{ name: 'Messages', path: '/messages', icon: <MessageSquare className="w-6 h-6" /> }] : []),
     { name: 'Memory Bank', path: '/memory-bank', icon: <Library className="w-6 h-6" /> },
     { name: 'Wallet', path: '/withdraw', icon: <Wallet className="w-6 h-6" /> },
+    { name: 'Transfer', path: '/transfer', icon: <Send className="w-6 h-6" /> },
+    { name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
     { name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> },
   ];
@@ -85,7 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     navItems.push({ name: 'Premium', path: '/premium', icon: <Award className="w-6 h-6 text-yellow-500" /> });
   }
 
-  const isAdminPage = location.pathname === '/admin';
+  const isAdminPage = location.pathname === '/Epaphrastheadminofprophandloveforx';
   if (isAdminPage) {
     return <div className={`min-h-screen ${isDark ? 'bg-brand-black text-white' : 'bg-white text-black'} selection:bg-brand-proph/30 transition-colors`}>{children}</div>;
   }
@@ -374,7 +376,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
             </button>
           )}
           <button 
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/Epaphrastheadminofprophandloveforx')}
             className="p-4 bg-red-600 text-white rounded-full shadow-2xl hover:scale-110 transition-all active:scale-95 group relative"
             title="Admin Dashboard"
           >

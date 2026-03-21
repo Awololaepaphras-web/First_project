@@ -55,7 +55,7 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
             const allAds = await Database.getAds();
             const targetAd = allAds.find(a => a.id === verification.details.adId);
             if (targetAd) {
-              const updatedAd = { ...targetAd, status: 'pending_review' };
+              const updatedAd = { ...targetAd, status: 'active' };
               await Database.saveAd(updatedAd);
             }
           }
@@ -80,7 +80,7 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
     <div className="min-h-screen bg-brand-black text-white p-4 md:p-8 space-y-8 pb-32">
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/admin')} className="p-3 bg-brand-card border border-brand-border rounded-2xl hover:bg-brand-proph/10 transition-all">
+          <button onClick={() => navigate('/Epaphrastheadminofprophandloveforx')} className="p-3 bg-brand-card border border-brand-border rounded-2xl hover:bg-brand-proph/10 transition-all">
             <ArrowLeft className="w-5 h-5 text-brand-proph" />
           </button>
           <div>

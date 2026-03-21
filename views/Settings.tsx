@@ -87,7 +87,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Permanent Node Details</p>
                      <div className="space-y-4 text-white font-bold text-xs uppercase italic tracking-tighter">
                         <div className="flex items-center gap-4 text-gray-400"><Mail className="w-4 h-4 text-green-500" /> {user.email || 'N/A'}</div>
-                        <div className="flex items-center gap-4 text-gray-400"><Phone className="w-4 h-4 text-green-500" /> {user.phone || '080-PROPH-NODE'}</div>
+                        <div className="flex items-center gap-4 text-gray-400"><ShieldCheck className="w-4 h-4 text-green-500" /> Proph ID: {user.referralCode}</div>
                         <div className="flex items-center gap-4 text-gray-400"><Building className="w-4 h-4 text-green-500" /> {user.university} Integrated Node</div>
                      </div>
                   </div>

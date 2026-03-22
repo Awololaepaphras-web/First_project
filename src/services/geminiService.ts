@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { AIMessage } from "../types";
+import { AIMessage } from "../../types";
 
 export interface FileData {
   data: string;

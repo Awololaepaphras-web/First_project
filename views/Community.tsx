@@ -90,6 +90,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
   const [showShareMenu, setShowShareMenu] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [mediaFile, setMediaFile] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
@@ -109,42 +110,55 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
       p.userNickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.content.toLowerCase().includes(searchQuery.toLowerCase());
     
+    const matchesTrend = !selectedTrend || 
+      p.content.toLowerCase().includes(selectedTrend.toLowerCase()) ||
+      p.id === selectedTrend;
+
     if (activeTab === 'following') {
-      return matchesSearch && user.following?.includes(p.userId);
+      return matchesSearch && matchesTrend && user.following?.includes(p.userId);
     }
-    return matchesSearch;
+    return matchesSearch && matchesTrend;
   });
 
   const trendingPosts = [...posts]
+    .filter(p => (p.likes?.length || 0) + (p.comments?.length || 0) + (p.reposts?.length || 0) >= 3)
     .sort((a, b) => {
-      const bScore = (b.likes?.length || 0) + (b.comments?.length || 0);
-      const aScore = (a.likes?.length || 0) + (a.comments?.length || 0);
+      const bScore = (b.likes?.length || 0) + (b.comments?.length || 0) + (b.reposts?.length || 0);
+      const aScore = (a.likes?.length || 0) + (a.comments?.length || 0) + (a.reposts?.length || 0);
       return bScore - aScore;
     })
     .slice(0, 5);
 
   const extractKeywords = (content: string) => {
     const words = content.split(/\s+/);
-    return words.filter(w => w.length > 4 && !['about', 'there', 'their', 'would'].includes(w.toLowerCase()));
+    return words.filter(w => {
+      const clean = w.replace(/[^a-zA-Z$]/g, '');
+      return (clean.length > 4 || clean.startsWith('$') || clean.endsWith('$')) && 
+             !['about', 'there', 'their', 'would'].includes(clean.toLowerCase());
+    });
   };
 
   const allKeywords = posts.flatMap(p => extractKeywords(p.content));
   const keywordCounts = allKeywords.reduce((acc, word) => {
-    const cleanWord = word.replace(/[^a-zA-Z]/g, '');
-    if (cleanWord.length > 3) {
+    // Preserve $ at start or end
+    const cleanWord = word.replace(/[^a-zA-Z$]/g, '');
+    if (cleanWord.length > 3 || cleanWord.startsWith('$') || cleanWord.endsWith('$')) {
       acc[cleanWord] = (acc[cleanWord] || 0) + 1;
     }
     return acc;
   }, {} as Record<string, number>);
 
   const trendingKeywords = Object.entries(keywordCounts)
-    .sort((a, b) => {
-      const valA = a[1] as number;
-      const valB = b[1] as number;
-      return valB - valA;
-    })
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
     .slice(0, 6)
-    .map(([word, count]) => ({ tag: `$${word}`, posts: count, category: 'App' }));
+    .map(([word, count]) => {
+      const isCashtag = word.startsWith('$') || word.endsWith('$');
+      return { 
+        tag: isCashtag ? word : `$${word}`, 
+        posts: count, 
+        category: isCashtag ? 'Cashtag' : 'App' 
+      };
+    });
 
   const handlePostSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,7 +254,10 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
             <div className="flex-grow pt-2">
                 <textarea 
                     value={newPostContent}
-                    onChange={e => setNewPostContent(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? ]/g, '');
+                      setNewPostContent(val);
+                    }}
                     placeholder="Synchronize scholarly thought..."
                     className="w-full bg-transparent text-xl border-none outline-none resize-none min-h-[50px] placeholder:text-brand-muted text-gray-900 dark:text-white"
                 />
@@ -267,13 +284,31 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
       </div>
 
       <div className="divide-y divide-brand-border">
-        {activeTab === 'trends' ? (
+        {selectedTrend && (
+          <div className="p-4 bg-brand-proph/10 border-b border-brand-border flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="w-5 h-5 text-brand-proph" />
+              <span className="font-black uppercase tracking-widest text-xs">Filtering by: {selectedTrend}</span>
+            </div>
+            <button 
+              onClick={() => setSelectedTrend(null)}
+              className="p-1 hover:bg-brand-proph/20 rounded-full transition-all"
+            >
+              <X className="w-4 h-4 text-brand-proph" />
+            </button>
+          </div>
+        )}
+        {activeTab === 'trends' && !selectedTrend ? (
           <div className="p-8 space-y-12">
             <div className="space-y-6">
               <h3 className="text-2xl font-black italic tracking-tighter uppercase">Trending Signals</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {trendingKeywords.map((trend, i) => (
-                  <div key={i} className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group">
+                  <div 
+                    key={i} 
+                    onClick={() => { setSelectedTrend(trend.tag); setActiveTab('all'); }}
+                    className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group"
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] font-black text-brand-proph uppercase tracking-widest">{trend.category}</span>
                     </div>
@@ -288,7 +323,11 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
               <h3 className="text-2xl font-black italic tracking-tighter uppercase">High Engagement Nodes</h3>
               <div className="space-y-4">
                 {trendingPosts.map((post) => (
-                  <div key={post.id} className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group">
+                  <div 
+                    key={post.id} 
+                    onClick={() => { setSelectedTrend(post.id); setActiveTab('all'); }}
+                    className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group"
+                  >
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-10 h-10 rounded-full bg-brand-border flex items-center justify-center font-black">{post.userName.charAt(0)}</div>
                       <div>
@@ -300,6 +339,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                     <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest text-brand-proph">
                       <span>{post.likes.length} Likes</span>
                       <span>{post.comments.length} Replies</span>
+                      <span>{post.reposts.length} Reposts</span>
                     </div>
                   </div>
                 ))}
@@ -489,6 +529,10 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                     <div className="flex gap-2 items-center">
                       <input 
                         ref={el => commentInputRefs.current[post.id] = el}
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? ]/g, '');
+                          e.target.value = val;
+                        }}
                         onKeyDown={e => { if(e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) { onComment(post.id, (e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ''; } }} 
                         placeholder="Post your reply" 
                         className="flex-grow bg-transparent border-b border-brand-border py-2 text-sm focus:border-brand-proph outline-none dark:text-white" 

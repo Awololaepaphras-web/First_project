@@ -69,11 +69,26 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest px-1">Display Node Name</label>
-                    <input className="w-full bg-gray-50 dark:bg-brand-black border border-gray-200 dark:border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-green-500 font-bold text-black dark:text-white" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <input 
+                      className="w-full bg-gray-50 dark:bg-brand-black border border-gray-200 dark:border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-green-500 font-bold text-black dark:text-white" 
+                      value={formData.name} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '');
+                        setFormData({...formData, name: val});
+                      }} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest px-1 flex items-center gap-2"><AtSign className="w-3 h-3" /> Social Nickname</label>
-                    <input className="w-full bg-gray-50 dark:bg-brand-black border border-gray-200 dark:border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-green-500 font-bold text-black dark:text-white" value={formData.nickname} placeholder="unique_node" onChange={e => setFormData({...formData, nickname: e.target.value.toLowerCase()})} />
+                    <input 
+                      className="w-full bg-gray-50 dark:bg-brand-black border border-gray-200 dark:border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-green-500 font-bold text-black dark:text-white" 
+                      value={formData.nickname} 
+                      placeholder="unique_node" 
+                      onChange={e => {
+                        const val = e.target.value.toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+                        setFormData({...formData, nickname: val});
+                      }} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest px-1">Academic Level Pointer</label>

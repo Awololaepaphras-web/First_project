@@ -16,7 +16,6 @@ import AdminDashboard from './views/AdminDashboard';
 import AdminLogin from './views/AdminLogin';
 import Profile from './views/Profile';
 import UserUpload from './views/UserUpload';
-import SplashScreen from './components/SplashScreen';
 import Withdrawal from './views/Withdrawal';
 import MemoryBank from './views/MemoryBank';
 import Premium from './views/Premium';
@@ -41,10 +40,9 @@ import PointTransfer from './views/PointTransfer';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
-import BannerAd from './components/BannerAd';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
-import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, UserAnalytics, AdTimeFrame, PaymentVerification } from './types';
+import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, PaymentVerification } from './types';
 import { MOCK_QUESTIONS, UNIVERSITIES as INITIAL_UNIVERSITIES, UNIVERSITY_COLLEGES as INITIAL_COLLEGES, COLLEGE_DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants';
 
 const DEFAULT_CONFIG: SystemConfig = {

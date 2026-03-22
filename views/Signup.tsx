@@ -173,7 +173,16 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
             <div className="grid grid-cols-1 gap-4">
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input required className="w-full pl-12 pr-4 py-4 bg-gray-900 border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white" placeholder="Scholar Full Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+                <input 
+                  required 
+                  className="w-full pl-12 pr-4 py-4 bg-gray-900 border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white" 
+                  placeholder="Scholar Full Name" 
+                  value={formData.name} 
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '');
+                    setFormData({...formData, name: val});
+                  }} 
+                />
               </div>
               <div className="relative">
                 <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -186,7 +195,10 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
                   } rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white transition-colors`} 
                   placeholder="Handle (e.g. josh_unilag)" 
                   value={formData.nickname} 
-                  onChange={(e) => setFormData({...formData, nickname: e.target.value})} 
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+                    setFormData({...formData, nickname: val});
+                  }} 
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   {checkingNickname && <div className="w-4 h-4 border-2 border-brand-proph border-t-transparent rounded-full animate-spin" />}

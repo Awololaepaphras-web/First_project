@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Bot, Sparkles, Trash2, Paperclip, FileText, X, Wand2, Loader2 } from 'lucide-react';
-import { getAIResponse, FileData } from '../services/geminiService';
+import { getAIResponse, FileData } from '../src/services/geminiService';
 import { AIMessage } from '../types';
 
 const AIAssistant: React.FC = () => {

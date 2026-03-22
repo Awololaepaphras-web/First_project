@@ -40,7 +40,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-brand-black py-12 px-4 sm:px-6 lg:px-8 transition-colors">
       <div className="max-w-5xl mx-auto space-y-12 animate-fade-in">
         
         {/* Header */}
@@ -49,41 +49,41 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
             <Gift className="w-4 h-4" />
             <span>Growth Bounty Terminal</span>
           </div>
-          <h1 className="text-4xl md:text-7xl font-black text-gray-900 tracking-tighter leading-none italic uppercase">
+          <h1 className="text-4xl md:text-7xl font-black text-gray-900 dark:text-white tracking-tighter leading-none italic uppercase">
             Recruit <span className="text-brand-proph">Peers</span>
           </h1>
-          <p className="max-w-2xl mx-auto text-gray-500 font-medium text-lg italic">
+          <p className="max-w-2xl mx-auto text-gray-500 dark:text-brand-muted font-medium text-lg italic">
             Expand the federal network and build your wealth. Multi-stage point rewards for every node you bring online.
           </p>
         </div>
 
         {/* Reward Tiers Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-           <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-xl flex flex-col items-center text-center group hover:border-brand-proph transition-all">
+           <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-xl flex flex-col items-center text-center group hover:border-brand-proph transition-all">
               <div className="w-16 h-16 bg-brand-proph/10 text-brand-proph rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <UserPlus className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900">+10 pts</p>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Signup Reward</p>
-              <p className="text-xs text-gray-500 mt-3 font-medium italic">Awarded upon successful account verification.</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 pts</p>
+              <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Signup Reward</p>
+              <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Awarded upon successful account verification.</p>
            </div>
            
-           <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-xl flex flex-col items-center text-center group hover:border-blue-500 transition-all">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+           <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-xl flex flex-col items-center text-center group hover:border-blue-500 transition-all">
+              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <Clock className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900">+10 pts/day</p>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Active Node Bonus</p>
-              <p className="text-xs text-gray-500 mt-3 font-medium italic">Earn when referee logins daily for 4 days.</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 pts/day</p>
+              <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Active Node Bonus</p>
+              <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Earn when referee logins daily for 4 days.</p>
            </div>
 
-           <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-xl flex flex-col items-center text-center group hover:border-purple-500 transition-all">
-              <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+           <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-xl flex flex-col items-center text-center group hover:border-purple-500 transition-all">
+              <div className="w-16 h-16 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <Zap className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900">+60 pts</p>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Conversion Bounty</p>
-              <p className="text-xs text-gray-500 mt-3 font-medium italic">Earned when referee makes first withdrawal.</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+60 pts</p>
+              <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Conversion Bounty</p>
+              <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Earned when referee makes first withdrawal.</p>
            </div>
         </div>
 
@@ -120,27 +120,27 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
 
         {/* Detailed Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-           <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-8">
-              <h3 className="text-xl font-black text-gray-900 italic uppercase flex items-center gap-3">
+           <div className="bg-white dark:bg-brand-card p-10 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-sm space-y-8">
+              <h3 className="text-xl font-black text-gray-900 dark:text-white italic uppercase flex items-center gap-3">
                 <BarChart3 className="w-6 h-6 text-brand-proph" />
                 Live Network Performance
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                 <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Clicks</p>
-                    <p className="text-4xl font-black text-gray-900 tracking-tighter">{stats.clicks}</p>
+                 <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-brand-border">
+                    <p className="text-[9px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mb-1">Total Clicks</p>
+                    <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.clicks}</p>
                  </div>
-                 <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Scholars</p>
-                    <p className="text-4xl font-black text-gray-900 tracking-tighter">{stats.signups}</p>
+                 <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-brand-border">
+                    <p className="text-[9px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mb-1">Active Scholars</p>
+                    <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.signups}</p>
                  </div>
-                 <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Streak Completions</p>
-                    <p className="text-4xl font-black text-gray-900 tracking-tighter">{stats.loginStreaks}</p>
+                 <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-brand-border">
+                    <p className="text-[9px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mb-1">Streak Completions</p>
+                    <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.loginStreaks}</p>
                  </div>
-                 <div className="p-6 bg-green-50 rounded-3xl border border-green-100">
-                    <p className="text-[9px] font-black text-green-600 uppercase tracking-widest mb-1">Conversions</p>
-                    <p className="text-4xl font-black text-green-700 tracking-tighter">{stats.withdrawals}</p>
+                 <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-3xl border border-green-100 dark:border-green-900/30">
+                    <p className="text-[9px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest mb-1">Conversions</p>
+                    <p className="text-4xl font-black text-green-700 dark:text-green-400 tracking-tighter">{stats.withdrawals}</p>
                  </div>
               </div>
            </div>

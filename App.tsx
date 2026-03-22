@@ -38,6 +38,8 @@ import AdRevenueSharing from './views/AdRevenueSharing';
 import AdminPaymentVerification from './views/AdminPaymentVerification';
 import Referrals from './views/Referrals';
 import PointTransfer from './views/PointTransfer';
+import ForgotPassword from './views/ForgotPassword';
+import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
 import BannerAd from './components/BannerAd';
 import { Database as DB } from './src/services/database';
@@ -744,6 +746,8 @@ const App: React.FC = () => {
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
           <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />
           <Route path="/transfer" element={user ? <PointTransfer user={user} /> : <Navigate to="/login" />} />
+          <Route path="/forgot-password" element={<ForgotPassword allUsers={allUsers} />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route path="/Epaphrastheadminofprophandloveforx" element={
             user && user.role === 'admin' ? (

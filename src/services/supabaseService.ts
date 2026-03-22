@@ -31,30 +31,104 @@ export const SupabaseService = {
     await supabase.auth.signOut();
   },
 
+  async resetPasswordForEmail(email: string) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { data, error };
+  },
+
+  async updatePassword(password: string) {
+    const { data, error } = await supabase.auth.updateUser({
+      password: password
+    });
+    return { data, error };
+  },
+
   // Users
-  async getUsers(): Promise<User[]> {
-    const { data, error } = await supabase.from('users').select('*');
+  async getUserProfile(userId: string): Promise<User | null> {
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
     if (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+    return {
+      ...data,
+      themePreference: data.theme_preference,
+      isSugVerified: data.is_sug_verified,
+      staffPermissions: data.staff_permissions,
+      isPremium: data.is_premium,
+      premiumExpiry: data.premium_until,
+      referralCode: data.referral_code,
+      referralStats: data.referral_stats,
+      bankDetails: data.bank_details,
+      gladiatorEarnings: data.gladiator_earnings,
+      isVerified: data.is_verified,
+      verificationCode: data.verification_code,
+      referredBy: data.referred_by,
+      engagementStats: data.engagement_stats,
+      createdAt: new Date(data.created_at).getTime()
+    };
+  },
+
+  async isNicknameAvailable(nickname: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('nickname')
+        .ilike('nickname', nickname)
+        .maybeSingle();
+      
+      if (error) {
+        // If the table doesn't exist, it's a major setup issue
+        if (error.code === 'PGRST116') return true; // No rows found
+        if (error.message.includes('relation "public.users" does not exist')) {
+          console.error('CRITICAL: Supabase "users" table not found. Please run the setup SQL script.');
+          return true; // Allow signup to proceed, but it will likely fail on trigger
+        }
+        console.error('Error checking nickname availability:', error);
+        return false; // Assume unavailable on other errors for safety
+      }
+      
+      return !data;
+    } catch (err) {
+      console.error('Unexpected error in isNicknameAvailable:', err);
+      return false;
+    }
+  },
+
+  async getUsers(): Promise<User[]> {
+    try {
+      const { data, error } = await supabase.from('users').select('*');
+      if (error) {
+        if (error.message.includes('relation "public.users" does not exist')) {
+          console.error('CRITICAL: Supabase "users" table not found. Please run the setup SQL script.');
+        } else {
+          console.error('Error fetching users:', error);
+        }
+        return [];
+      }
+      return (data || []).map(u => ({
+        ...u,
+        themePreference: u.theme_preference,
+        isSugVerified: u.is_sug_verified,
+        staffPermissions: u.staff_permissions,
+        isPremium: u.is_premium,
+        premiumExpiry: u.premium_until,
+        referralCode: u.referral_code,
+        referralStats: u.referral_stats,
+        bankDetails: u.bank_details,
+        gladiatorEarnings: u.gladiator_earnings,
+        isVerified: u.is_verified,
+        verificationCode: u.verification_code,
+        referredBy: u.referred_by,
+        engagementStats: u.engagement_stats,
+        createdAt: new Date(u.created_at).getTime()
+      }));
+    } catch (err) {
+      console.error('Unexpected error in getUsers:', err);
       return [];
     }
-    return (data || []).map(u => ({
-      ...u,
-      themePreference: u.theme_preference,
-      isSugVerified: u.is_sug_verified,
-      staffPermissions: u.staff_permissions,
-      isPremium: u.is_premium,
-      premiumExpiry: u.premium_until,
-      referralCode: u.referral_code,
-      referralStats: u.referral_stats,
-      bankDetails: u.bank_details,
-      gladiatorEarnings: u.gladiator_earnings,
-      isVerified: u.is_verified,
-      verificationCode: u.verification_code,
-      referredBy: u.referred_by,
-      engagementStats: u.engagement_stats,
-      createdAt: new Date(u.created_at).getTime()
-    }));
   },
 
   async saveUser(user: User) {

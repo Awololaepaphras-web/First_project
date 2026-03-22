@@ -23,34 +23,56 @@ const Login: React.FC<LoginProps> = ({ onLogin, allUsers }) => {
     setLoading(true);
 
     try {
-      // First try Supabase Auth if it's an email
-      if (identifier.includes('@')) {
-        const { data, error: authError } = await SupabaseService.signIn(identifier, password);
-        if (!authError && data.user) {
+      let emailToUse = identifier;
+      
+      // If it's not an email, try to find the email associated with this nickname
+      if (!identifier.includes('@')) {
+        const foundUserByNickname = allUsers.find(u => u.nickname?.toLowerCase() === identifier.toLowerCase());
+        if (foundUserByNickname && foundUserByNickname.email) {
+          emailToUse = foundUserByNickname.email;
+        }
+      }
+
+      // First try Supabase Auth if it's an email (or we found one)
+      if (emailToUse.includes('@')) {
+        const { data, error: authError } = await SupabaseService.signIn(emailToUse, password);
+        
+        if (authError) {
+          // If it's a specific auth error, show it
+          if (authError.message.toLowerCase().includes('email not confirmed')) {
+            setError('Email verification required. Please check your inbox.');
+            return;
+          }
+          if (authError.message.toLowerCase().includes('invalid login credentials')) {
+            setError('Invalid identity or account does not exist.');
+            return;
+          }
+          // For other errors, we might want to fall back to local check (for mock users)
+          console.warn('Supabase Auth error:', authError.message);
+        } else if (data.user) {
           // Find the user in our users table
-          const users = await SupabaseService.getUsers();
-          const foundUser = users.find(u => u.email === identifier);
-          if (foundUser) {
-            onLogin(foundUser);
+          const profile = await SupabaseService.getUserProfile(data.user.id);
+          if (profile) {
+            onLogin(profile);
             navigate('/');
+            return;
+          } else {
+            setError('Profile not found. Please contact support.');
             return;
           }
         }
       }
 
       // Fallback to local check (for existing mock users or phone login)
+      // Note: This only works for users that have a password field in the local DB
       const foundUser = allUsers.find(u => 
         u.email?.toLowerCase() === identifier.toLowerCase() || 
         u.phone === identifier
       );
       
-      if (foundUser) {
-        if (foundUser.password === password) {
-          onLogin(foundUser);
-          navigate('/');
-        } else {
-          setError('Incorrect security passphrase.');
-        }
+      if (foundUser && (foundUser as any).password === password) {
+        onLogin(foundUser);
+        navigate('/');
       } else if (identifier === 'admin@proph.edu.ng' && password === '197005') {
          const adminUser: User = {
           id: 'admin-1',

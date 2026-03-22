@@ -483,13 +483,15 @@ BEGIN
     EXIT WHEN NOT EXISTS (SELECT 1 FROM public.users WHERE referral_code = new_proph_id);
   END LOOP;
 
-  INSERT INTO public.users (id, email, name, nickname, university, referral_code, role)
+  INSERT INTO public.users (id, email, name, nickname, university, level, referred_by, referral_code, role)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', 'Scholar'),
     COALESCE(NEW.raw_user_meta_data->>'nickname', 'user_' || substr(NEW.id::text, 1, 8)),
     COALESCE(NEW.raw_user_meta_data->>'university', 'Federal University'),
+    COALESCE(NEW.raw_user_meta_data->>'level', '100'),
+    (CASE WHEN NEW.raw_user_meta_data->>'referredBy' IS NOT NULL AND NEW.raw_user_meta_data->>'referredBy' != '' THEN (NEW.raw_user_meta_data->>'referredBy')::UUID ELSE NULL END),
     new_proph_id,
     CASE 
       WHEN NEW.email = 'awololaeo.22@student.funaab.edu.ng' THEN 'admin'

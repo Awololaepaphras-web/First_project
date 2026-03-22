@@ -1,164 +1,107 @@
 
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Lock, CheckCircle2, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Lock, CheckCircle2, AlertCircle, ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { User } from '../types';
+import { SupabaseService } from '../src/services/supabaseService';
 
 interface ForgotPasswordProps {
   allUsers: User[];
-  onResetPassword: (email: string, newPassword: string) => void;
 }
 
-const ForgotPassword: React.FC<ForgotPasswordProps> = ({ allUsers, onResetPassword }) => {
-  const [step, setStep] = useState<'email' | 'code' | 'new-password' | 'success'>('email');
+const ForgotPassword: React.FC<ForgotPasswordProps> = ({ allUsers }) => {
+  const [step, setStep] = useState<'email' | 'success'>('email');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSendCode = (e: React.FormEvent) => {
+  const handleSendResetLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (user) {
-      setStep('code');
-    } else {
-      setError('No student account found with that official email.');
-    }
-  };
+    setLoading(true);
 
-  const handleVerifyCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code === '999999') {
-      setStep('new-password');
-      setError('');
-    } else {
-      setError('Invalid recovery code. (Demo: use 999999)');
+    try {
+      const { error: resetError } = await SupabaseService.resetPasswordForEmail(email);
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setStep('success');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to send reset link. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleReset = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    onResetPassword(email, newPassword);
-    setStep('success');
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 bg-gray-50 py-12">
-      <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 md:p-14 border border-gray-100">
-        <Link to="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-green-600 font-black text-[10px] uppercase tracking-widest mb-8 transition-colors">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-brand-black py-12">
+      <div className="max-w-md w-full bg-brand-card rounded-[3rem] shadow-2xl p-10 md:p-14 border border-brand-border">
+        <Link to="/login" className="inline-flex items-center gap-2 text-brand-muted hover:text-brand-proph font-black text-[10px] uppercase tracking-widest mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Vault
         </Link>
 
         <div className="text-center">
-          <div className="w-20 h-20 bg-green-50 text-green-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+          <div className="w-20 h-20 bg-brand-proph/10 text-brand-proph rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner border border-brand-proph/20">
              <ShieldCheck className="w-10 h-10" />
           </div>
 
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Account Recovery</h2>
-          <p className="text-gray-500 font-medium mb-8">Restore access to your secure academic repository.</p>
+          <h2 className="text-3xl font-black text-white tracking-tight mb-2 italic uppercase">Account Recovery</h2>
+          <p className="text-brand-muted font-medium mb-8">Restore access to your secure academic repository.</p>
 
           {error && (
-            <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600">
+            <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-500">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p className="text-xs font-bold text-left uppercase">{error}</p>
             </div>
           )}
 
           {step === 'email' && (
-            <form onSubmit={handleSendCode} className="space-y-6">
+            <form onSubmit={handleSendResetLink} className="space-y-6">
               <div className="text-left">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-2">Official Email</label>
-                <input
-                  type="email"
-                  required
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-gray-700"
-                  placeholder="amina@student.edu.ng"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <label className="block text-[10px] font-black text-brand-muted uppercase tracking-widest mb-3 ml-2">Official Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    className="w-full pl-12 pr-6 py-4 bg-gray-900 border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white"
+                    placeholder="amina@student.edu.ng"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
               </div>
-              <button type="submit" className="w-full bg-green-600 text-white py-5 rounded-[2rem] font-black text-lg hover:bg-green-700 transition-all shadow-xl">
-                Send Recovery Code
-              </button>
-            </form>
-          )}
-
-          {step === 'code' && (
-            <form onSubmit={handleVerifyCode} className="space-y-6">
-              <div className="text-left">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-2">6-Digit Code</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  className="w-full px-6 py-6 bg-gray-50 border border-gray-200 rounded-[2rem] text-center text-3xl font-black tracking-[0.5em] text-gray-900 outline-none"
-                  placeholder="000000"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                />
-              </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase">Demo: Use 999999</p>
-              <button type="submit" className="w-full bg-green-600 text-white py-5 rounded-[2rem] font-black text-lg hover:bg-green-700 transition-all shadow-xl">
-                Verify Code
-              </button>
-            </form>
-          )}
-
-          {step === 'new-password' && (
-            <form onSubmit={handleReset} className="space-y-6 text-left">
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-2">New Secure Passphrase</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-gray-700"
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-2">Confirm New Secret</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-gray-700"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
-              <button type="submit" className="w-full bg-green-600 text-white py-5 rounded-[2rem] font-black text-lg hover:bg-green-700 transition-all shadow-xl">
-                Reset Passphrase
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-brand-proph text-black py-5 rounded-[2rem] font-black text-lg hover:brightness-110 transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>Sending... <Loader2 className="w-5 h-5 animate-spin" /></>
+                ) : (
+                  'Send Recovery Link'
+                )}
               </button>
             </form>
           )}
 
           {step === 'success' && (
             <div className="space-y-8 animate-in zoom-in">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-10 h-10 text-green-600" />
+              <div className="w-20 h-20 bg-brand-proph/20 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-10 h-10 text-brand-proph" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-gray-900 uppercase">Access Restored</h3>
-                <p className="text-gray-500 font-medium">Your security credentials have been updated.</p>
+                <h3 className="text-xl font-black text-white uppercase italic">Link Dispatched</h3>
+                <p className="text-brand-muted font-medium">Check your official email for the recovery link to restore your node access.</p>
               </div>
               <button 
                 onClick={() => navigate('/login')}
-                className="w-full bg-gray-900 text-white py-5 rounded-[2rem] font-black text-lg hover:bg-black transition-all shadow-xl"
+                className="w-full bg-white text-black py-5 rounded-[2rem] font-black text-lg hover:bg-gray-100 transition-all shadow-xl"
               >
-                Go to Sign In
+                Return to Login
               </button>
             </div>
           )}

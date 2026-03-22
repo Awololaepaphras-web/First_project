@@ -26,6 +26,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingNickname, setCheckingNickname] = useState(false);
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   
   const referralCode = searchParams.get('ref');
 
@@ -35,10 +37,30 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
     }
   }, [referralCode]);
 
+  useEffect(() => {
+    const checkNickname = async () => {
+      const cleanNickname = formData.nickname.toLowerCase().replace(/\s/g, '');
+      if (cleanNickname.length < 3) {
+        setNicknameStatus('idle');
+        return;
+      }
+
+      setCheckingNickname(true);
+      const isAvailable = await SupabaseService.isNicknameAvailable(cleanNickname);
+      setNicknameStatus(isAvailable ? 'available' : 'taken');
+      setCheckingNickname(false);
+    };
+
+    const timeoutId = setTimeout(checkNickname, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.nickname]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    const cleanNickname = formData.nickname.toLowerCase().replace(/\s/g, '');
+    
     setLoading(true);
+    setError('');
 
     if (formData.password.length < 8) {
       setLoading(false);
@@ -48,48 +70,71 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
       setLoading(false);
       return setError('Passphrases mismatch.');
     }
-    if (allUsers.some(u => u.email?.toLowerCase() === formData.email.toLowerCase())) {
+
+    // Check nickname availability in real-time
+    const isAvailable = await SupabaseService.isNicknameAvailable(cleanNickname);
+    if (!isAvailable) {
       setLoading(false);
-      return setError('Email already indexed.');
-    }
-    if (allUsers.some(u => u.nickname?.toLowerCase() === formData.nickname.toLowerCase())) {
-      setLoading(false);
-      return setError('Nickname already claimed.');
+      return setError('This nickname is already claimed. Please choose another.');
     }
 
     try {
       const referrer = allUsers.find(u => u.referralCode === referralCode);
 
-      const newUser: UserType = {
-        id: Math.random().toString(36).substr(2, 9),
+      // We don't need to generate a random ID here, Supabase Auth will do it.
+      // We pass the user metadata to signUp, and the database trigger will handle the rest.
+      const userData = {
         name: formData.name,
-        nickname: formData.nickname.toLowerCase().replace(/\s/g, ''),
-        email: formData.email,
-        password: formData.password,
-        isVerified: false,
+        nickname: cleanNickname,
         university: formData.university,
         level: formData.level,
-        role: 'student',
-        referralCode: (Math.random().toString(36).substr(2, 9) + Math.random().toString(36).substr(2, 8)).toUpperCase(),
-        referredBy: referrer?.id,
-        referralStats: { clicks: 0, signups: 0, withdrawals: 0, loginStreaks: 0 },
-        points: 500 
+        referredBy: referrer?.id
       };
 
       // Create in Supabase Auth
-      const { data, error: authError } = await SupabaseService.signUp(formData.email, formData.password, newUser);
+      const { data, error: authError } = await SupabaseService.signUp(formData.email, formData.password, userData);
       
       if (authError) {
         setError(authError.message);
-      } else {
-        // Save to users table
-        await SupabaseService.saveUser(newUser);
-        onSignup(newUser);
-        navigate('/');
+      } else if (data.user) {
+        // If session is null, it means email confirmation is required
+        if (!data.session) {
+          setError('Verification required. Please check your email for a confirmation link before logging in.');
+          setLoading(false);
+          return;
+        }
+
+        // The trigger in Supabase will automatically create the user in the 'public.users' table
+        // We can now fetch that user to get the full profile (including the generated Proph ID)
+        const profile = await SupabaseService.getUserProfile(data.user.id);
+        
+        if (profile) {
+          onSignup(profile);
+          navigate('/');
+        } else {
+          // Fallback if profile isn't ready immediately
+          const fallbackUser: UserType = {
+            id: data.user.id,
+            name: formData.name,
+            nickname: cleanNickname,
+            email: formData.email,
+            university: formData.university,
+            level: formData.level,
+            role: 'student',
+            referralCode: 'PENDING', // Will be updated on next fetch
+            points: 500
+          };
+          onSignup(fallbackUser);
+          navigate('/');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Signup failed. Please try again.');
+      if (err.message?.includes('User already registered')) {
+        setError('This email is already registered. Try logging in.');
+      } else {
+        setError('Signup failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -132,7 +177,25 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
               </div>
               <div className="relative">
                 <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input required className="w-full pl-12 pr-4 py-4 bg-gray-900 border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white" placeholder="Handle (e.g. josh_unilag)" value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} />
+                <input 
+                  required 
+                  className={`w-full pl-12 pr-12 py-4 bg-gray-900 border ${
+                    nicknameStatus === 'available' ? 'border-brand-proph' : 
+                    nicknameStatus === 'taken' ? 'border-red-500' : 
+                    'border-brand-border'
+                  } rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white transition-colors`} 
+                  placeholder="Handle (e.g. josh_unilag)" 
+                  value={formData.nickname} 
+                  onChange={(e) => setFormData({...formData, nickname: e.target.value})} 
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {checkingNickname && <div className="w-4 h-4 border-2 border-brand-proph border-t-transparent rounded-full animate-spin" />}
+                  {nicknameStatus === 'available' && <ShieldCheck className="w-5 h-5 text-brand-proph" />}
+                  {nicknameStatus === 'taken' && <AlertCircle className="w-5 h-5 text-red-500" />}
+                </div>
+                {nicknameStatus === 'taken' && (
+                  <p className="absolute -bottom-5 left-4 text-[8px] font-black text-red-500 uppercase tracking-widest">Handle already claimed</p>
+                )}
               </div>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -158,8 +221,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
             </div>
             <button 
               type="submit" 
-              disabled={loading}
-              className="w-full bg-brand-proph text-black py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+              disabled={loading || checkingNickname || nicknameStatus === 'taken'}
+              className="w-full bg-brand-proph text-black py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>Syncing... <Loader2 className="w-5 h-5 animate-spin" /></>

@@ -150,14 +150,15 @@ async function startServer() {
     res.json({ success: true, rates: RATES });
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Vite middleware for development (only if not on Vercel)
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
+    // Local production mode
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
@@ -176,15 +177,13 @@ async function startServer() {
 
 let appInstance: any;
 
-const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
-
-if (!isVercel) {
-  startServer().catch(console.error);
-}
-
 export default async (req: any, res: any) => {
   if (!appInstance) {
     appInstance = await startServer();
   }
-  return appInstance(req, res);
+  appInstance(req, res);
 };
+
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  startServer().catch(console.error);
+}

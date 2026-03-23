@@ -40,7 +40,7 @@ import PointTransfer from './views/PointTransfer';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
-import SplashScreen from './src/components/SplashScreen';
+import SplashScreen from './components/SplashScreen';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
 import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, PaymentVerification } from './types';

@@ -121,7 +121,11 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
   });
 
   const trendingPosts = [...posts]
-    .filter(p => (p.likes?.length || 0) + (p.comments?.length || 0) + (p.reposts?.length || 0) >= 3)
+    .filter(p => {
+      const content = p.content.trim();
+      const hasCashtag = content.startsWith('$') || content.endsWith('$');
+      return hasCashtag && (p.likes?.length || 0) + (p.comments?.length || 0) + (p.reposts?.length || 0) >= 3;
+    })
     .sort((a, b) => {
       const bScore = (b.likes?.length || 0) + (b.comments?.length || 0) + (b.reposts?.length || 0);
       const aScore = (a.likes?.length || 0) + (a.comments?.length || 0) + (a.reposts?.length || 0);
@@ -133,7 +137,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
     const words = content.split(/\s+/);
     return words.filter(w => {
       const clean = w.replace(/[^a-zA-Z$]/g, '');
-      return (clean.length > 4 || clean.startsWith('$') || clean.endsWith('$')) && 
+      return (clean.startsWith('$') || clean.endsWith('$')) && 
              !['about', 'there', 'their', 'would'].includes(clean.toLowerCase());
     });
   };
@@ -303,46 +307,58 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
             <div className="space-y-6">
               <h3 className="text-2xl font-black italic tracking-tighter uppercase">Trending Signals</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {trendingKeywords.map((trend, i) => (
-                  <div 
-                    key={i} 
-                    onClick={() => { setSelectedTrend(trend.tag); setActiveTab('all'); }}
-                    className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] font-black text-brand-proph uppercase tracking-widest">{trend.category}</span>
+                {trendingKeywords.length > 0 ? (
+                  trendingKeywords.map((trend, i) => (
+                    <div 
+                      key={i} 
+                      onClick={() => { setSelectedTrend(trend.tag); setActiveTab('all'); }}
+                      className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-black text-brand-proph uppercase tracking-widest">{trend.category}</span>
+                      </div>
+                      <h4 className="text-lg font-black tracking-tight mb-1">{trend.tag}</h4>
+                      <p className="text-xs text-brand-muted font-bold">{trend.posts} Nodes Interacting</p>
                     </div>
-                    <h4 className="text-lg font-black tracking-tight mb-1">{trend.tag}</h4>
-                    <p className="text-xs text-brand-muted font-bold">{trend.posts} Nodes Interacting</p>
+                  ))
+                ) : (
+                  <div className="col-span-full p-12 text-center bg-brand-border/10 dark:bg-white/5 rounded-3xl border border-dashed border-brand-border">
+                    <p className="text-sm font-black uppercase tracking-widest text-brand-muted italic">No active trends detected. Start or end your message with $ to trend.</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             <div className="space-y-6">
               <h3 className="text-2xl font-black italic tracking-tighter uppercase">High Engagement Nodes</h3>
               <div className="space-y-4">
-                {trendingPosts.map((post) => (
-                  <div 
-                    key={post.id} 
-                    onClick={() => { setSelectedTrend(post.id); setActiveTab('all'); }}
-                    className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-brand-border flex items-center justify-center font-black">{post.userName.charAt(0)}</div>
-                      <div>
-                        <h4 className="font-black text-sm">{post.userName}</h4>
-                        <p className="text-[10px] text-brand-muted uppercase tracking-widest">@{post.userNickname}</p>
+                {trendingPosts.length > 0 ? (
+                  trendingPosts.map((post) => (
+                    <div 
+                      key={post.id} 
+                      onClick={() => { setSelectedTrend(post.id); setActiveTab('all'); }}
+                      className="p-6 bg-brand-border/20 dark:bg-white/5 rounded-3xl border border-brand-border hover:border-brand-proph/50 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-border flex items-center justify-center font-black">{post.userName.charAt(0)}</div>
+                        <div>
+                          <h4 className="font-black text-sm">{post.userName}</h4>
+                          <p className="text-[10px] text-brand-muted uppercase tracking-widest">@{post.userNickname}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm line-clamp-2 mb-3">{post.content}</p>
+                      <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest text-brand-proph">
+                        <span>{post.likes.length} Likes</span>
+                        <span>{post.comments.length} Replies</span>
+                        <span>{post.reposts.length} Reposts</span>
                       </div>
                     </div>
-                    <p className="text-sm line-clamp-2 mb-3">{post.content}</p>
-                    <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest text-brand-proph">
-                      <span>{post.likes.length} Likes</span>
-                      <span>{post.comments.length} Replies</span>
-                      <span>{post.reposts.length} Reposts</span>
-                    </div>
+                  ))
+                ) : (
+                  <div className="p-12 text-center bg-brand-border/10 dark:bg-white/5 rounded-3xl border border-dashed border-brand-border">
+                    <p className="text-sm font-black uppercase tracking-widest text-brand-muted italic">No high engagement nodes detected with $ markers.</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 

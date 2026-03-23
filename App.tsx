@@ -40,6 +40,7 @@ import PointTransfer from './views/PointTransfer';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
+import SplashScreen from './src/components/SplashScreen';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
 import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, PaymentVerification } from './types';
@@ -97,18 +98,13 @@ const App: React.FC = () => {
   const [universities, setUniversities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [universityColleges, setUniversityColleges] = useState<Record<string, string[]>>(INITIAL_COLLEGES);
   const [collegeDepartments, setCollegeDepartments] = useState<Record<string, string[]>>(INITIAL_DEPARTMENTS);
-  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
+  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || 'https://picsum.photos/seed/proph/800');
+  const [showSplash, setShowSplash] = useState(true);
   const [navigationCount, setNavigationCount] = useState(0);
   const [loginTime, setLoginTime] = useState<number | null>(null);
   const [showAd, setShowAd] = useState(false);
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [hasShownInitialAd, setHasShownInitialAd] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    const splashTimer = setTimeout(() => setShowSplash(false), 8000);
-    return () => clearTimeout(splashTimer);
-  }, []);
 
   useEffect(() => {
     const initData = async () => {
@@ -395,27 +391,27 @@ const App: React.FC = () => {
       const initialMessages = await DB.getMessages(user.id);
       setMessages(initialMessages.map(m => ({
         id: m.id,
-        senderId: m.sender_id,
-        receiverId: m.receiver_id,
-        text: m.text,
-        timestamp: new Date(m.created_at).getTime()
+        senderId: m.senderId,
+        receiverId: m.receiverId,
+        text: m.content,
+        createdAt: new Date(m.createdAt).getTime()
       })));
     };
     fetchMessages();
 
     // Subscribe to new messages
     const msgSub = DB.subscribeToMessages(user.id, (payload) => {
-      if (payload.eventType === 'INSERT') {
-        const newMessage = payload.new;
+      if (payload) {
+        const newMessage = payload;
         setMessages(prev => {
           // Avoid duplicates
           if (prev.some(m => m.id === newMessage.id)) return prev;
           return [...prev, {
             id: newMessage.id,
-            senderId: newMessage.sender_id,
-            receiverId: newMessage.receiver_id,
-            text: newMessage.text,
-            timestamp: new Date(newMessage.created_at).getTime()
+            senderId: newMessage.senderId,
+            receiverId: newMessage.receiverId,
+            text: newMessage.content,
+            createdAt: new Date(newMessage.createdAt).getTime()
           }];
         });
       }
@@ -649,17 +645,19 @@ const App: React.FC = () => {
   };
 
   return (
-    <Router>
-      <AdController 
-        user={user} 
-        loginTime={loginTime} 
-        navigationCount={navigationCount} 
-        setNavigationCount={setNavigationCount}
-        hasShownInitialAd={hasShownInitialAd}
-        setHasShownInitialAd={setHasShownInitialAd}
-        triggerAd={triggerAd}
-      />
-      <Layout user={user} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} notifications={notifications} onSelectTrend={()=>{}} appLogo={appLogo} onSaveConfig={handleSaveConfig}>
+    <>
+      {showSplash && <SplashScreen logo={appLogo} onComplete={() => setShowSplash(false)} />}
+      <Router>
+        <AdController 
+          user={user} 
+          loginTime={loginTime} 
+          navigationCount={navigationCount} 
+          setNavigationCount={setNavigationCount}
+          hasShownInitialAd={hasShownInitialAd}
+          setHasShownInitialAd={setHasShownInitialAd}
+          triggerAd={triggerAd}
+        />
+        <Layout user={user} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} notifications={notifications} onSelectTrend={()=>{}} appLogo={appLogo} onSaveConfig={handleSaveConfig}>
         <Routes>
           <Route path="/" element={<Home user={user} />} />
           <Route path="/login" element={
@@ -675,20 +673,21 @@ const App: React.FC = () => {
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} onSendMessage={async (t, r) => {
+            const receiverId = r === '' ? null : r;
             const newMsg = {
               id: crypto.randomUUID(),
               sender_id: user.id,
-              receiver_id: r,
-              text: t,
+              receiver_id: receiverId,
+              content: t,
               created_at: new Date().toISOString()
             };
             // Optimistic update
             setMessages(prev => [...prev, { 
               id: newMsg.id, 
               senderId: user.id, 
-              receiverId: r, 
+              receiverId: receiverId, 
               text: t, 
-              timestamp: Date.now()
+              createdAt: new Date(newMsg.created_at).getTime()
             }]);
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
@@ -776,7 +775,8 @@ const App: React.FC = () => {
       {showAd && currentAd && (
         <FullscreenAd ad={currentAd} onClose={() => setShowAd(false)} />
       )}
-    </Router>
+      </Router>
+    </>
   );
 };
 

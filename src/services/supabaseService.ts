@@ -398,17 +398,75 @@ export const SupabaseService = {
   },
 
   // Messages
+  async getAllConversations() {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        user1:user1_id(id, username, full_name, avatar_url),
+        user2:user2_id(id, username, full_name, avatar_url)
+      `)
+      .order('last_message_time', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all conversations:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async getGlobalMessages(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        sender:sender_id(id, username, full_name, avatar_url)
+      `)
+      .is('receiver_id', null)
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error fetching global messages:', error);
+      return [];
+    }
+    return data.map(msg => ({
+      ...msg,
+      createdAt: msg.created_at
+    }));
+  },
+
+  async getConversationMessages(user1Id: string, user2Id: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${user1Id},receiver_id.eq.${user2Id}),and(sender_id.eq.${user2Id},receiver_id.eq.${user1Id})`)
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error fetching conversation messages:', error);
+      return [];
+    }
+    return data.map(msg => ({
+      ...msg,
+      createdAt: msg.created_at
+    }));
+  },
+
   async getMessages(userId: string): Promise<any[]> {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId},receiver_id.is.null`)
       .order('created_at', { ascending: true });
     if (error) {
       console.error('Error fetching messages:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(msg => ({
+      id: msg.id,
+      senderId: msg.sender_id,
+      receiverId: msg.receiver_id,
+      content: msg.content,
+      createdAt: msg.created_at
+    }));
   },
 
   subscribeToMessages(userId: string, callback: (payload: any) => void) {
@@ -423,8 +481,14 @@ export const SupabaseService = {
       }, (payload) => {
         // Double check in the callback just in case RLS isn't perfectly filtering the broadcast
         const msg = payload.new;
-        if (msg && (msg.sender_id === userId || msg.receiver_id === userId)) {
-          callback(payload);
+        if (msg && (msg.sender_id === userId || msg.receiver_id === userId || msg.receiver_id === null)) {
+          callback({
+            id: msg.id,
+            senderId: msg.sender_id,
+            receiverId: msg.receiver_id,
+            content: msg.content,
+            createdAt: msg.created_at
+          });
         }
       })
       .subscribe();

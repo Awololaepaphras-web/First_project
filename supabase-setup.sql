@@ -93,12 +93,23 @@ CREATE TABLE IF NOT EXISTS public.documents (
     created_at BIGINT NOT NULL
 );
 
+-- Conversations Table
+CREATE TABLE IF NOT EXISTS public.conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user1_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    user2_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    last_message TEXT,
+    last_message_time TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(user1_id, user2_id)
+);
+
 -- Messages Table
 CREATE TABLE IF NOT EXISTS public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    receiver_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    text TEXT NOT NULL,
+    receiver_id UUID REFERENCES public.users(id) ON DELETE CASCADE, -- Nullable for global chat
+    content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -471,6 +482,65 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 8. TRIGGERS & AUTOMATION
 
+-- Chat Triggers & Functions
+
+-- A. Auto Timestamp & D. Prevent Empty Messages (BEFORE INSERT)
+CREATE OR REPLACE FUNCTION public.handle_message_before_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- D. Prevent Empty Messages
+  IF NEW.content IS NULL OR trim(NEW.content) = '' THEN
+    RAISE EXCEPTION 'Message content cannot be empty';
+  END IF;
+
+  -- A. Auto Timestamp
+  NEW.created_at := timezone('utc'::text, now());
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_message_before_insert
+  BEFORE INSERT ON public.messages
+  FOR EACH ROW EXECUTE FUNCTION public.handle_message_before_insert();
+
+-- B. Update Last Message & C. Create Notification (AFTER INSERT)
+CREATE OR REPLACE FUNCTION public.handle_message_after_insert()
+RETURNS TRIGGER AS $$
+DECLARE
+  conv_id UUID;
+  u1 UUID;
+  u2 UUID;
+BEGIN
+  -- Ensure u1 < u2 for unique conversation lookup
+  u1 := LEAST(NEW.sender_id, NEW.receiver_id);
+  u2 := GREATEST(NEW.sender_id, NEW.receiver_id);
+
+  -- B. Update Last Message in Conversations
+  INSERT INTO public.conversations (user1_id, user2_id, last_message, last_message_time)
+  VALUES (u1, u2, NEW.content, NEW.created_at)
+  ON CONFLICT (user1_id, user2_id) DO UPDATE
+  SET last_message = EXCLUDED.last_message,
+      last_message_time = EXCLUDED.last_message_time;
+
+  -- C. Create Notification
+  INSERT INTO public.notifications (user_id, title, message, type, data)
+  VALUES (
+    NEW.receiver_id,
+    'New Message',
+    'You have a new message from a node.',
+    'info',
+    jsonb_build_object('messageId', NEW.id, 'senderId', NEW.sender_id, 'type', 'new_message')
+  );
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_message_after_insert
+  AFTER INSERT ON public.messages
+  FOR EACH ROW EXECUTE FUNCTION public.handle_message_after_insert();
+
 -- Function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -515,7 +585,17 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 7. REALTIME CONFIGURATION
+-- Admin Logs Table
+CREATE TABLE IF NOT EXISTS public.admin_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    target_id UUID,
+    details JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Realtime Configuration
 -- Safely enable realtime for all tables
 DO $$
 BEGIN
@@ -526,7 +606,7 @@ BEGIN
 
   -- Add tables to publication if not already present
   DECLARE
-    tables TEXT[] := ARRAY['posts', 'users', 'documents', 'messages', 'advertisements', 'tasks', 'withdrawal_requests', 'system_config', 'payment_verifications', 'universities', 'notifications', 'gladiator_vault'];
+    tables TEXT[] := ARRAY['posts', 'users', 'documents', 'messages', 'advertisements', 'tasks', 'withdrawal_requests', 'system_config', 'payment_verifications', 'universities', 'notifications', 'gladiator_vault', 'conversations', 'admin_logs'];
     t TEXT;
   BEGIN
     FOR t IN SELECT unnest(tables) LOOP

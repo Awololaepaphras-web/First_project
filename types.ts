@@ -193,9 +193,9 @@ export interface AIMessage {
 export interface Message {
   id: string;
   senderId: string;
-  receiverId: string;
+  receiverId: string | null;
   text: string;
-  timestamp: number;
+  createdAt: number;
 }
 
 export interface AdPricing {

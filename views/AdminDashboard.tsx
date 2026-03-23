@@ -10,9 +10,10 @@ import {
   PlayCircle, Monitor, Upload, Clock, CreditCard,
   FileCheck, AlertCircle, ChevronRight, Menu, Image as ImageIcon,
   Star, BarChart3, Target, Wallet,
-  Palette, Download, Tv, Award, ShieldCheck
+  Palette, Download, Tv, Award, ShieldCheck, MessageSquare, RefreshCw, Globe
 } from 'lucide-react';
 import { User, PastQuestion, WithdrawalRequest, SystemConfig, EarnTask, Notification, University, Advertisement, AdTimeFrame, AdType, AdPlacement } from '../types';
+import { SupabaseService } from '../src/services/supabaseService';
 
 interface AdminDashboardProps {
   user: User;
@@ -60,6 +61,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('command');
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   
   const [broadcast, setBroadcast] = useState({ title: '', content: '', type: 'info' as Notification['type'] });
@@ -87,6 +92,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const adFileInputRef = useRef<HTMLInputElement>(null);
   const uniLogoInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (activeTab === 'chat-monitor') {
+      const fetchConversations = async () => {
+        const data = await SupabaseService.getAllConversations();
+        setConversations(data);
+      };
+      fetchConversations();
+    }
+  }, [activeTab]);
+
+  React.useEffect(() => {
+    if (selectedConversation) {
+      const fetchMessages = async () => {
+        setLoadingMessages(true);
+        let data;
+        if (selectedConversation.id === 'global') {
+          data = await SupabaseService.getGlobalMessages();
+        } else {
+          data = await SupabaseService.getConversationMessages(selectedConversation.user1_id, selectedConversation.user2_id);
+        }
+        setMessages(data);
+        setLoadingMessages(false);
+      };
+      fetchMessages();
+    }
+  }, [selectedConversation]);
 
   const handleUpdateConfig = async (updates: Partial<SystemConfig>) => {
     const newConfig = { ...config, ...updates };
@@ -200,6 +232,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'branding', label: 'App Branding', icon: <Palette className="w-5 h-5" /> },
     { id: 'sug', label: 'SUG Verify', icon: <Award className="w-5 h-5" /> },
     { id: 'staff', label: 'Staff Matrix', icon: <ShieldCheck className="w-5 h-5" /> },
+    { id: 'chat-monitor', label: 'Chat Matrix', icon: <MessageSquare className="w-5 h-5" /> },
     { id: 'payments', label: 'Payment Verify', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/Epaphrastheadminofprophandloveforx/payments' },
   ];
 
@@ -1206,6 +1239,117 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </div>
           </div>
          </div>
+        )}
+
+        {activeTab === 'chat-monitor' && (
+          <div className="space-y-12 animate-fade-in">
+             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Chat Matrix Monitor</h1>
+             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[700px]">
+                {/* Conversations List */}
+                <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl flex flex-col">
+                   <div className="p-8 border-b border-gray-800 bg-gray-800/50">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Active Nodes</h3>
+                   </div>
+                   <div className="flex-1 overflow-y-auto no-scrollbar">
+                      <button 
+                        onClick={() => setSelectedConversation({ id: 'global', title: 'Global Matrix' })}
+                        className={`w-full p-8 text-left border-b border-gray-800/50 transition-all hover:bg-gray-800/30 ${selectedConversation?.id === 'global' ? 'bg-gray-800/50 border-l-4 border-red-600' : ''}`}
+                      >
+                         <div className="flex items-center gap-4 mb-3">
+                            <div className="w-12 h-12 bg-red-600/10 rounded-xl flex items-center justify-center border border-red-600/20">
+                               <Globe className="w-6 h-6 text-red-600" />
+                            </div>
+                            <div>
+                               <p className="text-xs font-black text-white italic uppercase tracking-tighter">Global Academic Stream</p>
+                               <p className="text-[9px] text-gray-500 font-mono uppercase">All Nodes Connected</p>
+                            </div>
+                         </div>
+                         <p className="text-[11px] text-gray-400 line-clamp-1 font-medium italic">Monitoring public broadcast signals...</p>
+                      </button>
+                      {conversations.length === 0 ? (
+                        <div className="p-12 text-center text-gray-600 font-black italic uppercase text-xs">No active nodes detected</div>
+                      ) : (
+                        conversations.map(conv => (
+                          <button 
+                            key={conv.id} 
+                            onClick={() => setSelectedConversation(conv)}
+                            className={`w-full p-8 text-left border-b border-gray-800/50 transition-all hover:bg-gray-800/30 ${selectedConversation?.id === conv.id ? 'bg-gray-800/50 border-l-4 border-red-600' : ''}`}
+                          >
+                             <div className="flex items-center gap-4 mb-3">
+                                <div className="flex -space-x-3">
+                                   <img src={conv.user1?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.user1?.username}`} className="w-10 h-10 rounded-xl border-2 border-gray-900" alt="" />
+                                   <img src={conv.user2?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.user2?.username}`} className="w-10 h-10 rounded-xl border-2 border-gray-900" alt="" />
+                                </div>
+                                <div>
+                                   <p className="text-xs font-black text-white italic">@{conv.user1?.username} + @{conv.user2?.username}</p>
+                                   <p className="text-[9px] text-gray-500 font-mono">{new Date(conv.last_message_time).toLocaleString()}</p>
+                                </div>
+                             </div>
+                             <p className="text-[11px] text-gray-400 line-clamp-1 font-medium">{conv.last_message}</p>
+                          </button>
+                        ))
+                      )}
+                   </div>
+                </div>
+
+                {/* Messages View */}
+                <div className="xl:col-span-2 bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl flex flex-col">
+                   {selectedConversation ? (
+                     <>
+                        <div className="p-8 border-b border-gray-800 bg-gray-800/50 flex justify-between items-center">
+                           <div>
+                              <h3 className="text-xs font-black uppercase tracking-widest text-white">
+                                {selectedConversation.id === 'global' ? 'Global Stream Log' : `Signal Log: ${selectedConversation.user1?.username} / ${selectedConversation.user2?.username}`}
+                              </h3>
+                              <p className="text-[9px] text-gray-500 font-mono uppercase mt-1">Encrypted Stream Monitoring Active</p>
+                           </div>
+                           <button onClick={() => setSelectedConversation(null)} className="p-2 text-gray-500 hover:text-white"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar">
+                           {loadingMessages ? (
+                             <div className="h-full flex items-center justify-center">
+                                <RefreshCw className="w-8 h-8 text-red-600 animate-spin" />
+                             </div>
+                           ) : messages.length === 0 ? (
+                             <div className="h-full flex items-center justify-center text-gray-600 font-black italic uppercase text-xs">No signals captured in this node</div>
+                           ) : (
+                             messages.map(msg => {
+                               const sender = selectedConversation.id === 'global' 
+                                 ? msg.sender 
+                                 : (msg.sender_id === selectedConversation.user1_id ? selectedConversation.user1 : selectedConversation.user2);
+                               const isUser1 = selectedConversation.id === 'global' ? true : msg.sender_id === selectedConversation.user1_id;
+                               return (
+                                 <div key={msg.id} className={`flex gap-4 ${isUser1 ? '' : 'flex-row-reverse'}`}>
+                                    <img src={sender?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sender?.username}`} className="w-10 h-10 rounded-xl flex-shrink-0" alt="" />
+                                    <div className={`max-w-[80%] space-y-1 ${isUser1 ? '' : 'items-end flex flex-col'}`}>
+                                       {selectedConversation.id === 'global' && (
+                                         <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-1">@{sender?.username || 'Unknown Node'}</p>
+                                       )}
+                                       <div className={`p-4 rounded-2xl text-xs font-medium ${isUser1 ? 'bg-gray-800 text-white rounded-tl-none' : 'bg-red-600 text-white rounded-tr-none'}`}>
+                                          {msg.content}
+                                       </div>
+                                       <p className="text-[9px] text-gray-500 font-mono">{new Date(msg.createdAt).toLocaleTimeString()}</p>
+                                    </div>
+                                 </div>
+                               );
+                             })
+                           )}
+                        </div>
+                     </>
+                   ) : (
+                     <div className="h-full flex flex-col items-center justify-center text-center p-12 space-y-6">
+                        <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center">
+                           <MessageSquare className="w-10 h-10 text-gray-600" />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Select a Node</h3>
+                           <p className="text-xs text-gray-500 font-medium max-w-xs mx-auto mt-2">Select an active conversation node from the matrix to monitor real-time signal logs.</p>
+                        </div>
+                     </div>
+                   )}
+                </div>
+             </div>
+          </div>
         )}
 
         {activeTab === 'branding' && (

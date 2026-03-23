@@ -106,11 +106,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
         <header className={`fixed top-0 left-0 right-0 ${isDark ? 'bg-brand-black/90' : 'bg-white/90'} backdrop-blur-xl z-[100] border-b ${isDark ? 'border-white/5' : 'border-black/5'} transition-colors`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 sm:gap-3 group" title="Return Home">
-              <div className="bg-brand-proph p-2 rounded-full group-hover:rotate-6 transition-transform shadow-[0_0_15px_rgba(0,186,124,0.3)] flex items-center justify-center overflow-hidden">
+              <div className="group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
                 {appLogo ? (
-                  <img src={appLogo} alt="App Logo" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+                  <img src={appLogo} alt="App Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
                 ) : (
-                  <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
+                  <div className="bg-brand-proph p-2 rounded-full shadow-[0_0_15px_rgba(0,186,124,0.3)]">
+                    <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
+                  </div>
                 )}
               </div>
               <span className={`text-lg sm:text-2xl font-black italic tracking-tighter uppercase ${isDark ? 'text-white' : 'text-black'}`}>PROPH</span>
@@ -155,11 +157,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
       {user && (
         <aside className="hidden lg:flex sticky top-0 h-screen w-[88px] xl:w-[300px] flex-col items-center xl:items-start px-4 py-6 border-r border-brand-border dark:border-brand-border z-50 bg-white dark:bg-brand-black transition-all">
             <Link to="/" className="p-4 mb-6 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group" title="Return Home">
-              <div className="bg-brand-proph p-2.5 rounded-full shadow-lg group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
+              <div className="group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
                 {appLogo ? (
-                  <img src={appLogo} alt="App Logo" className="w-8 h-8 object-contain" />
+                  <img src={appLogo} alt="App Logo" className="w-12 h-12 object-contain" />
                 ) : (
-                  <GraduationCap className="w-8 h-8 text-black" />
+                  <div className="bg-brand-proph p-2.5 rounded-full shadow-lg">
+                    <GraduationCap className="w-8 h-8 text-black" />
+                  </div>
                 )}
               </div>
             </Link>
@@ -343,11 +347,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
           
           {/* Admin Controlled Logo */}
           <div className="flex-shrink-0 px-2">
-            <div className="w-10 h-10 rounded-xl bg-brand-proph/10 flex items-center justify-center overflow-hidden border border-brand-proph/20">
+            <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
               {appLogo ? (
-                <img src={appLogo} alt="App Logo" className="w-full h-full object-contain p-1" />
+                <img src={appLogo} alt="App Logo" className="w-full h-full object-contain" />
               ) : (
-                <Database className="w-5 h-5 text-brand-proph" />
+                <div className="w-10 h-10 rounded-xl bg-brand-proph/10 flex items-center justify-center border border-brand-proph/20">
+                  <Database className="w-5 h-5 text-brand-proph" />
+                </div>
               )}
             </div>
           </div>

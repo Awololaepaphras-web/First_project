@@ -412,20 +412,21 @@ export const SupabaseService = {
   },
 
   subscribeToMessages(userId: string, callback: (payload: any) => void) {
+    // We listen to all inserts on the messages table. 
+    // Supabase RLS will ensure we only receive messages we are authorized to see.
     return supabase
-      .channel(`public:messages:${userId}`)
+      .channel(`realtime:messages:${userId}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
-        table: 'messages',
-        filter: `receiver_id=eq.${userId}`
-      }, callback)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'messages',
-        filter: `sender_id=eq.${userId}`
-      }, callback)
+        table: 'messages'
+      }, (payload) => {
+        // Double check in the callback just in case RLS isn't perfectly filtering the broadcast
+        const msg = payload.new;
+        if (msg && (msg.sender_id === userId || msg.receiver_id === userId)) {
+          callback(payload);
+        }
+      })
       .subscribe();
   },
 

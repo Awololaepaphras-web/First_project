@@ -674,7 +674,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
-          <Route path="/messages" element={user ? <Messages user={user} messages={messages} onSendMessage={async (t, r) => {
+          <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} onSendMessage={async (t, r) => {
             const newMsg = {
               id: crypto.randomUUID(),
               sender_id: user.id,

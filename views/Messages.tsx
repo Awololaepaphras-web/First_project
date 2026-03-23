@@ -9,12 +9,14 @@ import { User, Message } from '../types';
 
 interface MessagesProps {
   user: User;
+  allUsers: User[];
   messages: Message[];
   onSendMessage: (text: string, receiverId: string) => void;
 }
 
-const Messages: React.FC<MessagesProps> = ({ user, messages, onSendMessage }) => {
-  const [activeChatId, setActiveChatId] = useState<string | null>('node_1');
+const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, onSendMessage }) => {
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -22,11 +24,20 @@ const Messages: React.FC<MessagesProps> = ({ user, messages, onSendMessage }) =>
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeChatId, messages]);
 
-  const sidebarItems = [
-    { id: 'node_1', name: 'Dr. Chidi Okoro', time: '10:42 AM', status: 'online' },
-    { id: 'node_2', name: 'UNILAG Study Group', time: '9:15 AM', status: 'offline' },
-    { id: 'node_3', name: 'Amina (Academic Board)', time: 'Yesterday', status: 'online' },
-  ];
+  // Filter users to show in sidebar (excluding current user)
+  const chatUsers = allUsers
+    .filter(u => u.id !== user.id)
+    .filter(u => 
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      u.nickname.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+  // Set first user as active if none selected
+  useEffect(() => {
+    if (!activeChatId && chatUsers.length > 0) {
+      setActiveChatId(chatUsers[0].id);
+    }
+  }, [chatUsers, activeChatId]);
 
   const activeChatMessages = messages.filter(m => 
     (m.senderId === user.id && m.receiverId === activeChatId) ||
@@ -53,42 +64,53 @@ const Messages: React.FC<MessagesProps> = ({ user, messages, onSendMessage }) =>
             </div>
             <div className="relative">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted w-4 h-4" />
-               <input placeholder="Search encrypted links" className="w-full bg-gray-50 dark:bg-brand-card border-none rounded-2xl pl-11 pr-4 py-3.5 text-xs font-bold focus:ring-1 focus:ring-brand-proph outline-none dark:text-white" />
-            </div>
-         </div>
+                <input 
+                  placeholder="Search encrypted links" 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-brand-card border-none rounded-2xl pl-11 pr-4 py-3.5 text-xs font-bold focus:ring-1 focus:ring-brand-proph outline-none dark:text-white" 
+                />
+             </div>
+          </div>
 
-         <div className="flex-grow overflow-y-auto px-4 space-y-2 no-scrollbar">
-            {sidebarItems.map(item => {
-               const lastMsg = messages.filter(m => 
-                 (m.senderId === user.id && m.receiverId === item.id) ||
-                 (m.senderId === item.id && m.receiverId === user.id)
-               ).pop();
+          <div className="flex-grow overflow-y-auto px-4 space-y-2 no-scrollbar">
+             {chatUsers.map(item => {
+                const lastMsg = messages.filter(m => 
+                  (m.senderId === user.id && m.receiverId === item.id) ||
+                  (m.senderId === item.id && m.receiverId === user.id)
+                ).pop();
 
-               return (
-                  <div 
-                    key={item.id}
-                    onClick={() => setActiveChatId(item.id)}
-                    className={`p-5 rounded-[2rem] cursor-pointer transition-all flex gap-4 group ${activeChatId === item.id ? 'bg-brand-proph/10' : 'hover:bg-gray-50 dark:hover:bg-brand-card'}`}
-                  >
-                     <div className="relative flex-shrink-0">
-                        <div className="w-14 h-14 bg-gray-100 dark:bg-brand-border rounded-full border-2 border-white dark:border-brand-border shadow-sm flex items-center justify-center font-black text-gray-400">
-                           {item.name.charAt(0)}
-                        </div>
-                        {item.status === 'online' && <div className="absolute bottom-0 right-0 w-4 h-4 bg-brand-proph rounded-full border-2 border-white dark:border-brand-black shadow-sm" />}
-                     </div>
-                     <div className="flex-grow min-w-0">
-                        <div className="flex justify-between items-start mb-1">
-                           <p className={`text-sm font-black truncate ${activeChatId === item.id ? 'text-brand-proph' : 'text-gray-900 dark:text-white'}`}>{item.name}</p>
-                           <span className="text-[9px] font-bold text-brand-muted uppercase tracking-tighter whitespace-nowrap ml-2">{item.time}</span>
-                        </div>
-                        <p className={`text-xs truncate ${lastMsg ? 'text-gray-900 dark:text-gray-200 font-bold' : 'text-brand-muted'}`}>
-                           {lastMsg ? lastMsg.text : 'Start a new academic link...'}
-                        </p>
-                     </div>
-                  </div>
-               );
-            })}
-         </div>
+                return (
+                   <div 
+                     key={item.id}
+                     onClick={() => setActiveChatId(item.id)}
+                     className={`p-5 rounded-[2rem] cursor-pointer transition-all flex gap-4 group ${activeChatId === item.id ? 'bg-brand-proph/10' : 'hover:bg-gray-50 dark:hover:bg-brand-card'}`}
+                   >
+                      <div className="relative flex-shrink-0">
+                         <div className="w-14 h-14 bg-gray-100 dark:bg-brand-border rounded-full border-2 border-white dark:border-brand-border shadow-sm flex items-center justify-center font-black text-gray-400 overflow-hidden">
+                            {item.avatar ? (
+                              <img src={item.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              item.name.charAt(0)
+                            )}
+                         </div>
+                         <div className="absolute bottom-0 right-0 w-4 h-4 bg-brand-proph rounded-full border-2 border-white dark:border-brand-black shadow-sm" />
+                      </div>
+                      <div className="flex-grow min-w-0">
+                         <div className="flex justify-between items-start mb-1">
+                            <p className={`text-sm font-black truncate ${activeChatId === item.id ? 'text-brand-proph' : 'text-gray-900 dark:text-white'}`}>{item.name}</p>
+                            <span className="text-[9px] font-bold text-brand-muted uppercase tracking-tighter whitespace-nowrap ml-2">
+                              {lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                         </div>
+                         <p className={`text-xs truncate ${lastMsg ? 'text-gray-900 dark:text-gray-200 font-bold' : 'text-brand-muted'}`}>
+                            {lastMsg ? lastMsg.text : 'Start a new academic link...'}
+                         </p>
+                      </div>
+                   </div>
+                );
+             })}
+          </div>
       </aside>
 
       {/* Active Chat Area */}
@@ -98,14 +120,18 @@ const Messages: React.FC<MessagesProps> = ({ user, messages, onSendMessage }) =>
              {/* Chat Header */}
              <header className="h-24 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md border-b border-brand-border px-8 flex justify-between items-center sticky top-0 z-10">
                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-gray-100 dark:bg-brand-card rounded-full font-black text-gray-400 flex items-center justify-center border border-brand-border">
-                      {sidebarItems.find(i => i.id === activeChatId)?.name.charAt(0)}
+                   <div className="w-12 h-12 bg-gray-100 dark:bg-brand-card rounded-full font-black text-gray-400 flex items-center justify-center border border-brand-border overflow-hidden">
+                      {allUsers.find(i => i.id === activeChatId)?.avatar ? (
+                        <img src={allUsers.find(i => i.id === activeChatId)?.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        allUsers.find(i => i.id === activeChatId)?.name.charAt(0)
+                      )}
                    </div>
                    <div>
-                      <h3 className="font-black text-gray-900 dark:text-white tracking-tight">{sidebarItems.find(i => i.id === activeChatId)?.name}</h3>
+                      <h3 className="font-black text-gray-900 dark:text-white tracking-tight">{allUsers.find(i => i.id === activeChatId)?.name}</h3>
                       <div className="flex items-center gap-1.5">
-                         <div className="w-2 h-2 bg-brand-proph rounded-full" />
-                         <span className="text-[9px] font-bold text-brand-muted uppercase tracking-widest">Secure Node Sync</span>
+                         <div className="w-2 h-2 bg-brand-proph rounded-full animate-pulse" />
+                         <span className="text-[9px] font-bold text-brand-muted uppercase tracking-widest">Real-time Node Sync Active</span>
                       </div>
                    </div>
                 </div>

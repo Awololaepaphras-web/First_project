@@ -98,7 +98,7 @@ const App: React.FC = () => {
   const [universities, setUniversities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [universityColleges, setUniversityColleges] = useState<Record<string, string[]>>(INITIAL_COLLEGES);
   const [collegeDepartments, setCollegeDepartments] = useState<Record<string, string[]>>(INITIAL_DEPARTMENTS);
-  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || 'https://picsum.photos/seed/proph/800');
+  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '/logo.png');
   const [showSplash, setShowSplash] = useState(true);
   const [navigationCount, setNavigationCount] = useState(0);
   const [loginTime, setLoginTime] = useState<number | null>(null);

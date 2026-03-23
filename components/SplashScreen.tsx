@@ -42,7 +42,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ logo, onComplete }) => {
             }}
             className="relative z-10 flex flex-col items-center gap-12"
           >
-            <div className="w-64 h-64 md:w-80 md:h-80 relative">
+            <div className="w-72 h-72 md:w-96 md:h-96 relative">
               {/* Spinning Ring */}
               <motion.div 
                 animate={{ rotate: 360 }}
@@ -50,36 +50,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ logo, onComplete }) => {
                 className="absolute -inset-8 border border-blue-500/20 rounded-full border-dashed"
               />
               
-              <div className="w-full h-full bg-gray-900 rounded-[3rem] p-8 shadow-2xl shadow-blue-500/20 border border-white/10 flex items-center justify-center overflow-hidden relative group">
+              <div className="w-full h-full bg-transparent flex items-center justify-center overflow-hidden relative group">
                 {logo ? (
-                  <img src={logo} alt="Proph Logo" className="w-full h-full object-contain" />
+                  <img src={logo} alt="Proph Logo" className="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(37,99,235,0.3)]" />
                 ) : (
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-24 h-24 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-600/40">
                       <span className="text-4xl font-black text-white italic">P</span>
                     </div>
+                    <h1 className="text-4xl font-black text-white italic uppercase">proph</h1>
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="text-center space-y-4">
-              <motion.h1 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.8 }}
-                className="text-6xl md:text-8xl font-black tracking-tighter uppercase italic text-white"
-              >
-                proph
-              </motion.h1>
-              <motion.p 
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8, duration: 0.8 }}
-                className="text-blue-400 font-black uppercase text-xs tracking-[0.3em] ml-2"
-              >
-                Student Social Network
-              </motion.p>
             </div>
           </motion.div>
 

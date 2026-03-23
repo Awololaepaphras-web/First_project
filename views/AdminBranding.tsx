@@ -7,7 +7,7 @@ interface AdminBrandingProps {
 }
 
 const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo }) => {
-  const [currentLogo, setCurrentLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
+  const [currentLogo, setCurrentLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '/logo.png');
   const [previewLogo, setPreviewLogo] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 

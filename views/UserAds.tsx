@@ -1,9 +1,10 @@
 
 import React, { useState, useRef } from 'react';
-import { Megaphone, Camera, Video, ChevronRight, CheckCircle2, Globe, Building2, Search, X, Link as LinkIcon, Upload, MapPin, CreditCard, BarChart3 } from 'lucide-react';
+import { Megaphone, Camera, Video, ChevronRight, CheckCircle2, Globe, Building2, Search, X, Link as LinkIcon, Upload, MapPin, CreditCard, BarChart3, Loader2 } from 'lucide-react';
 import { User, AdPricing, Advertisement, SystemConfig, PaymentVerification } from '../types';
 import { UNIVERSITIES } from '../constants';
 import { useNavigate } from 'react-router-dom';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface UserAdsProps {
   user: User;
@@ -26,6 +27,7 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
     name: ''
   });
   const [isSubmittingRef, setIsSubmittingRef] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     mediaUrl: '',
@@ -45,14 +47,19 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
     );
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, mediaUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        const url = await CloudinaryService.uploadFile(file, formData.mediaType);
+        setFormData({ ...formData, mediaUrl: url });
+      } catch (error) {
+        console.error('Ad media upload failed:', error);
+        alert('Failed to upload ad media.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -433,14 +440,18 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
                        <button onClick={() => setFormData({...formData, mediaType: 'image'})} className={`p-4 rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${formData.mediaType === 'image' ? 'bg-brand-proph border-brand-proph text-black' : 'bg-gray-900 border-gray-800 text-gray-400'}`}><Camera className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">Image Ad</span></button>
                        <button onClick={() => setFormData({...formData, mediaType: 'video'})} className={`p-4 rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${formData.mediaType === 'video' ? 'bg-brand-proph border-brand-proph text-black' : 'bg-gray-900 border-gray-800 text-gray-400'}`}><Video className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">Video Ad</span></button>
                     </div>
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full p-8 border-2 border-dashed border-brand-border rounded-3xl flex flex-col items-center gap-4 text-brand-muted hover:bg-black/5 transition-all">
-                       <Upload className="w-8 h-8" />
-                       <span className="text-xs font-black uppercase tracking-widest">{formData.mediaUrl ? 'Asset Loaded' : 'Select Campaign Media'}</span>
+                    <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="w-full p-8 border-2 border-dashed border-brand-border rounded-3xl flex flex-col items-center gap-4 text-brand-muted hover:bg-black/5 transition-all disabled:opacity-50">
+                       {isUploading ? <Loader2 className="w-8 h-8 animate-spin text-brand-proph" /> : <Upload className="w-8 h-8" />}
+                       <span className="text-xs font-black uppercase tracking-widest">
+                         {isUploading ? 'Uploading Asset...' : formData.mediaUrl ? 'Asset Loaded' : 'Select Campaign Media'}
+                       </span>
                     </button>
                     <input type="file" ref={fileInputRef} hidden accept={formData.mediaType === 'image' ? 'image/*' : 'video/*'} onChange={handleMediaUpload} />
                     
                     <div className="flex gap-4">
-                       <button onClick={handleFinalDeploy} className="w-full bg-brand-proph text-black py-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">Deploy Across {selectedSchools.length} Nodes</button>
+                       <button disabled={isUploading} onClick={handleFinalDeploy} className="w-full bg-brand-proph text-black py-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl disabled:opacity-50">
+                         {isUploading ? 'Synchronizing Asset...' : `Deploy Across ${selectedSchools.length} Nodes`}
+                       </button>
                     </div>
                   </div>
                </div>

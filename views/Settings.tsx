@@ -1,8 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { User as UserIcon, Camera, Save, ArrowLeft, ShieldCheck, Mail, Phone, Building, AtSign } from 'lucide-react';
+import { User as UserIcon, Camera, Save, ArrowLeft, ShieldCheck, Mail, Phone, Building, AtSign, Loader2 } from 'lucide-react';
 import { User } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface SettingsProps {
   user: User;
@@ -19,8 +20,26 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
     profilePicture: user.profilePicture || ''
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      try {
+        const imageUrl = await CloudinaryService.uploadFile(file, 'image');
+        setFormData({ ...formData, profilePicture: imageUrl });
+      } catch (error) {
+        console.error('Profile picture upload failed:', error);
+        alert('Failed to upload profile picture.');
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
 
   const handleSave = () => {
+    if (isUploading) return alert('Asset still synchronizing...');
     setIsSaving(true);
     setTimeout(() => {
       onUpdateUser({ ...user, ...formData });
@@ -41,15 +60,10 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
              <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 sm:left-10 sm:translate-x-0 p-1 bg-white dark:bg-brand-card rounded-full">
                 <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-100 dark:bg-brand-black group border-4 border-white dark:border-brand-card shadow-xl">
                    {formData.profilePicture ? <img src={formData.profilePicture} className="w-full h-full object-cover" /> : <UserIcon className="w-full h-full p-8 text-gray-300 dark:text-brand-muted" />}
-                   <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white" title="Change Avatar"><Camera className="w-8 h-8" /></button>
-                   <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if(f){
-                         const r = new FileReader();
-                         r.onload = () => setFormData({...formData, profilePicture: r.result as string});
-                         r.readAsDataURL(f);
-                      }
-                   }} />
+                   <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white disabled:opacity-50" title="Change Avatar">
+                     {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <Camera className="w-8 h-8" />}
+                   </button>
+                   <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleFileChange} />
                 </div>
              </div>
           </div>

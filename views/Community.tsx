@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { User, Post, Comment, Advertisement } from '../types';
 import BannerAd from '../components/BannerAd';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface CommunityProps {
   user: User;
@@ -94,6 +95,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [mediaFile, setMediaFile] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -268,20 +270,35 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                 {mediaFile && (
                     <div className="relative mt-3 rounded-2xl overflow-hidden border border-brand-border">
                         {mediaFile.type === 'image' ? <img src={mediaFile.url} className="w-full h-auto object-cover" /> : <video src={mediaFile.url} className="w-full h-auto" controls />}
-                        <button onClick={() => setMediaFile(null)} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80" title="Remove Media"><X className="w-4 h-4" /></button>
+                        <button disabled={isUploading} onClick={() => setMediaFile(null)} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 disabled:opacity-50" title="Remove Media"><X className="w-4 h-4" /></button>
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 text-brand-proph animate-spin" />
+                          </div>
+                        )}
                     </div>
                 )}
                 <div className="flex justify-between items-center mt-4 border-t border-brand-border/30 pt-3">
-                    <button onClick={() => fileInputRef.current?.click()} className="p-2 text-brand-proph hover:bg-brand-proph/10 rounded-full" title="Attach Media"><ImageIcon className="w-5 h-5" /></button>
-                    <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={(e) => {
+                    <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="p-2 text-brand-proph hover:bg-brand-proph/10 rounded-full disabled:opacity-50" title="Attach Media"><ImageIcon className="w-5 h-5" /></button>
+                    <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={async (e) => {
                        const file = e.target.files?.[0];
                        if(file) {
-                          const reader = new FileReader();
-                          reader.onload = () => setMediaFile({ url: reader.result as string, type: file.type.startsWith('video/') ? 'video' : 'image' });
-                          reader.readAsDataURL(file);
+                          setIsUploading(true);
+                          try {
+                            const type = file.type.startsWith('video/') ? 'video' : 'image';
+                            const url = await CloudinaryService.uploadFile(file, type);
+                            setMediaFile({ url, type });
+                          } catch (error) {
+                            console.error('Media upload failed:', error);
+                            alert('Failed to upload media.');
+                          } finally {
+                            setIsUploading(false);
+                          }
                        }
                     }} />
-                    <button onClick={handlePostSubmit} className="bg-brand-proph text-black font-black px-6 py-2 rounded-full text-sm hover:brightness-110 active:scale-95 shadow-md" title="Broadcast Post">Post</button>
+                    <button disabled={isUploading} onClick={handlePostSubmit} className="bg-brand-proph text-black font-black px-6 py-2 rounded-full text-sm hover:brightness-110 active:scale-95 shadow-md disabled:opacity-50" title="Broadcast Post">
+                      {isUploading ? 'Uploading...' : 'Post'}
+                    </button>
                 </div>
             </div>
         </div>

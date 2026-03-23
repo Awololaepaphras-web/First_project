@@ -9,6 +9,7 @@ import {
 import { GoogleGenAI } from "@google/genai";
 import { User } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface GladiatorHubProps {
   user: User;
@@ -21,7 +22,8 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
   const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [pointsToCommit, setPointsToCommit] = useState(200);
   const [questionMode, setQuestionMode] = useState<QuestionMode>('same');
-  const [fileData, setFileData] = useState<{ data: string; name: string; type: string } | null>(null);
+  const [fileData, setFileData] = useState<{ data: string; name: string; type: string; url?: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [members, setMembers] = useState<{ name: string; status: 'ready' | 'pending'; score?: number }[]>([]);
   const [sessionCode, setSessionCode] = useState('');
   const [generatedQuestions, setGeneratedQuestions] = useState<string>('');
@@ -53,15 +55,24 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
     ]);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        setFileData({ data: base64, name: file.name, type: file.type });
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        const url = await CloudinaryService.uploadFile(file, 'auto');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          setFileData({ data: base64, name: file.name, type: file.type, url });
+        };
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Gladiator Hub upload failed:', error);
+        alert('Failed to upload arena intel.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -247,11 +258,16 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
                     <div>
                        <h3 className="text-[10px] font-black text-brand-muted uppercase tracking-widest mb-4">Arena Intel</h3>
                        <div 
-                         onClick={() => fileInputRef.current?.click()}
-                         className="border-2 border-dashed border-brand-border p-10 rounded-[2.5rem] text-center cursor-pointer hover:border-green-500 hover:bg-green-500/5 transition-all group"
+                         onClick={() => !isUploading && fileInputRef.current?.click()}
+                         className={`border-2 border-dashed border-brand-border p-10 rounded-[2.5rem] text-center cursor-pointer hover:border-green-500 hover:bg-green-500/5 transition-all group ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                        >
                           <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
-                          {fileData ? (
+                          {isUploading ? (
+                            <div className="space-y-3">
+                               <Loader2 className="w-10 h-10 text-green-500 mx-auto animate-spin" />
+                               <p className="font-bold text-green-500">Synchronizing Intel...</p>
+                            </div>
+                          ) : fileData ? (
                             <div className="flex items-center justify-center gap-4">
                                <div className="p-3 bg-green-500/10 rounded-2xl text-green-500"><CheckCircle2 className="w-6 h-6" /></div>
                                <div className="text-left">

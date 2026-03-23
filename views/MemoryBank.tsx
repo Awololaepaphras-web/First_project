@@ -5,10 +5,11 @@ import {
   Globe, FileText, Image as ImageIcon, Trash2, 
   ArrowRight, BookOpen, Clock, Tag, MoreVertical,
   ChevronRight, Sparkles, Filter, X, Download, HardDrive,
-  Swords, Shield, Zap, Brain
+  Swords, Shield, Zap, Brain, Loader2
 } from 'lucide-react';
 import { StudyDocument } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface MemoryBankProps {
   onAction: (count: number) => void;
@@ -20,6 +21,7 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
   const [filter, setFilter] = useState<'all' | 'pdf' | 'image' | 'url'>('all');
   const [showAddUrl, setShowAddUrl] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,23 +34,36 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
     localStorage.setItem('proph_study_docs', JSON.stringify(documents));
   }, [documents]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        const newDoc: StudyDocument = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          data: base64Data,
-          type: file.type || 'application/octet-stream',
-          uploadedAt: Date.now()
+      setIsUploading(true);
+      try {
+        const url = await CloudinaryService.uploadFile(file, 'auto');
+        
+        // We still need base64 for Gemini analysis in StudyHub if we want to avoid server-side fetching
+        // But for now, let's prioritize Cloudinary storage as requested.
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64Data = (reader.result as string).split(',')[1];
+          const newDoc: StudyDocument = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: file.name,
+            url: url,
+            data: base64Data, // Keep base64 for Gemini analysis
+            type: file.type || 'application/octet-stream',
+            uploadedAt: Date.now()
+          };
+          setDocuments(prev => [newDoc, ...prev]);
+          onAction(1);
         };
-        setDocuments(prev => [newDoc, ...prev]);
-        onAction(1);
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Memory Bank upload failed:', error);
+        alert('Failed to archive material.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -106,8 +121,11 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
           <p className="text-gray-500 font-medium">Your personalized repository for federal study assets.</p>
         </div>
         <div className="flex items-center gap-3 w-full lg:w-auto">
-          <button onClick={() => setShowAddUrl(!showAddUrl)} className={`p-4 rounded-2xl transition-all ${showAddUrl ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600 hover:bg-green-100'}`} title="Link Remote URL"><Globe className="w-5 h-5" /></button>
-          <button onClick={() => fileInputRef.current?.click()} className="flex-grow bg-gray-900 dark:bg-white dark:text-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-all shadow-lg" title="Store New Intel"><Plus className="w-4 h-4" /> Archive Material</button>
+          <button disabled={isUploading} onClick={() => setShowAddUrl(!showAddUrl)} className={`p-4 rounded-2xl transition-all ${showAddUrl ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600 hover:bg-green-100'} disabled:opacity-50`} title="Link Remote URL"><Globe className="w-5 h-5" /></button>
+          <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="flex-grow bg-gray-900 dark:bg-white dark:text-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-all shadow-lg disabled:opacity-50" title="Store New Intel">
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {isUploading ? 'Synchronizing...' : 'Archive Material'}
+          </button>
           <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
         </div>
       </div>

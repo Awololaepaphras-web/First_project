@@ -1,6 +1,7 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Trash2, CheckCircle2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Upload, Image as ImageIcon, Trash2, CheckCircle2, Loader2 } from 'lucide-react';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface AdminBrandingProps {
   onUpdateLogo: (logoUrl: string) => void;
@@ -9,11 +10,14 @@ interface AdminBrandingProps {
 const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo }) => {
   const [currentLogo, setCurrentLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '/logo.png');
   const [previewLogo, setPreviewLogo] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewLogo(reader.result as string);
@@ -22,13 +26,23 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo }) => {
     }
   };
 
-  const handleSave = () => {
-    if (previewLogo) {
-      localStorage.setItem('proph_app_logo', previewLogo);
-      setCurrentLogo(previewLogo);
-      onUpdateLogo(previewLogo);
-      setPreviewLogo('');
-      alert("App Logo Updated Successfully.");
+  const handleSave = async () => {
+    if (selectedFile) {
+      setIsUploading(true);
+      try {
+        const logoUrl = await CloudinaryService.uploadFile(selectedFile, 'image');
+        localStorage.setItem('proph_app_logo', logoUrl);
+        setCurrentLogo(logoUrl);
+        onUpdateLogo(logoUrl);
+        setPreviewLogo('');
+        setSelectedFile(null);
+        alert("App Logo Updated Successfully.");
+      } catch (error) {
+        console.error('Logo upload failed:', error);
+        alert('Failed to upload logo. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -90,9 +104,18 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo }) => {
             {previewLogo && (
               <button 
                 onClick={handleSave}
-                className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 animate-pulse"
+                disabled={isUploading}
+                className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 animate-pulse disabled:opacity-50 disabled:animate-none"
               >
-                <CheckCircle2 className="w-4 h-4" /> Apply Changes
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Synchronizing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Apply Changes
+                  </>
+                )}
               </button>
             )}
           </div>

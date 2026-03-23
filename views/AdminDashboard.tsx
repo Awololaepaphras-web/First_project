@@ -10,8 +10,9 @@ import {
   PlayCircle, Monitor, Upload, Clock, CreditCard,
   FileCheck, AlertCircle, ChevronRight, Menu, Image as ImageIcon,
   Star, BarChart3, Target, Wallet,
-  Palette, Download, Tv, Award, ShieldCheck, MessageSquare, RefreshCw, Globe
+  Palette, Download, Tv, Award, ShieldCheck, MessageSquare, RefreshCw, Globe, Loader2
 } from 'lucide-react';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 import { User, PastQuestion, WithdrawalRequest, SystemConfig, EarnTask, Notification, University, Advertisement, AdTimeFrame, AdType, AdPlacement } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
 
@@ -156,20 +157,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     alert("Bounty Deployed.");
   };
 
-  const handleAdFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploadingAd, setIsUploadingAd] = useState(false);
+  const [isUploadingUni, setIsUploadingUni] = useState(false);
+
+  const handleAdFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewAd({ ...newAd, mediaUrl: reader.result as string, mediaType: file.type.startsWith('video/') ? 'video' : 'image' });
-      };
-      reader.readAsDataURL(file);
+      setIsUploadingAd(true);
+      try {
+        const mediaUrl = await CloudinaryService.uploadFile(file, file.type.startsWith('video/') ? 'video' : 'image');
+        setNewAd({ ...newAd, mediaUrl, mediaType: file.type.startsWith('video/') ? 'video' : 'image' });
+      } catch (error) {
+        console.error('Ad media upload failed:', error);
+        alert('Failed to upload ad media.');
+      } finally {
+        setIsUploadingAd(false);
+      }
     }
   };
 
   const handleAddAdSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAd.title || !newAd.mediaUrl) return;
+    if (isUploadingAd) return alert('Asset still synchronizing...');
     onAddAd({ 
       id: Math.random().toString(), 
       title: newAd.title, 
@@ -204,15 +214,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     alert("Ad Synchronized.");
   };
 
-  const handleUniLogoSelect = (e: React.ChangeEvent<HTMLInputElement>, uniId?: string) => {
+  const handleUniLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>, uniId?: string) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (uniId) onUpdateUniversity(uniId, { logo: reader.result as string });
-        else setNewUni({ ...newUni, logo: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      setIsUploadingUni(true);
+      try {
+        const logoUrl = await CloudinaryService.uploadFile(file, 'image');
+        if (uniId) onUpdateUniversity(uniId, { logo: logoUrl });
+        else setNewUni({ ...newUni, logo: logoUrl });
+      } catch (error) {
+        console.error('University logo upload failed:', error);
+        alert('Failed to upload university logo.');
+      } finally {
+        setIsUploadingUni(false);
+      }
     }
   };
 
@@ -903,7 +918,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <input className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" placeholder="Institutional Name" value={newUni.name} onChange={e => setNewUni({...newUni, name: e.target.value})} />
                       <input className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm uppercase text-white" placeholder="Acronym" value={newUni.acronym} onChange={e => setNewUni({...newUni, acronym: e.target.value.toUpperCase()})} />
                       <button type="button" onClick={() => uniLogoInputRef.current?.click()} className="w-full p-4 bg-gray-800 border border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-700 transition-all text-white">
-                         <Upload className="w-4 h-4" /> {newUni.logo ? 'Branding Loaded' : 'Upload Signature Logo'}
+                         {isUploadingUni ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 
+                         {isUploadingUni ? 'Syncing...' : (newUni.logo ? 'Branding Loaded' : 'Upload Signature Logo')}
                       </button>
                       <input type="file" ref={uniLogoInputRef} hidden accept="image/*" onChange={(e) => handleUniLogoSelect(e)} />
                       <button onClick={() => { onAddUniversity({ id: newUni.acronym.toLowerCase(), name: newUni.name, acronym: newUni.acronym, location: 'Nigeria', logo: newUni.logo || 'https://picsum.photos/seed/node/200' }); setNewUni({name: '', acronym: '', location: '', logo: ''}); }} className="w-full bg-purple-600 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl text-white">Deploy Node</button>
@@ -915,6 +931,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                              <div className="relative group/logo">
                                <img src={u.logo} className="w-8 h-8 rounded-lg object-contain bg-white/5" />
                                <button 
+                                 disabled={isUploadingUni}
                                  onClick={() => {
                                    const input = document.createElement('input');
                                    input.type = 'file';
@@ -922,9 +939,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                    input.onchange = (e: any) => handleUniLogoSelect(e, u.id);
                                    input.click();
                                  }}
-                                 className="absolute inset-0 bg-black/60 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
+                                 className="absolute inset-0 bg-black/60 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-lg disabled:opacity-50"
                                >
-                                 <ImageIcon className="w-4 h-4 text-white" />
+                                 {isUploadingUni ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <ImageIcon className="w-4 h-4 text-white" />}
                                </button>
                              </div>
                              <span className="font-black text-xs italic text-gray-300">{u.acronym}</span>

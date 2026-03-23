@@ -9,6 +9,8 @@ import {
 import { PastQuestion } from '../types';
 import { UNIVERSITIES, COMMON_FACULTIES } from '../constants';
 import { useNavigate, Link } from 'react-router-dom';
+import { CloudinaryService } from '../src/services/cloudinaryService';
+import { Loader2 } from 'lucide-react';
 
 interface AnonymousUploadProps {
   isEnabled: boolean;
@@ -21,8 +23,8 @@ const AnonymousUpload: React.FC<AnonymousUploadProps> = ({ isEnabled, onUpload, 
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFiles, setSelectedFiles] = useState<{ data: string; name: string; type: string }[]>([]);
-  const [status, setStatus] = useState<'idle' | 'success'>('idle');
+  const [selectedFiles, setSelectedFiles] = useState<{ data: string; file: File; name: string; type: string }[]>([]);
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 2010 + 1 }, (_, i) => currentYear - i);
@@ -50,7 +52,7 @@ const AnonymousUpload: React.FC<AnonymousUploadProps> = ({ isEnabled, onUpload, 
     files.forEach((file: File) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setSelectedFiles(prev => [...prev, { data: reader.result as string, name: file.name, type: file.type }]);
+        setSelectedFiles(prev => [...prev, { data: reader.result as string, file, name: file.name, type: file.type }]);
       };
       reader.readAsDataURL(file);
     });
@@ -64,24 +66,39 @@ const AnonymousUpload: React.FC<AnonymousUploadProps> = ({ isEnabled, onUpload, 
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isEnabled) return;
     if (selectedFiles.length === 0) return alert('Material Missing: Attach file or snap document.');
     if (!formData.faculty || !formData.department) return alert('Unit Sync Required: Select Faculty and Dept.');
 
-    const newQuestion: PastQuestion = {
-      ...formData,
-      id: Math.random().toString(36).substr(2, 9),
-      fileUrl: selectedFiles[0].data, 
-      status: 'pending',
-      uploadedBy: 'anonymous',
-      createdAt: Date.now()
-    };
+    setStatus('uploading');
 
-    onUpload(newQuestion);
-    setStatus('success');
-    setTimeout(() => navigate('/'), 3000);
+    try {
+      // Upload to Cloudinary
+      const uploadPromises = selectedFiles.map(fileObj => 
+        CloudinaryService.uploadFile(fileObj.file, formData.type === 'image' ? 'image' : 'raw')
+      );
+      
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      const newQuestion: PastQuestion = {
+        ...formData,
+        id: Math.random().toString(36).substr(2, 9),
+        fileUrl: uploadedUrls[0], 
+        status: 'pending',
+        uploadedBy: 'anonymous',
+        createdAt: Date.now()
+      };
+
+      onUpload(newQuestion);
+      setStatus('success');
+      setTimeout(() => navigate('/'), 3000);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Upload failed. Please check your connection and try again.');
+      setStatus('idle');
+    }
   };
 
   return (
@@ -110,7 +127,15 @@ const AnonymousUpload: React.FC<AnonymousUploadProps> = ({ isEnabled, onUpload, 
           </div>
 
           <div className="p-12">
-            {status === 'success' ? (
+            {status === 'uploading' ? (
+              <div className="text-center py-20">
+                <div className="w-32 h-32 bg-brand-proph/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-brand-proph/20 shadow-inner">
+                  <Loader2 className="w-16 h-16 text-brand-proph animate-spin" />
+                </div>
+                <h2 className="text-4xl font-black text-white mb-4 tracking-tighter uppercase italic">Uploading Intel</h2>
+                <p className="text-brand-muted font-medium text-lg max-w-sm mx-auto italic">Synchronizing with Cloudinary nodes. Please wait...</p>
+              </div>
+            ) : status === 'success' ? (
               <div className="text-center py-20 animate-zoom-in">
                 <div className="w-32 h-32 bg-brand-proph/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-brand-proph/20 shadow-inner">
                   <CheckCircle2 className="w-16 h-16 text-brand-proph animate-bounce" />

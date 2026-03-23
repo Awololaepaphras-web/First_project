@@ -1,6 +1,5 @@
 
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -150,8 +149,9 @@ async function startServer() {
     res.json({ success: true, rates: RATES });
   });
 
-  // Vite middleware for development (only if not on Vercel)
+  // Vite middleware for development (only if not on Vercel and in dev mode)
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

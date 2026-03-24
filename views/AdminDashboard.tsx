@@ -1438,8 +1438,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <AdminBranding 
             onUpdateLogo={onUpdateLogo} 
             onUpdateIcon={onUpdateIcon} 
-            splashConfig={config.splashConfig}
-            onUpdateSplash={(splashConfig) => onUpdateConfig({ ...config, splashConfig })}
           />
         )}
       </main>

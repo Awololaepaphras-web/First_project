@@ -1,64 +1,24 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Trash2, CheckCircle2, Loader2, Shield, Monitor, Palette, Clock, Type } from 'lucide-react';
+import { Upload, Image as ImageIcon, Trash2, CheckCircle2, Loader2, Shield } from 'lucide-react';
 import { CloudinaryService } from '../src/services/cloudinaryService';
-import { SplashConfig } from '../types';
 
 interface AdminBrandingProps {
   onUpdateLogo: (logoUrl: string) => void;
   onUpdateIcon: (iconUrl: string) => void;
-  splashConfig: SplashConfig;
-  onUpdateSplash: (config: SplashConfig) => void;
 }
 
-const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIcon, splashConfig, onUpdateSplash }) => {
+const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIcon }) => {
   const [currentLogo, setCurrentLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
   const [currentIcon, setCurrentIcon] = useState<string>(localStorage.getItem('proph_app_icon') || '');
-  const [localSplash, setLocalSplash] = useState<SplashConfig>(splashConfig);
   const [previewLogo, setPreviewLogo] = useState<string>('');
   const [previewIcon, setPreviewIcon] = useState<string>('');
-  const [previewSplashLogo, setPreviewSplashLogo] = useState<string>('');
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [selectedIconFile, setSelectedIconFile] = useState<File | null>(null);
-  const [selectedSplashFile, setSelectedSplashFile] = useState<File | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
-  const [isUploadingSplash, setIsUploadingSplash] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
-  const splashInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSplashLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedSplashFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewSplashLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveSplash = async () => {
-    setIsUploadingSplash(true);
-    try {
-      let logoUrl = localSplash.logoUrl;
-      if (selectedSplashFile) {
-        logoUrl = await CloudinaryService.uploadFile(selectedSplashFile, 'image');
-      }
-      const updatedConfig = { ...localSplash, logoUrl };
-      onUpdateSplash(updatedConfig);
-      setPreviewSplashLogo('');
-      setSelectedSplashFile(null);
-      alert("Splash Screen Settings Updated Successfully.");
-    } catch (error) {
-      console.error('Splash upload failed:', error);
-      alert('Failed to update splash screen. Please try again.');
-    } finally {
-      setIsUploadingSplash(false);
-    }
-  };
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -279,133 +239,6 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIco
         <p className="text-gray-400 text-xs font-medium italic leading-relaxed">
           Consistent branding builds trust. Ensure your logo is clear and legible at small sizes, as it will be used in the footer navigation.
         </p>
-      </div>
-
-      {/* Splash Screen Section */}
-      <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-8 shadow-2xl">
-        <div className="flex justify-between items-start">
-          <div className="space-y-4">
-            <h3 className="text-xl font-black text-white flex items-center gap-3">
-              <Monitor className="w-5 h-5 text-green-500" /> Splash Screen
-            </h3>
-            <p className="text-gray-500 text-sm font-medium italic">
-              Configure the initial loading screen that users see when opening the app.
-            </p>
-          </div>
-          <button 
-            onClick={() => setLocalSplash({...localSplash, isEnabled: !localSplash.isEnabled})}
-            className={`px-6 py-2 rounded-full font-black uppercase text-[10px] tracking-widest transition-all ${localSplash.isEnabled ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-500'}`}
-          >
-            {localSplash.isEnabled ? 'Enabled' : 'Disabled'}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                <Type className="w-3 h-3" /> Splash Title
-              </label>
-              <input 
-                type="text" 
-                value={localSplash.title} 
-                onChange={e => setLocalSplash({...localSplash, title: e.target.value})}
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white font-medium focus:border-green-500 outline-none transition-all"
-                placeholder="PROPH"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                <Type className="w-3 h-3" /> Splash Subtitle
-              </label>
-              <input 
-                type="text" 
-                value={localSplash.subtitle} 
-                onChange={e => setLocalSplash({...localSplash, subtitle: e.target.value})}
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white font-medium focus:border-green-500 outline-none transition-all"
-                placeholder="Academic Node & Past Questions Hub"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                  <Palette className="w-3 h-3" /> Background
-                </label>
-                <input 
-                  type="color" 
-                  value={localSplash.backgroundColor} 
-                  onChange={e => setLocalSplash({...localSplash, backgroundColor: e.target.value})}
-                  className="w-full h-12 bg-gray-950 border border-gray-800 rounded-xl p-1 cursor-pointer"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                  <Palette className="w-3 h-3" /> Text Color
-                </label>
-                <input 
-                  type="color" 
-                  value={localSplash.textColor} 
-                  onChange={e => setLocalSplash({...localSplash, textColor: e.target.value})}
-                  className="w-full h-12 bg-gray-950 border border-gray-800 rounded-xl p-1 cursor-pointer"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                <Clock className="w-3 h-3" /> Duration (ms)
-              </label>
-              <input 
-                type="number" 
-                value={localSplash.duration} 
-                onChange={e => setLocalSplash({...localSplash, duration: parseInt(e.target.value)})}
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white font-medium focus:border-green-500 outline-none transition-all"
-                min="1000"
-                max="10000"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                <ImageIcon className="w-3 h-3" /> Splash Logo
-              </label>
-              <div className="w-full aspect-video bg-gray-950 rounded-2xl border border-gray-800 border-dashed flex items-center justify-center relative group overflow-hidden">
-                {previewSplashLogo || localSplash.logoUrl ? (
-                  <img src={previewSplashLogo || localSplash.logoUrl} alt="Splash Logo" className="max-w-[60%] max-h-[60%] object-contain" />
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-gray-700">
-                    <Upload className="w-8 h-8" />
-                    <span className="text-[8px] font-black uppercase">Upload Logo</span>
-                  </div>
-                )}
-                <button 
-                  onClick={() => splashInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                >
-                  <Upload className="w-6 h-6 text-white" />
-                </button>
-                <input type="file" ref={splashInputRef} hidden accept="image/*" onChange={handleSplashLogoSelect} />
-              </div>
-            </div>
-
-            <button 
-              onClick={handleSaveSplash}
-              disabled={isUploadingSplash}
-              className="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
-            >
-              {isUploadingSplash ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Updating Splash...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> Save Splash Settings
-                </>
-              )}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

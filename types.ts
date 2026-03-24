@@ -308,20 +308,9 @@ export interface SystemConfig {
   paystackPublicKey?: string;
   appLogo?: string;
   appIcon?: string;
-  splashConfig: SplashConfig;
   globalAnnouncement?: {
     text: string;
     isEnabled: boolean;
     type: 'info' | 'warning' | 'success' | 'error';
   };
-}
-
-export interface SplashConfig {
-  isEnabled: boolean;
-  logoUrl?: string;
-  title?: string;
-  subtitle?: string;
-  duration: number;
-  backgroundColor?: string;
-  textColor?: string;
 }

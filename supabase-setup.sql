@@ -71,9 +71,31 @@ CREATE TABLE IF NOT EXISTS public.posts (
     reposts UUID[] DEFAULT '{}',
     comments JSONB DEFAULT '[]',
     parent_id UUID REFERENCES public.posts(id),
+    tags TEXT[] DEFAULT '{}',
+    visibility TEXT DEFAULT 'public' CHECK (visibility IN ('public', 'node_only', 'private')),
+    is_edited BOOLEAN DEFAULT false,
     stats JSONB DEFAULT '{"linkClicks": 0, "profileClicks": 0, "mediaViews": 0, "detailsExpanded": 0, "impressions": 0}',
     created_at BIGINT NOT NULL
 );
+
+-- Ensure real-time is enabled for the posts table
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'posts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
+  END IF;
+END $$;
+
+-- Index for faster feed loading and filtering
+CREATE INDEX IF NOT EXISTS idx_posts_user_id ON public.posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_university ON public.posts(user_university) WHERE user_university IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_posts_visibility ON public.posts(visibility);
 
 -- Documents Table
 CREATE TABLE IF NOT EXISTS public.documents (

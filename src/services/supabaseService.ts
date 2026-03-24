@@ -237,6 +237,9 @@ export const SupabaseService = {
       userAvatar: p.user_avatar,
       mediaUrl: p.media_url,
       mediaType: p.media_type,
+      tags: p.tags,
+      visibility: p.visibility,
+      isEdited: p.is_edited,
       createdAt: Number(p.created_at)
     }));
   },
@@ -256,6 +259,9 @@ export const SupabaseService = {
             userUniversity: p.user_university,
             mediaUrl: p.media_url,
             mediaType: p.media_type,
+            tags: p.tags,
+            visibility: p.visibility,
+            isEdited: p.is_edited,
             createdAt: Number(p.created_at)
           };
         }
@@ -265,7 +271,7 @@ export const SupabaseService = {
   },
 
   async savePost(post: Post) {
-    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, createdAt, ...rest } = post as any;
+    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, createdAt, ...rest } = post as any;
     const dbPost = {
       ...rest,
       user_id: userId,
@@ -275,6 +281,9 @@ export const SupabaseService = {
       user_avatar: userAvatar,
       media_url: mediaUrl,
       media_type: mediaType,
+      tags: tags || [],
+      visibility: visibility || 'public',
+      is_edited: isEdited || false,
       created_at: createdAt
     };
     const { error } = await supabase.from('posts').upsert(dbPost);

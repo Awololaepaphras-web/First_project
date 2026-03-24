@@ -75,6 +75,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     { name: 'Explore', path: '/universities', icon: <Compass className="w-6 h-6" /> },
     ...(location.pathname === '/community' ? [{ name: 'Trends', path: '/community?tab=trends', icon: <TrendingUp className="w-6 h-6" /> }] : []),
     { name: 'Feeds', path: '/community', icon: <Tv className="w-6 h-6" /> },
+    { name: 'X Feed', path: '/x-feed', icon: <Zap className="w-6 h-6" /> },
     { name: 'Tasks', path: '/tasks', icon: <ListChecks className="w-6 h-6" /> },
     ...(user?.isPremium ? [{ name: 'Messages', path: '/messages', icon: <MessageSquare className="w-6 h-6" /> }] : []),
     { name: 'Memory Bank', path: '/memory-bank', icon: <Library className="w-6 h-6" /> },

@@ -55,6 +55,9 @@ export interface Post {
   comments: Comment[];
   reposts: string[];
   parentId?: string;
+  tags?: string[];
+  visibility?: 'public' | 'node_only' | 'private';
+  isEdited?: boolean;
   createdAt: number;
   stats: {
     linkClicks: number;

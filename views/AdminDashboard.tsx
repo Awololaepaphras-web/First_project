@@ -49,6 +49,7 @@ interface AdminDashboardProps {
   onUpdateUniversity: (uniId: string, updates: Partial<University>) => void;
   onUpdateAd: (ad: Advertisement) => void;
   onUpdateLogo: (logoUrl: string) => void;
+  onUpdateIcon: (iconUrl: string) => void;
   onLogout: () => void;
 }
 
@@ -59,7 +60,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   universities, universityColleges, collegeDepartments,
   onAddUniversity, onRemoveUniversity, onAddCollege, onRemoveCollege, onAddDept, onRemoveDept,
   onApproveQuestion, onRejectQuestion, onApproveWithdrawal, onRejectWithdrawal,
-  globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onLogout
+  globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onUpdateIcon, onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('command');
   const [conversations, setConversations] = useState<any[]>([]);
@@ -74,7 +75,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     title: '', 
     mediaUrl: '', 
     mediaType: 'image' as 'image' | 'video', 
-    adType: 'native' as AdType,
+    adType: 'popup' as AdType,
     placement: 'timeline' as AdPlacement,
     link: '', 
     duration: 15, 
@@ -1370,7 +1371,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {activeTab === 'branding' && (
-          <AdminBranding onUpdateLogo={onUpdateLogo} />
+          <AdminBranding 
+            onUpdateLogo={onUpdateLogo} 
+            onUpdateIcon={onUpdateIcon} 
+            splashConfig={config.splashConfig}
+            onUpdateSplash={(splashConfig) => onUpdateConfig({ ...config, splashConfig })}
+          />
         )}
       </main>
       <button onClick={() => setIsMobileNavOpen(!isMobileNavOpen)} className="lg:hidden fixed bottom-6 right-6 p-4 bg-red-600 text-white rounded-full shadow-2xl z-[100] active:scale-95">

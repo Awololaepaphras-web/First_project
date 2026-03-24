@@ -304,4 +304,16 @@ export interface SystemConfig {
   isCardPaymentEnabled: boolean;
   paystackPublicKey?: string;
   appLogo?: string;
+  appIcon?: string;
+  splashConfig: SplashConfig;
+}
+
+export interface SplashConfig {
+  isEnabled: boolean;
+  logoUrl?: string;
+  title?: string;
+  subtitle?: string;
+  duration: number;
+  backgroundColor?: string;
+  textColor?: string;
 }

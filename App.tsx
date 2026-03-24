@@ -40,7 +40,7 @@ import PointTransfer from './views/PointTransfer';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
-import SplashScreen from './components/SplashScreen';
+import SplashScreen from './src/components/SplashScreen';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
 import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, PaymentVerification } from './types';
@@ -80,7 +80,15 @@ const DEFAULT_CONFIG: SystemConfig = {
     accountName: 'PROPH ACADEMIC SERVICES'
   },
   isCardPaymentEnabled: true,
-  paystackPublicKey: 'pk_test_proph_academic_node_key'
+  paystackPublicKey: 'pk_test_proph_academic_node_key',
+  splashConfig: {
+    isEnabled: true,
+    title: 'PROPH',
+    subtitle: 'Academic Node & Past Questions Hub',
+    duration: 3000,
+    backgroundColor: '#000000',
+    textColor: '#ffffff'
+  }
 };
 
 const App: React.FC = () => {
@@ -99,15 +107,33 @@ const App: React.FC = () => {
   const [universityColleges, setUniversityColleges] = useState<Record<string, string[]>>(INITIAL_COLLEGES);
   const [collegeDepartments, setCollegeDepartments] = useState<Record<string, string[]>>(INITIAL_DEPARTMENTS);
   const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
+  const [appIcon, setAppIcon] = useState<string>(localStorage.getItem('proph_app_icon') || '');
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   
   useEffect(() => {
     if (config.appLogo) {
       setAppLogo(config.appLogo);
       localStorage.setItem('proph_app_logo', config.appLogo);
     }
-  }, [config.appLogo]);
+    if (config.appIcon) {
+      setAppIcon(config.appIcon);
+      localStorage.setItem('proph_app_icon', config.appIcon);
+    }
+  }, [config.appLogo, config.appIcon]);
 
-  const [showSplash, setShowSplash] = useState(true);
+  useEffect(() => {
+    if (appIcon) {
+      const links = document.querySelectorAll("link[rel*='icon']");
+      links.forEach(link => {
+        (link as HTMLLinkElement).href = appIcon;
+      });
+      const appleIcon = document.querySelector("link[rel='apple-touch-icon']");
+      if (appleIcon) {
+        (appleIcon as HTMLLinkElement).href = appIcon;
+      }
+    }
+  }, [appIcon]);
+
   const [navigationCount, setNavigationCount] = useState(0);
   const [loginTime, setLoginTime] = useState<number | null>(null);
   const [showAd, setShowAd] = useState(false);
@@ -537,13 +563,10 @@ const App: React.FC = () => {
     });
 
     if (validAds.length > 0) {
-      // Only trigger popup ads for FullscreenAd
-      const popupAds = validAds.filter(ad => ad.adType === 'popup');
-      if (popupAds.length > 0) {
-        const randomAd = popupAds[Math.floor(Math.random() * popupAds.length)];
-        setCurrentAd(randomAd);
-        setShowAd(true);
-      }
+      // Trigger all ads as fullscreen popups
+      const randomAd = validAds[Math.floor(Math.random() * validAds.length)];
+      setCurrentAd(randomAd);
+      setShowAd(true);
     }
   }, [globalAds]);
 
@@ -670,7 +693,12 @@ const App: React.FC = () => {
 
   return (
     <>
-      {showSplash && <SplashScreen logo={appLogo} onComplete={() => setShowSplash(false)} />}
+      {showSplash && config.splashConfig?.isEnabled && (
+        <SplashScreen 
+          config={config.splashConfig} 
+          onComplete={() => setShowSplash(false)} 
+        />
+      )}
       <Router>
         <AdController 
           user={user} 
@@ -792,6 +820,11 @@ const App: React.FC = () => {
                   setAppLogo(logoUrl);
                   localStorage.setItem('proph_app_logo', logoUrl);
                   handleSaveConfig({ ...config, appLogo: logoUrl });
+                }}
+                onUpdateIcon={(iconUrl) => {
+                  setAppIcon(iconUrl);
+                  localStorage.setItem('proph_app_icon', iconUrl);
+                  handleSaveConfig({ ...config, appIcon: iconUrl });
                 }}
                 onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }}
               />

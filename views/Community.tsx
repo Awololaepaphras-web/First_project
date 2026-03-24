@@ -405,18 +405,6 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
         ) : (
           filteredPosts.map((post, index) => (
           <React.Fragment key={post.id}>
-            {/* Timeline Ad Insertion */}
-            {index > 0 && index % 5 === 0 && globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'banner').length > 0 && (
-              <div className="p-4 border-b border-brand-border bg-brand-proph/5">
-                <BannerAd ad={globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'banner')[Math.floor(Math.random() * globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'banner').length)]} />
-              </div>
-            )}
-
-            {/* Native Ad Insertion */}
-            {index > 0 && index % 3 === 0 && globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'native').length > 0 && (
-               <NativeAd ad={globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'native')[Math.floor(Math.random() * globalAds.filter(ad => ad.status === 'active' && ad.placement === 'timeline' && ad.adType === 'native').length)]} />
-            )}
-            
             <div className="p-4 hover:bg-black/[0.05] dark:hover:bg-brand-black transition-colors cursor-pointer group relative">
             <div className="flex gap-3">
               <div className="w-12 h-12 rounded-full bg-brand-border flex-shrink-0 flex items-center justify-center font-black overflow-hidden shadow-inner">{post.userName.charAt(0)}</div>

@@ -303,4 +303,5 @@ export interface SystemConfig {
   };
   isCardPaymentEnabled: boolean;
   paystackPublicKey?: string;
+  appLogo?: string;
 }

@@ -242,8 +242,8 @@ export const SupabaseService = {
 
   subscribeToFeed(callback: (payload: any) => void) {
     return supabase
-      .channel('public:posts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload: any) => {
+      .channel('realtime-posts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload: any) => {
         if (payload.new) {
           const p = payload.new;
           payload.new = {

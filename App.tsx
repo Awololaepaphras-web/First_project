@@ -98,7 +98,15 @@ const App: React.FC = () => {
   const [universities, setUniversities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [universityColleges, setUniversityColleges] = useState<Record<string, string[]>>(INITIAL_COLLEGES);
   const [collegeDepartments, setCollegeDepartments] = useState<Record<string, string[]>>(INITIAL_DEPARTMENTS);
-  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '/logo.png');
+  const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
+  
+  useEffect(() => {
+    if (config.appLogo) {
+      setAppLogo(config.appLogo);
+      localStorage.setItem('proph_app_logo', config.appLogo);
+    }
+  }, [config.appLogo]);
+
   const [showSplash, setShowSplash] = useState(true);
   const [navigationCount, setNavigationCount] = useState(0);
   const [loginTime, setLoginTime] = useState<number | null>(null);
@@ -262,6 +270,21 @@ const App: React.FC = () => {
         const newConfig = payload.new.config;
         setConfig(prev => ({ ...prev, ...newConfig }));
         localStorage.setItem('proph_system_config', JSON.stringify(newConfig));
+        if (newConfig.appLogo) {
+          setAppLogo(newConfig.appLogo);
+          localStorage.setItem('proph_app_logo', newConfig.appLogo);
+        }
+      }
+    });
+
+    // Real-time listener for posts (as requested)
+    const realtimePostsSub = SupabaseService.subscribeToFeed((payload) => {
+      if (payload.eventType === 'INSERT') {
+        const newPost = payload.new as Post;
+        setPosts(prev => {
+          if (prev.some(p => p.id === newPost.id)) return prev;
+          return [newPost, ...prev];
+        });
       }
     });
 
@@ -315,6 +338,7 @@ const App: React.FC = () => {
       docsSub.unsubscribe();
       paymentsSub.unsubscribe();
       unisSub.unsubscribe();
+      realtimePostsSub.unsubscribe();
     };
   }, []);
 
@@ -764,7 +788,11 @@ const App: React.FC = () => {
                 onRejectWithdrawal={handleRejectWithdrawal}
                 globalAds={globalAds} onAddAd={handleAddAd} onDeleteAd={handleDeleteAd} onUpdateAd={handleUpdateAd}
                 onUpdateUniversity={(uid, up) => setUniversities(prev => prev.map(u => u.id === uid ? {...u, ...up} : u))}
-                onUpdateLogo={setAppLogo}
+                onUpdateLogo={(logoUrl) => {
+                  setAppLogo(logoUrl);
+                  localStorage.setItem('proph_app_logo', logoUrl);
+                  handleSaveConfig({ ...config, appLogo: logoUrl });
+                }}
                 onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }}
               />
             ) : ( <AdminLogin onLogin={setUser} allUsers={allUsers} /> )

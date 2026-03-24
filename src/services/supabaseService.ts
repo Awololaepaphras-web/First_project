@@ -233,6 +233,7 @@ export const SupabaseService = {
       userId: p.user_id,
       userName: p.user_name,
       userNickname: p.user_nickname,
+      userUniversity: p.user_university,
       userAvatar: p.user_avatar,
       mediaUrl: p.media_url,
       mediaType: p.media_type,
@@ -243,7 +244,7 @@ export const SupabaseService = {
   subscribeToFeed(callback: (payload: any) => void) {
     return supabase
       .channel('realtime-posts')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload: any) => {
         if (payload.new) {
           const p = payload.new;
           payload.new = {
@@ -252,6 +253,7 @@ export const SupabaseService = {
             userName: p.user_name,
             userNickname: p.user_nickname,
             userAvatar: p.user_avatar,
+            userUniversity: p.user_university,
             mediaUrl: p.media_url,
             mediaType: p.media_type,
             createdAt: Number(p.created_at)
@@ -263,12 +265,13 @@ export const SupabaseService = {
   },
 
   async savePost(post: Post) {
-    const { userId, userName, userNickname, userAvatar, mediaUrl, mediaType, createdAt, ...rest } = post as any;
+    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, createdAt, ...rest } = post as any;
     const dbPost = {
       ...rest,
       user_id: userId,
       user_name: userName,
       user_nickname: userNickname,
+      user_university: userUniversity,
       user_avatar: userAvatar,
       media_url: mediaUrl,
       media_type: mediaType,

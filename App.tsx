@@ -88,6 +88,11 @@ const DEFAULT_CONFIG: SystemConfig = {
     duration: 3000,
     backgroundColor: '#000000',
     textColor: '#ffffff'
+  },
+  globalAnnouncement: {
+    text: 'Welcome to PROPH! The ultimate Federal Universities Past Questions Hub.',
+    isEnabled: true,
+    type: 'success'
   }
 };
 
@@ -224,7 +229,12 @@ const App: React.FC = () => {
     // Global Subscriptions (don't depend on user)
     const feedSub = DB.subscribeToFeed((payload) => {
       if (payload.eventType === 'INSERT') {
-        setPosts(prev => [payload.new as Post, ...prev.filter(p => p.id !== payload.new.id)]);
+        console.log('New post arrived!', payload.new);
+        const newPost = payload.new as Post;
+        setPosts(prev => {
+          if (prev.some(p => p.id === newPost.id)) return prev;
+          return [newPost, ...prev];
+        });
       } else if (payload.eventType === 'UPDATE') {
         setPosts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Post : p));
       } else if (payload.eventType === 'DELETE') {
@@ -303,17 +313,6 @@ const App: React.FC = () => {
       }
     });
 
-    // Real-time listener for posts (as requested)
-    const realtimePostsSub = SupabaseService.subscribeToFeed((payload) => {
-      if (payload.eventType === 'INSERT') {
-        const newPost = payload.new as Post;
-        setPosts(prev => {
-          if (prev.some(p => p.id === newPost.id)) return prev;
-          return [newPost, ...prev];
-        });
-      }
-    });
-
     const docsSub = SupabaseService.subscribeToTable('documents', (payload: any) => {
       if (payload.new) {
         const d = payload.new;
@@ -364,7 +363,6 @@ const App: React.FC = () => {
       docsSub.unsubscribe();
       paymentsSub.unsubscribe();
       unisSub.unsubscribe();
-      realtimePostsSub.unsubscribe();
     };
   }, []);
 
@@ -709,7 +707,7 @@ const App: React.FC = () => {
           setHasShownInitialAd={setHasShownInitialAd}
           triggerAd={triggerAd}
         />
-        <Layout user={user} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} notifications={notifications} onSelectTrend={()=>{}} appLogo={appLogo} onSaveConfig={handleSaveConfig}>
+        <Layout user={user} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} notifications={notifications} onSelectTrend={()=>{}} appLogo={appLogo} onSaveConfig={handleSaveConfig} config={config}>
         <Routes>
           <Route path="/" element={<Home user={user} />} />
           <Route path="/login" element={

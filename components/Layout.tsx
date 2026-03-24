@@ -10,8 +10,9 @@ import {
   Award, Camera, DollarSign, TrendingUp
 } from 'lucide-react';
 import StudyTimer from './StudyTimer';
-import { Notification, User as UserType } from '../types';
+import { Notification, User as UserType, SystemConfig } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,9 +22,10 @@ interface LayoutProps {
   onSelectTrend: (trend: string | null) => void;
   appLogo?: string;
   onSaveConfig?: () => void;
+  config?: SystemConfig;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications = [], onSelectTrend, appLogo, onSaveConfig }) => {
+const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications = [], onSelectTrend, appLogo, onSaveConfig, config }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('proph_theme');
@@ -153,8 +155,30 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white flex flex-col lg:flex-row transition-colors selection:bg-brand-proph/30 overflow-x-hidden">
-      {user && (
+    <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white flex flex-col transition-colors selection:bg-brand-proph/30 overflow-x-hidden">
+      <AnimatePresence>
+        {config?.globalAnnouncement?.isEnabled && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className={`w-full py-2.5 px-6 text-center text-[10px] font-black uppercase tracking-[0.3em] relative overflow-hidden flex items-center justify-center gap-4 z-[100] shadow-2xl ${
+              config.globalAnnouncement.type === 'warning' ? 'bg-yellow-500 text-black' :
+              config.globalAnnouncement.type === 'success' ? 'bg-brand-proph text-black' :
+              config.globalAnnouncement.type === 'error' ? 'bg-red-600 text-white' :
+              'bg-blue-600 text-white'
+            }`}
+          >
+            <Megaphone className="w-4 h-4 animate-bounce" />
+            <span className="relative z-10 drop-shadow-md">{config.globalAnnouncement.text}</span>
+            <div className="absolute inset-0 bg-white/10 animate-pulse" />
+            <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-2xl" />
+            <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-2xl" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="flex flex-col lg:flex-row flex-grow">
+        {user && (
         <aside className="hidden lg:flex sticky top-0 h-screen w-[88px] xl:w-[300px] flex-col items-center xl:items-start px-4 py-6 border-r border-brand-border dark:border-brand-border z-50 bg-white dark:bg-brand-black transition-all">
             <Link to="/" className="p-4 mb-6 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group" title="Return Home">
               <div className="group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
@@ -393,6 +417,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 };

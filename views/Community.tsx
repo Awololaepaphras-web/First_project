@@ -85,7 +85,7 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
 
 const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost }) => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'all' | 'following' | 'trends'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'following' | 'trends' | 'node'>('all');
   const [newPostContent, setNewPostContent] = useState('');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
   const [showShareMenu, setShowShareMenu] = useState<string | null>(null);
@@ -118,6 +118,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
 
     if (activeTab === 'following') {
       return matchesSearch && matchesTrend && user.following?.includes(p.userId);
+    }
+    if (activeTab === 'node') {
+      return matchesSearch && matchesTrend && p.userUniversity === user.university;
     }
     return matchesSearch && matchesTrend;
   });
@@ -242,6 +245,13 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
         >
           Following
           {activeTab === 'following' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('node')}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'node' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+        >
+          My Node
+          {activeTab === 'node' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
           onClick={() => setActiveTab('trends')}
@@ -414,6 +424,8 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                       <span className="font-black text-[15px] truncate text-gray-900 dark:text-white hover:underline cursor-pointer" title="View Node">{post.userName}</span>
                       <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
                       <span className="text-brand-muted text-[15px] truncate">@{post.userNickname}</span>
+                      <span className="text-brand-muted text-[15px]">•</span>
+                      <span className="text-brand-proph text-[15px] font-black italic truncate max-w-[100px]" title="Node">{post.userUniversity}</span>
                       <span className="text-brand-muted text-[15px]">•</span>
                       <span className="text-brand-muted text-[15px] whitespace-nowrap" title={new Date(post.createdAt).toLocaleString()}>{formatRelativeTime(post.createdAt)}</span>
                       {post.userId !== user.id && (

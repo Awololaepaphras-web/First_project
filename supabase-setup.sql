@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
     user_name TEXT NOT NULL,
     user_nickname TEXT NOT NULL,
     user_avatar TEXT,
+    user_university TEXT,
     content TEXT NOT NULL,
     media_url TEXT,
     media_type TEXT,

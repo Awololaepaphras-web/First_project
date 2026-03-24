@@ -306,6 +306,11 @@ export interface SystemConfig {
   appLogo?: string;
   appIcon?: string;
   splashConfig: SplashConfig;
+  globalAnnouncement?: {
+    text: string;
+    isEnabled: boolean;
+    type: 'info' | 'warning' | 'success' | 'error';
+  };
 }
 
 export interface SplashConfig {

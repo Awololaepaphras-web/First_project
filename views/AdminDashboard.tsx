@@ -1035,11 +1035,75 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {activeTab === 'broadcast' && (
           <div className="space-y-12 animate-fade-in max-w-4xl">
-             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Global Signals</h1>
-             <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
-                <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl outline-none text-white font-bold" placeholder="Signal Header" value={broadcast.title} onChange={e => setBroadcast({...broadcast, title: e.target.value})} />
-                <textarea rows={4} className="w-full bg-gray-950 border border-gray-800 p-5 rounded-[2rem] outline-none text-white font-medium resize-none" placeholder="Compose signal message..." value={broadcast.content} onChange={e => setBroadcast({...broadcast, content: e.target.value})} />
-                <button onClick={transmitSignal} className="w-full bg-red-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3"><Send className="w-4 h-4" /> Broadcast Pulse</button>
+             <div className="flex items-center justify-between">
+               <h1 className="text-4xl font-black tracking-tighter uppercase italic">Global Signals</h1>
+               <div className="flex items-center gap-4">
+                 <button 
+                   onClick={() => handleUpdateConfig({ 
+                     globalAnnouncement: { 
+                       ...(config.globalAnnouncement || { text: '', type: 'info', isEnabled: false }), 
+                       isEnabled: !config.globalAnnouncement?.isEnabled 
+                     } 
+                   })}
+                   className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${config.globalAnnouncement?.isEnabled ? 'bg-brand-proph text-black' : 'bg-gray-800 text-gray-500'}`}
+                 >
+                   {config.globalAnnouncement?.isEnabled ? 'Announcement Active' : 'Announcement Offline'}
+                 </button>
+               </div>
+             </div>
+
+             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+               <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
+                  <h3 className="text-xl font-black text-white flex items-center gap-3"><Megaphone className="w-5 h-5 text-brand-proph" /> Global Banner</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Banner Text</label>
+                      <input 
+                        className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl outline-none text-white font-bold" 
+                        placeholder="Global announcement text..." 
+                        value={config.globalAnnouncement?.text || ''} 
+                        onChange={e => handleUpdateConfig({ 
+                          globalAnnouncement: { 
+                            ...(config.globalAnnouncement || { isEnabled: false, type: 'info' }), 
+                            text: e.target.value 
+                          } 
+                        })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Banner Type</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(['info', 'warning', 'success', 'error'] as const).map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => handleUpdateConfig({ 
+                              globalAnnouncement: { 
+                                ...(config.globalAnnouncement || { text: '', isEnabled: false }), 
+                                type 
+                              } 
+                            })}
+                            className={`py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${
+                              config.globalAnnouncement?.type === type 
+                                ? 'border-brand-proph bg-brand-proph/10 text-brand-proph' 
+                                : 'border-gray-800 bg-gray-950 text-gray-500 hover:border-gray-700'
+                            }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
+                  <h3 className="text-xl font-black text-white flex items-center gap-3"><Send className="w-5 h-5 text-red-500" /> Pulse Broadcast</h3>
+                  <div className="space-y-4">
+                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl outline-none text-white font-bold" placeholder="Signal Header" value={broadcast.title} onChange={e => setBroadcast({...broadcast, title: e.target.value})} />
+                    <textarea rows={4} className="w-full bg-gray-950 border border-gray-800 p-5 rounded-[2rem] outline-none text-white font-medium resize-none" placeholder="Compose signal message..." value={broadcast.content} onChange={e => setBroadcast({...broadcast, content: e.target.value})} />
+                    <button onClick={transmitSignal} className="w-full bg-red-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3"><Send className="w-4 h-4" /> Broadcast Pulse</button>
+                  </div>
+               </div>
              </div>
           </div>
         )}

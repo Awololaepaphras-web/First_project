@@ -192,6 +192,11 @@ export const SupabaseService = {
     if (error) console.error('Error updating user theme:', error);
   },
 
+  async updateUserPoints(userId: string, points: number) {
+    const { error } = await supabase.from('users').update({ points }).eq('id', userId);
+    if (error) console.error('Error updating user points:', error);
+  },
+
   async transferPoints(senderId: string, receiverId: string, amount: number) {
     try {
       // We now use a secure RPC function that handles the transfer atomically on the server
@@ -228,7 +233,11 @@ export const SupabaseService = {
       console.error('Error fetching feed:', error);
       return [];
     }
-    return (data || []).map(p => ({
+    return (data || []).map(p => this.mapPost(p));
+  },
+
+  mapPost(p: any): Post {
+    return {
       ...p,
       userId: p.user_id,
       userName: p.user_name,
@@ -240,38 +249,13 @@ export const SupabaseService = {
       tags: p.tags,
       visibility: p.visibility,
       isEdited: p.is_edited,
+      adId: p.ad_id,
       createdAt: Number(p.created_at)
-    }));
-  },
-
-  subscribeToFeed(callback: (payload: any) => void) {
-    return supabase
-      .channel('realtime-posts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload: any) => {
-        if (payload.new) {
-          const p = payload.new;
-          payload.new = {
-            ...p,
-            userId: p.user_id,
-            userName: p.user_name,
-            userNickname: p.user_nickname,
-            userAvatar: p.user_avatar,
-            userUniversity: p.user_university,
-            mediaUrl: p.media_url,
-            mediaType: p.media_type,
-            tags: p.tags,
-            visibility: p.visibility,
-            isEdited: p.is_edited,
-            createdAt: Number(p.created_at)
-          };
-        }
-        callback(payload);
-      })
-      .subscribe();
+    };
   },
 
   async savePost(post: Post) {
-    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, createdAt, ...rest } = post as any;
+    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, createdAt, ...rest } = post as any;
     const dbPost = {
       ...rest,
       user_id: userId,
@@ -284,6 +268,7 @@ export const SupabaseService = {
       tags: tags || [],
       visibility: visibility || 'public',
       is_edited: isEdited || false,
+      ad_id: adId,
       created_at: createdAt
     };
     const { error } = await supabase.from('posts').upsert(dbPost);
@@ -310,7 +295,11 @@ export const SupabaseService = {
       console.error('Error fetching documents:', error);
       return [];
     }
-    return (data || []).map(d => ({
+    return (data || []).map(d => this.mapDocument(d));
+  },
+
+  mapDocument(d: any): PastQuestion {
+    return {
       ...d,
       universityId: d.university_id,
       courseCode: d.course_code,
@@ -318,7 +307,19 @@ export const SupabaseService = {
       fileUrl: d.file_url,
       uploadedBy: d.uploaded_by,
       createdAt: Number(d.created_at)
-    }));
+    };
+  },
+
+  subscribeToDocuments(callback: (payload: any) => void) {
+    return supabase
+      .channel('realtime-documents')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, (payload: any) => {
+        if (payload.new) {
+          payload.new = this.mapDocument(payload.new);
+        }
+        callback(payload);
+      })
+      .subscribe();
   },
 
   async saveDocument(doc: PastQuestion) {
@@ -335,6 +336,7 @@ export const SupabaseService = {
     const { error } = await supabase.from('documents').upsert(dbDoc);
     if (error) console.error('Error saving document:', error);
   },
+
   async saveDocuments(docs: PastQuestion[]) {
     const dbDocs = docs.map(doc => {
       const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc;
@@ -345,16 +347,86 @@ export const SupabaseService = {
         course_title: courseTitle,
         file_url: fileUrl,
         uploaded_by: uploadedBy,
-        created_at: new Date(createdAt).toISOString()
+        created_at: createdAt
       };
     });
     const { error } = await supabase.from('documents').upsert(dbDocs);
     if (error) console.error('Error saving documents:', error);
   },
 
+  async deleteDocument(id: string) {
+    const { error } = await supabase.from('documents').delete().eq('id', id);
+    if (error) {
+      console.error('Error deleting document:', error);
+      throw error;
+    }
+  },
+
   async updateDocumentStatus(id: string, status: 'approved' | 'rejected') {
     const { error } = await supabase.from('documents').update({ status }).eq('id', id);
     if (error) console.error('Error updating document status:', error);
+  },
+
+  // Advertisements
+  async getAds(): Promise<any[]> {
+    const { data, error } = await supabase.from('advertisements').select('*');
+    if (error) {
+      console.error('Error fetching ads:', error);
+      return [];
+    }
+    return (data || []).map(a => this.mapAd(a));
+  },
+
+  mapAd(a: any): any {
+    return {
+      ...a,
+      userId: a.user_id,
+      mediaUrl: a.media_url,
+      type: a.media_type,
+      adType: a.ad_type,
+      targetLocation: a.target_location,
+      campaignDuration: a.campaign_duration,
+      campaignUnit: a.campaign_unit,
+      timesPerDay: a.times_per_day,
+      targetReach: a.target_reach,
+      timeFrames: a.time_frames
+    };
+  },
+
+  subscribeToAds(callback: (payload: any) => void) {
+    return supabase
+      .channel('realtime-ads')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'advertisements' }, (payload: any) => {
+        if (payload.new) {
+          payload.new = this.mapAd(payload.new);
+        }
+        callback(payload);
+      })
+      .subscribe();
+  },
+
+  async saveAd(ad: any) {
+    const { userId, mediaUrl, type, adType, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, ...rest } = ad;
+    const dbAd = {
+      ...rest,
+      user_id: userId,
+      media_url: mediaUrl,
+      media_type: type,
+      ad_type: adType,
+      target_location: targetLocation,
+      campaign_duration: campaignDuration,
+      campaign_unit: campaignUnit,
+      times_per_day: timesPerDay,
+      target_reach: targetReach,
+      time_frames: timeFrames
+    };
+    const { error } = await supabase.from('advertisements').upsert(dbAd);
+    if (error) console.error('Error saving ad:', error);
+  },
+
+  async deleteAd(adId: string) {
+    const { error } = await supabase.from('advertisements').delete().eq('id', adId);
+    if (error) console.error('Error deleting ad:', error);
   },
 
   // Config
@@ -415,8 +487,8 @@ export const SupabaseService = {
       .from('conversations')
       .select(`
         *,
-        user1:user1_id(id, username, full_name, avatar_url),
-        user2:user2_id(id, username, full_name, avatar_url)
+        user1:user1_id(id, nickname, name),
+        user2:user2_id(id, nickname, name)
       `)
       .order('last_message_time', { ascending: false });
 
@@ -432,7 +504,7 @@ export const SupabaseService = {
       .from('messages')
       .select(`
         *,
-        sender:sender_id(id, username, full_name, avatar_url)
+        sender:sender_id(id, nickname, name)
       `)
       .is('receiver_id', null)
       .order('created_at', { ascending: true });
@@ -482,8 +554,6 @@ export const SupabaseService = {
   },
 
   subscribeToMessages(userId: string, callback: (payload: any) => void) {
-    // We listen to all inserts on the messages table. 
-    // Supabase RLS will ensure we only receive messages we are authorized to see.
     return supabase
       .channel(`realtime:messages:${userId}`)
       .on('postgres_changes', { 
@@ -491,7 +561,6 @@ export const SupabaseService = {
         schema: 'public', 
         table: 'messages'
       }, (payload) => {
-        // Double check in the callback just in case RLS isn't perfectly filtering the broadcast
         const msg = payload.new;
         if (msg && (msg.sender_id === userId || msg.receiver_id === userId || msg.receiver_id === null)) {
           callback({
@@ -507,7 +576,11 @@ export const SupabaseService = {
   },
 
   async sendMessage(message: any) {
-    const { error } = await supabase.from('messages').insert(message);
+    const { error } = await supabase.from('messages').insert({
+      sender_id: message.senderId,
+      receiver_id: message.receiverId,
+      content: message.content
+    });
     if (error) console.error('Error sending message:', error);
   },
 
@@ -518,7 +591,7 @@ export const SupabaseService = {
       .select('*')
       .eq('user_id', userId)
       .single();
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+    if (error && error.code !== 'PGRST116') {
       console.error('Error fetching gladiator vault:', error);
       return null;
     }
@@ -535,52 +608,6 @@ export const SupabaseService = {
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
     if (error) console.error('Error saving gladiator vault:', error);
-  },
-
-  // Advertisements
-  async getAds(): Promise<any[]> {
-    const { data, error } = await supabase.from('advertisements').select('*');
-    if (error) {
-      console.error('Error fetching ads:', error);
-      return [];
-    }
-    return (data || []).map(a => ({
-      ...a,
-      userId: a.user_id,
-      mediaUrl: a.media_url,
-      type: a.media_type,
-      adType: a.ad_type,
-      targetLocation: a.target_location,
-      campaignDuration: a.campaign_duration,
-      campaignUnit: a.campaign_unit,
-      timesPerDay: a.times_per_day,
-      targetReach: a.target_reach,
-      timeFrames: a.time_frames
-    }));
-  },
-
-  async saveAd(ad: any) {
-    const { userId, mediaUrl, type, adType, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, ...rest } = ad;
-    const dbAd = {
-      ...rest,
-      user_id: userId,
-      media_url: mediaUrl,
-      media_type: type,
-      ad_type: adType,
-      target_location: targetLocation,
-      campaign_duration: campaignDuration,
-      campaign_unit: campaignUnit,
-      times_per_day: timesPerDay,
-      target_reach: targetReach,
-      time_frames: timeFrames
-    };
-    const { error } = await supabase.from('advertisements').upsert(dbAd);
-    if (error) console.error('Error saving ad:', error);
-  },
-
-  async deleteAd(adId: string) {
-    const { error } = await supabase.from('advertisements').delete().eq('id', adId);
-    if (error) console.error('Error deleting ad:', error);
   },
 
   // Withdrawal Requests

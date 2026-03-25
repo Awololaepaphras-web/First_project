@@ -20,7 +20,7 @@ const GladiatorPool: React.FC<GladiatorPoolProps> = ({ user, onCommit }) => {
 
   const handleCommit = () => {
     if ((user.points || 0) < points) {
-      alert("Insufficient points for this level of combat.");
+      alert("Insufficient Prophy Points for this level of combat.");
       return;
     }
     setLoading(true);
@@ -53,7 +53,7 @@ const GladiatorPool: React.FC<GladiatorPoolProps> = ({ user, onCommit }) => {
              <Zap className="w-4 h-4 fill-current" /> High Stakes Arena
           </div>
           <h1 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-none">
-            POINT <span className="text-red-600">DROP</span>
+            PROPHY POINT <span className="text-red-600">DROP</span>
           </h1>
           <p className="max-w-2xl mx-auto text-gray-400 font-medium text-lg italic">
             "High Commitment. High Reward. The ultimate test of institutional knowledge."
@@ -66,7 +66,7 @@ const GladiatorPool: React.FC<GladiatorPoolProps> = ({ user, onCommit }) => {
                 <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform duration-1000"><Shield className="w-64 h-64" /></div>
                 <div className="space-y-4 relative z-10">
                    <h3 className="text-3xl font-black italic uppercase">The Pool Deck</h3>
-                   <p className="text-gray-500 font-medium text-sm">Contribute your points to the communal pot. Top gladiators split the combined pool + system bonus.</p>
+                   <p className="text-gray-500 font-medium text-sm">Contribute your Prophy Points to the communal pot. Top gladiators split the combined pool + system bonus.</p>
                 </div>
 
                 <div className="space-y-6 relative z-10">
@@ -126,7 +126,7 @@ const GladiatorPool: React.FC<GladiatorPoolProps> = ({ user, onCommit }) => {
                    <AlertTriangle className="w-8 h-8 text-orange-500 flex-shrink-0" />
                    <div className="space-y-2">
                       <p className="text-sm font-black uppercase text-orange-500">Survival Protocol</p>
-                      <p className="text-xs text-gray-400 font-medium leading-relaxed italic">Points committed to the Point Drop are non-refundable. Only the highest ranking nodes in the session will receive a cut of the total spoils.</p>
+                      <p className="text-xs text-gray-400 font-medium leading-relaxed italic">Prophy Points committed to the Prophy Point Drop are non-refundable. Only the highest ranking nodes in the session will receive a cut of the total spoils.</p>
                    </div>
                 </div>
              </div>

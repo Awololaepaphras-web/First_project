@@ -47,12 +47,12 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
   const handleTransfer = async () => {
     if (!selectedUser || amount < 5000) {
       if (amount < 5000) {
-        setMessage({ type: 'error', text: 'Minimum transfer amount is 5,000 points.' });
+        setMessage({ type: 'error', text: 'Minimum transfer amount is 5,000 Prophy Points.' });
       }
       return;
     }
     if (amount > (user.points || 0)) {
-      setMessage({ type: 'error', text: 'Insufficient points in your vault.' });
+      setMessage({ type: 'error', text: 'Insufficient Prophy Points in your vault.' });
       return;
     }
 
@@ -62,7 +62,7 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
     try {
       const result = await Database.transferPoints(user.id, selectedUser.id, amount);
       if (result.success) {
-        setMessage({ type: 'success', text: `Successfully transferred ${amount} points to ${selectedUser.name}.` });
+        setMessage({ type: 'success', text: `Successfully transferred ${amount} Prophy Points to ${selectedUser.name}.` });
         setAmount(0);
         setSelectedUser(null);
         setSearchQuery('');
@@ -86,13 +86,13 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-brand-proph/10 text-brand-proph text-[10px] font-black uppercase tracking-[0.3em] border border-brand-proph/20">
             <Send className="w-4 h-4" />
-            <span>Point Distribution Protocol</span>
+            <span>Prophy Point Distribution Protocol</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter leading-none italic uppercase">
             Transfer <span className="text-brand-proph">Intel</span>
           </h1>
           <p className="max-w-xl mx-auto text-gray-500 dark:text-brand-muted font-medium text-lg italic">
-            Securely distribute your earned points to other nodes within the federal network.
+            Securely distribute your earned Prophy Points to other nodes within the federal network.
           </p>
           <div className="bg-brand-proph/5 border border-brand-proph/20 p-4 rounded-2xl max-w-md mx-auto">
              <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph flex items-center justify-center gap-2">
@@ -115,7 +115,7 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
                 </div>
                 <div>
                   <p className="text-5xl font-black italic tracking-tighter text-white">{(user.points || 0).toLocaleString()}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph mt-1">Available Points</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph mt-1">Available Prophy Points</p>
                 </div>
                 <div className="pt-6 border-t border-white/10">
                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
@@ -134,7 +134,7 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
                <ul className="space-y-4">
                   {[
                     'Transfers are irreversible once confirmed',
-                    'Minimum transfer amount is 5,000 points',
+                    'Minimum transfer amount is 5,000 Prophy Points',
                     'Recipient must be a verified node',
                     'Zero transaction fees applied'
                   ].map((text, i) => (
@@ -226,7 +226,7 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
                     onChange={(e) => setAmount(Number(e.target.value))}
                   />
                   <div className="absolute right-8 top-1/2 -translate-y-1/2 text-brand-muted font-black uppercase tracking-widest text-xs">
-                    Points
+                    Prophy Points
                   </div>
                 </div>
                 

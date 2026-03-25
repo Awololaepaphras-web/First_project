@@ -87,7 +87,8 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
         ...formData,
         id: Math.random().toString(36).substr(2, 9),
         fileUrl: uploadedUrls[0], // For now, we take the first one as primary
-        status: 'pending',
+        status: 'approved', // Set to approved immediately for forceful visibility
+        visibility: 'public', // Forceful visibility
         uploadedBy: user.id,
         createdAt: Date.now()
       };

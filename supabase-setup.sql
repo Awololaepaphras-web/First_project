@@ -74,28 +74,10 @@ CREATE TABLE IF NOT EXISTS public.posts (
     tags TEXT[] DEFAULT '{}',
     visibility TEXT DEFAULT 'public' CHECK (visibility IN ('public', 'node_only', 'private')),
     is_edited BOOLEAN DEFAULT false,
+    ad_id UUID,
     stats JSONB DEFAULT '{"linkClicks": 0, "profileClicks": 0, "mediaViews": 0, "detailsExpanded": 0, "impressions": 0}',
     created_at BIGINT NOT NULL
 );
-
--- Ensure real-time is enabled for the posts table
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables 
-    WHERE pubname = 'supabase_realtime' 
-    AND schemaname = 'public' 
-    AND tablename = 'posts'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
-  END IF;
-END $$;
-
--- Index for faster feed loading and filtering
-CREATE INDEX IF NOT EXISTS idx_posts_user_id ON public.posts(user_id);
-CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_posts_university ON public.posts(user_university) WHERE user_university IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_posts_visibility ON public.posts(visibility);
 
 -- Documents Table
 CREATE TABLE IF NOT EXISTS public.documents (
@@ -111,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.documents (
     description TEXT,
     type TEXT,
     file_url TEXT NOT NULL,
+    visibility TEXT DEFAULT 'public' CHECK (visibility IN ('public', 'private')),
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     uploaded_by UUID REFERENCES public.users(id),
     created_at BIGINT NOT NULL
@@ -151,7 +134,7 @@ CREATE TABLE IF NOT EXISTS public.advertisements (
     campaign_duration INTEGER,
     campaign_unit TEXT,
     times_per_day INTEGER,
-    target_reach INTEGER,
+    target_reach TEXT,
     time_frames TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -206,6 +189,7 @@ CREATE TABLE IF NOT EXISTS public.payment_verifications (
 CREATE TABLE IF NOT EXISTS public.universities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    acronym TEXT,
     location TEXT,
     logo TEXT,
     description TEXT,
@@ -386,7 +370,11 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Posts Policies
-CREATE POLICY "Posts are viewable by everyone" ON public.posts FOR SELECT USING (true);
+CREATE POLICY "Posts are viewable by university node" ON public.posts FOR SELECT 
+USING (
+  visibility = 'public' OR 
+  (visibility = 'node_only' AND user_university = (SELECT university FROM public.users WHERE id = auth.uid()))
+);
 CREATE POLICY "Authenticated users can create posts" ON public.posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Users can update their own posts" ON public.posts FOR UPDATE USING (auth.uid() = user_id OR is_admin());
 CREATE POLICY "Users can delete their own posts" ON public.posts FOR DELETE USING (auth.uid() = user_id OR is_admin());
@@ -466,6 +454,8 @@ VALUES ('default', '{
   "isCommunityEnabled": true,
   "isAdsEnabled": true,
   "isUserAdsEnabled": true,
+  "isSplashScreenEnabled": true,
+  "splashScreenUrl": "",
   "feedWeights": { "engagement": 0.4, "recency": 0.3, "relationship": 0.1, "quality": 0.1, "eduRelevance": 0.1 },
   "adWeights": { "budget": 0.5, "relevance": 0.2, "performance": 0.2, "targetMatch": 0.1 },
   "earnRates": { "contribution": 50, "referral": 80, "adClick": 200, "arena": 5 },
@@ -618,33 +608,30 @@ CREATE TABLE IF NOT EXISTS public.admin_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Realtime Configuration
--- Safely enable realtime for all tables
+-- Ensure real-time is enabled for all tables
 DO $$
-BEGIN
-  -- Ensure publication exists
-  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-    CREATE PUBLICATION supabase_realtime;
-  END IF;
-
-  -- Add tables to publication if not already present
-  DECLARE
+DECLARE
     tables TEXT[] := ARRAY['posts', 'users', 'documents', 'messages', 'advertisements', 'tasks', 'withdrawal_requests', 'system_config', 'payment_verifications', 'universities', 'notifications', 'gladiator_vault', 'conversations', 'admin_logs'];
     t TEXT;
-  BEGIN
+BEGIN
+    -- Ensure publication exists
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+
     FOR t IN SELECT unnest(tables) LOOP
-      IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = t) THEN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_publication_tables 
-          WHERE pubname = 'supabase_realtime' 
-          AND schemaname = 'public' 
-          AND tablename = t
-        ) THEN
-          EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+        IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = t) THEN
+            -- Check if table is already in publication
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_publication_tables 
+                WHERE pubname = 'supabase_realtime' 
+                AND schemaname = 'public' 
+                AND tablename = t
+            ) THEN
+                EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+            END IF;
         END IF;
-      END IF;
     END LOOP;
-  END;
 END $$;
 
 -- ===============================================================

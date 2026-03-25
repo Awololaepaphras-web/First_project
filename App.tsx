@@ -10,7 +10,7 @@ import Dashboard from './views/Dashboard';
 import AIAssistant from './views/AIAssistant';
 import StudyHub from './views/StudyHub';
 import Community from './views/Community';
-import XCommunityFeed from './src/views/XCommunityFeed';
+import UniversityFeed from './src/views/UniversityFeed';
 import UniversityList from './views/UniversityList';
 import UniversityDetail from './views/UniversityDetail';
 import AdminDashboard from './views/AdminDashboard';
@@ -38,6 +38,7 @@ import AdRevenueSharing from './views/AdRevenueSharing';
 import AdminPaymentVerification from './views/AdminPaymentVerification';
 import Referrals from './views/Referrals';
 import PointTransfer from './views/PointTransfer';
+import VercelSqlView from './views/VercelSqlView';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
@@ -54,6 +55,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   isCommunityEnabled: true,
   isAdsEnabled: true,
   isUserAdsEnabled: true,
+  isSplashScreenEnabled: true,
   feedWeights: { engagement: 0.4, recency: 0.3, relationship: 0.1, quality: 0.1, eduRelevance: 0.1 },
   adWeights: { budget: 0.5, relevance: 0.2, performance: 0.2, targetMatch: 0.1 },
   earnRates: {
@@ -81,11 +83,54 @@ const DEFAULT_CONFIG: SystemConfig = {
   },
   isCardPaymentEnabled: true,
   paystackPublicKey: 'pk_test_proph_academic_node_key',
+  splashScreenUrl: '',
   globalAnnouncement: {
     text: 'Welcome to PROPH! The ultimate Federal Universities Past Questions Hub.',
     isEnabled: true,
     type: 'success'
   }
+};
+
+const SplashScreen: React.FC<{ logo: string; splashUrl?: string; onComplete: () => void }> = ({ logo, splashUrl, onComplete }) => {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 4000); // Slightly longer for full image
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  if (splashUrl) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center animate-in fade-in duration-700">
+        <img src={splashUrl} alt="Splash" className="w-full h-full object-cover animate-pulse" />
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-full bg-brand-proph animate-progress" style={{ width: '100%' }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center animate-in fade-in duration-500">
+      <div className="relative">
+        <div className="w-32 h-32 rounded-[2.5rem] bg-brand-proph/20 animate-pulse absolute -inset-4 blur-xl" />
+        {logo ? (
+          <img src={logo} alt="Proph" className="w-32 h-32 rounded-[2.5rem] relative z-10 shadow-2xl animate-bounce" />
+        ) : (
+          <div className="w-32 h-32 rounded-[2.5rem] bg-brand-proph flex items-center justify-center relative z-10 shadow-2xl animate-bounce">
+            <span className="text-6xl font-black text-white italic">P</span>
+          </div>
+        )}
+      </div>
+      <div className="mt-12 text-center">
+        <h1 className="text-5xl font-black text-white tracking-tighter italic">PROPH</h1>
+        <p className="text-brand-proph font-black uppercase tracking-[0.3em] text-[10px] mt-2">Academic Node Alpha</p>
+      </div>
+      <div className="absolute bottom-12">
+        <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-full bg-brand-proph animate-progress" style={{ width: '100%' }} />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const App: React.FC = () => {
@@ -105,7 +150,15 @@ const App: React.FC = () => {
   const [collegeDepartments, setCollegeDepartments] = useState<Record<string, string[]>>(INITIAL_DEPARTMENTS);
   const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
   const [appIcon, setAppIcon] = useState<string>(localStorage.getItem('proph_app_icon') || '');
+  const [showSplashScreen, setShowSplashScreen] = useState(false);
   
+  useEffect(() => {
+    if (config.isSplashScreenEnabled && !sessionStorage.getItem('proph_splash_shown')) {
+      setShowSplashScreen(true);
+      sessionStorage.setItem('proph_splash_shown', 'true');
+    }
+  }, [config.isSplashScreenEnabled]);
+
   useEffect(() => {
     if (config.appLogo) {
       setAppLogo(config.appLogo);
@@ -319,7 +372,20 @@ const App: React.FC = () => {
           uploadedBy: d.uploaded_by,
           createdAt: new Date(d.created_at).getTime()
         };
-        if (payload.eventType === 'INSERT') setQuestions(prev => [mappedDoc, ...prev]);
+        if (payload.eventType === 'INSERT') {
+          setQuestions(prev => [mappedDoc, ...prev]);
+          // Forceful visibility: notify users if it's a public document
+          if (mappedDoc.visibility === 'public') {
+            setNotifications(prev => [{
+              id: Math.random().toString(36).substr(2, 9),
+              title: 'New Archive Synchronized',
+              message: `${mappedDoc.courseCode} has been added to the Study Hub.`,
+              type: 'info',
+              createdAt: Date.now(),
+              read: false
+            }, ...prev]);
+          }
+        }
         if (payload.eventType === 'UPDATE') setQuestions(prev => prev.map(item => item.id === mappedDoc.id ? mappedDoc : item));
       }
       if (payload.eventType === 'DELETE') setQuestions(prev => prev.filter(q => q.id === payload.old.id));
@@ -572,14 +638,15 @@ const App: React.FC = () => {
     DB.updateDocumentStatus(id, 'rejected');
   };
 
-  const handlePost = (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string) => {
-    if (!user) return;
+  const handlePost = (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any) => {
+    if (!user && !customUser) return;
+    const poster = customUser || user;
     const newPost: Post = {
       id: crypto.randomUUID(),
-      userId: user.id,
-      userName: user.name,
-      userNickname: user.nickname,
-      userUniversity: user.university,
+      userId: poster.id,
+      userName: poster.name,
+      userNickname: poster.nickname || poster.name,
+      userUniversity: poster.university || 'Global',
       content,
       mediaUrl,
       mediaType,
@@ -594,8 +661,12 @@ const App: React.FC = () => {
     DB.savePost(newPost);
   };
 
-  const trackEngagement = (postId: string, type: 'like' | 'repost' | 'reply' | 'link' | 'profile' | 'media', text?: string) => {
+  const trackEngagement = async (postId: string, type: 'like' | 'repost' | 'reply' | 'link' | 'profile' | 'media' | 'ad_click', text?: string) => {
     if (!user) return;
+    
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p;
       const stats = { ...p.stats };
@@ -623,6 +694,20 @@ const App: React.FC = () => {
       DB.savePost(updatedPost);
       return updatedPost;
     }));
+
+    // Reward post owner if it's an ad click
+    if (type === 'ad_click' && post.userId !== user.id) {
+      const rewardPoints = config.earnRates.adClick / 100; // 2 points if adClick is 200
+      await SupabaseService.updateUserPoints(post.userId, rewardPoints);
+      
+      // Update local state for all users if it's in allUsers
+      setAllUsers(prev => prev.map(u => {
+        if (u.id === post.userId) {
+          return { ...u, points: (u.points || 0) + rewardPoints };
+        }
+        return u;
+      }));
+    }
 
     setAllUsers(prev => prev.map(u => {
       if (u.id !== user.id) return u;
@@ -685,6 +770,13 @@ const App: React.FC = () => {
 
   return (
     <>
+      {showSplashScreen && (
+        <SplashScreen 
+          logo={appLogo} 
+          splashUrl={config.splashScreenUrl}
+          onComplete={() => setShowSplashScreen(false)} 
+        />
+      )}
       <Router>
         <AdController 
           user={user} 
@@ -710,7 +802,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
-          <Route path="/x-feed" element={user ? <XCommunityFeed /> : <Navigate to="/login" />} />
+          <Route path="/university-feed" element={user ? <UniversityFeed user={user} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
             const newMsg = {
@@ -731,8 +823,8 @@ const App: React.FC = () => {
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
           <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
-          <Route path="/memory-bank" element={user ? <MemoryBank onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
-          <Route path="/study-hub" element={user ? <StudyHub onAction={()=>{}} /> : <Navigate to="/login" />} />
+          <Route path="/memory-bank" element={user ? <MemoryBank user={user} questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
+          <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={()=>{}} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub" element={user ? <GladiatorLanding user={user} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub/arena" element={user ? <LocalHub user={user} onJoin={()=>{}} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub/vault" element={user ? <GladiatorVault user={user} /> : <Navigate to="/login" />} />
@@ -743,8 +835,18 @@ const App: React.FC = () => {
           <Route path="/monetization" element={user ? <AdRevenueSharing user={user} /> : <Navigate to="/login" />} />
           <Route path="/settings" element={user ? <Settings user={user} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
           <Route path="/withdraw" element={user ? <Withdrawal user={user} isEnabled={config.isWithdrawalEnabled} conversionRate={config.nairaPerPoint} onAddRequest={req => setWithdrawalRequests([req, ...withdrawalRequests])} requests={withdrawalRequests} /> : <Navigate to="/login" />} />
-          <Route path="/upload" element={user ? <UserUpload user={user} isEnabled={config.isUploadEnabled} onUpload={q => setQuestions([q, ...questions])} onToggleCompletion={()=>{}} universityColleges={universityColleges} collegeDepartments={collegeDepartments} /> : <Navigate to="/login" />} />
-          <Route path="/anonymous-upload" element={<AnonymousUpload isEnabled={config.isUploadEnabled} onUpload={q => setQuestions([q, ...questions])} universityColleges={universityColleges} collegeDepartments={collegeDepartments} />} />
+          <Route path="/upload" element={user ? <UserUpload user={user} isEnabled={config.isUploadEnabled} onUpload={q => { 
+            setQuestions([q, ...questions]); 
+            DB.saveDocument(q);
+            // Forceful visibility: Post to community feed
+            handlePost(`I just contributed a new past question: ${q.courseCode} - ${q.courseTitle}! Check it out in the Study Hub.`, q.fileUrl, q.type === 'image' ? 'image' : undefined);
+          }} onToggleCompletion={()=>{}} universityColleges={universityColleges} collegeDepartments={collegeDepartments} /> : <Navigate to="/login" />} />
+          <Route path="/anonymous-upload" element={<AnonymousUpload isEnabled={config.isUploadEnabled} onUpload={q => { 
+            setQuestions([q, ...questions]); 
+            DB.saveDocument(q);
+            // Forceful visibility: Post to community feed
+            handlePost(`A new past question was contributed anonymously: ${q.courseCode} - ${q.courseTitle}! Check it out in the Study Hub.`, q.fileUrl, q.type === 'image' ? 'image' : undefined, undefined, { id: 'anonymous', name: 'Anonymous Contributor', nickname: 'Ghost', university: 'Global' });
+          }} universityColleges={universityColleges} collegeDepartments={collegeDepartments} />} />
           <Route path="/tasks" element={user ? <Tasks user={user} tasks={tasks} /> : <Navigate to="/login" />} />
           <Route path="/universities" element={user ? <UniversityList user={user} universities={universities} /> : <Navigate to="/login" />} />
           <Route path="/university/:id" element={user ? <UniversityDetail user={user} questions={questions} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments} globalAds={globalAds} /> : <Navigate to="/login" />} />
@@ -784,6 +886,7 @@ const App: React.FC = () => {
           <Route path="/transfer" element={user ? <PointTransfer user={user} /> : <Navigate to="/login" />} />
           <Route path="/forgot-password" element={<ForgotPassword allUsers={allUsers} />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/vercel-sql" element={<VercelSqlView />} />
 
           <Route path="/Epaphrastheadminofprophandloveforx" element={
             user && user.role === 'admin' ? (
@@ -812,6 +915,9 @@ const App: React.FC = () => {
                   setAppIcon(iconUrl);
                   localStorage.setItem('proph_app_icon', iconUrl);
                   handleSaveConfig({ ...config, appIcon: iconUrl });
+                }}
+                onUpdateSplashScreen={(url) => {
+                  handleSaveConfig({ ...config, splashScreenUrl: url });
                 }}
                 onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }}
               />

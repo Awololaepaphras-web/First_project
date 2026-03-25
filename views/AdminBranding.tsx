@@ -1,24 +1,32 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Trash2, CheckCircle2, Loader2, Shield } from 'lucide-react';
+import { Upload, Image as ImageIcon, Trash2, CheckCircle2, Loader2, Shield, Sparkles } from 'lucide-react';
 import { CloudinaryService } from '../src/services/cloudinaryService';
+import { SystemConfig } from '../types';
 
 interface AdminBrandingProps {
   onUpdateLogo: (logoUrl: string) => void;
   onUpdateIcon: (iconUrl: string) => void;
+  onUpdateSplashScreen: (url: string) => void;
+  config: SystemConfig;
 }
 
-const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIcon }) => {
+const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIcon, onUpdateSplashScreen, config }) => {
   const [currentLogo, setCurrentLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
   const [currentIcon, setCurrentIcon] = useState<string>(localStorage.getItem('proph_app_icon') || '');
+  const [currentSplash, setCurrentSplash] = useState<string>(config.splashScreenUrl || '');
   const [previewLogo, setPreviewLogo] = useState<string>('');
   const [previewIcon, setPreviewIcon] = useState<string>('');
+  const [previewSplash, setPreviewSplash] = useState<string>('');
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [selectedIconFile, setSelectedIconFile] = useState<File | null>(null);
+  const [selectedSplashFile, setSelectedSplashFile] = useState<File | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [isUploadingSplash, setIsUploadingSplash] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
+  const splashInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,6 +47,18 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIco
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewIcon(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSplashSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedSplashFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewSplash(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -84,6 +104,25 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIco
     }
   };
 
+  const handleSaveSplash = async () => {
+    if (selectedSplashFile) {
+      setIsUploadingSplash(true);
+      try {
+        const splashUrl = await CloudinaryService.uploadFile(selectedSplashFile, 'image');
+        setCurrentSplash(splashUrl);
+        onUpdateSplashScreen(splashUrl);
+        setPreviewSplash('');
+        setSelectedSplashFile(null);
+        alert("Splash Screen Updated Successfully.");
+      } catch (error) {
+        console.error('Splash upload failed:', error);
+        alert('Failed to upload splash screen. Please try again.');
+      } finally {
+        setIsUploadingSplash(false);
+      }
+    }
+  };
+
   const handleRemoveLogo = () => {
     localStorage.removeItem('proph_app_logo');
     setCurrentLogo('');
@@ -96,6 +135,12 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIco
     setCurrentIcon('');
     onUpdateIcon('');
     alert("App Icon Removed.");
+  };
+
+  const handleRemoveSplash = () => {
+    setCurrentSplash('');
+    onUpdateSplashScreen('');
+    alert("Splash Screen Removed.");
   };
 
   return (
@@ -226,6 +271,72 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ onUpdateLogo, onUpdateIco
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" /> Apply Icon Changes
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Splash Screen Section */}
+      <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-8 shadow-2xl">
+        <div className="space-y-4">
+          <h3 className="text-xl font-black text-white flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-yellow-500" /> Fullscreen Splash Image
+          </h3>
+          <p className="text-gray-500 text-sm font-medium italic">
+            This image will be displayed full-screen when the application is loading.
+          </p>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-8 items-center">
+          <div className="w-48 h-64 bg-gray-950 rounded-2xl border border-gray-800 flex items-center justify-center overflow-hidden relative group">
+            {previewSplash || currentSplash ? (
+              <img src={previewSplash || currentSplash} alt="Splash Screen" className="w-full h-full object-cover" />
+            ) : (
+              <div className="text-gray-700 flex flex-col items-center gap-2">
+                <Sparkles className="w-10 h-10" />
+                <span className="text-[10px] font-black uppercase">No Splash</span>
+              </div>
+            )}
+            {(previewSplash || currentSplash) && (
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                <button onClick={() => splashInputRef.current?.click()} className="p-3 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-all">
+                  <Upload className="w-5 h-5" />
+                </button>
+                <button onClick={handleRemoveSplash} className="p-3 bg-red-600/20 rounded-xl text-red-500 hover:bg-red-600 hover:text-white transition-all">
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-grow space-y-6">
+            <div className="p-6 bg-gray-950/50 rounded-2xl border border-gray-800 border-dashed">
+              <p className="text-xs text-gray-400 font-medium mb-4 italic">Recommended: 1080x1920 or 1920x1080 High Quality Image.</p>
+              <button 
+                onClick={() => splashInputRef.current?.click()}
+                className="w-full py-4 bg-gray-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-700 transition-all flex items-center justify-center gap-2"
+              >
+                <Upload className="w-4 h-4" /> {previewSplash ? 'Change Selection' : 'Upload New Splash'}
+              </button>
+              <input type="file" ref={splashInputRef} hidden accept="image/*" onChange={handleSplashSelect} />
+            </div>
+
+            {previewSplash && (
+              <button 
+                onClick={handleSaveSplash}
+                disabled={isUploadingSplash}
+                className="w-full bg-yellow-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 animate-pulse disabled:opacity-50 disabled:animate-none"
+              >
+                {isUploadingSplash ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Synchronizing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Apply Splash Changes
                   </>
                 )}
               </button>

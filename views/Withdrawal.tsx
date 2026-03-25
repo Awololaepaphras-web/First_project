@@ -33,8 +33,8 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
   const handleWithdraw = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isEnabled) return;
-    if (userPoints < amount) return alert("Insufficient points balance.");
-    if (amount < MIN_WITHDRAWAL_POINTS) return alert(`Minimum withdrawal is ${MIN_WITHDRAWAL_POINTS} points.`);
+    if (userPoints < amount) return alert("Insufficient Prophy Points balance.");
+    if (amount < MIN_WITHDRAWAL_POINTS) return alert(`Minimum withdrawal is ${MIN_WITHDRAWAL_POINTS} Prophy Points.`);
 
     const newRequest: WithdrawalRequest = {
       id: Math.random().toString(36).substr(2, 9),
@@ -67,7 +67,7 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
               <Wallet className="w-7 h-7 text-black" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest leading-none mb-1">Available Points</p>
+              <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest leading-none mb-1">Available Prophy Points</p>
               <span className="text-3xl font-black text-gray-900 dark:text-white italic">{userPoints.toLocaleString()}</span>
             </div>
           </div>
@@ -93,7 +93,7 @@ const Withdrawal: React.FC<WithdrawalProps> = ({ user, isEnabled, conversionRate
 
             <form onSubmit={handleWithdraw} className="space-y-6">
               <div>
-                <label className="block text-[10px] font-black text-brand-muted uppercase tracking-widest mb-3 px-1">Convert Points</label>
+                <label className="block text-[10px] font-black text-brand-muted uppercase tracking-widest mb-3 px-1">Convert Prophy Points</label>
                 <div className="relative group">
                   <input
                     type="number"

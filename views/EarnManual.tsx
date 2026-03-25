@@ -44,6 +44,13 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
       desc: 'Complete specific institutional actions, surveys, or verifications to claim one-time point drops.',
       points: 'Varies (10 - 200 pts)',
       status: 'Active'
+    },
+    {
+      title: 'Engagement Dividends',
+      icon: <TrendingUp className="w-8 h-8 text-green-500" />,
+      desc: 'High-frequency interaction yields institutional dividends. The top 10 users with the highest engagement metrics every month receive a commission percentage of global ad revenue by transferring their points.',
+      points: 'Ad Revenue % Share',
+      status: 'Top 10 Monthly'
     }
   ];
 

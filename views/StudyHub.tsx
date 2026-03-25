@@ -9,10 +9,11 @@ import {
   List, Swords, Star, Shield
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
-import { StudyDocument, AIMessage } from '../types';
+import { PastQuestion, AIMessage } from '../types';
 import { useNavigate } from 'react-router-dom';
 
 interface StudyHubProps {
+  questions: PastQuestion[];
   onAction: (actions: number) => void;
 }
 
@@ -23,8 +24,7 @@ interface ExtractedPart {
   content: string;
 }
 
-const StudyHub: React.FC<StudyHubProps> = ({ onAction }) => {
-  const [documents, setDocuments] = useState<StudyDocument[]>([]);
+const StudyHub: React.FC<StudyHubProps> = ({ questions, onAction }) => {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [extractionMode, setExtractionMode] = useState(false);
@@ -33,13 +33,11 @@ const StudyHub: React.FC<StudyHubProps> = ({ onAction }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const saved = localStorage.getItem('proph_study_docs');
-    if (saved) setDocuments(JSON.parse(saved));
     const lastViewed = localStorage.getItem('proph_last_viewed_doc');
     if (lastViewed) { setActiveDocId(lastViewed); localStorage.removeItem('proph_last_viewed_doc'); }
   }, []);
 
-  const activeDoc = documents.find(d => d.id === activeDocId);
+  const activeDoc = questions.find(d => d.id === activeDocId);
 
   const handleDeepExtract = async () => {
     if (!activeDoc) return;
@@ -49,9 +47,17 @@ const StudyHub: React.FC<StudyHubProps> = ({ onAction }) => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Deconstruct this academic document into key learning segments. Return a JSON array of objects with title, type ('text' or 'diagram'), and content.`;
-      const contents = activeDoc.data 
-        ? { parts: [{ inlineData: { data: activeDoc.data, mimeType: activeDoc.type } }, { text: prompt }] }
-        : prompt;
+      
+      // If data (base64) is missing, we might need to fetch it or use the URL
+      // For now, assume it might be there or use the URL if Gemini supports it (it doesn't directly via URL in this SDK easily without fetching)
+      let contents;
+      if (activeDoc.data) {
+        contents = { parts: [{ inlineData: { data: activeDoc.data, mimeType: activeDoc.type === 'image' ? 'image/png' : 'application/pdf' } }, { text: prompt }] };
+      } else {
+        // Fallback or fetch logic could go here
+        contents = prompt + " (Context: " + activeDoc.fileUrl + ")";
+      }
+
       const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: contents, config: { responseMimeType: 'application/json' } });
       const data = JSON.parse(response.text || '[]');
       setExtractedParts(data.map((p: any) => ({ ...p, id: Math.random().toString(36).substr(2, 9) })));
@@ -63,7 +69,7 @@ const StudyHub: React.FC<StudyHubProps> = ({ onAction }) => {
       <header className="h-16 flex-shrink-0 bg-white dark:bg-brand-card border-b border-brand-border px-6 flex justify-between items-center z-40 shadow-sm">
         <div className="flex items-center gap-6 overflow-hidden">
           <button onClick={() => navigate('/memory-bank')} className="flex items-center gap-2 text-brand-muted hover:text-brand-proph font-black text-[10px] uppercase tracking-widest transition-colors" title="Back"><ArrowLeft className="w-4 h-4" /> Bank</button>
-          {activeDoc && <div className="flex items-center gap-3 overflow-hidden"><div className="bg-brand-proph p-2 rounded-xl text-black"><BookOpen className="w-4 h-4" /></div><h2 className="text-sm font-black text-gray-900 dark:text-white truncate max-w-[200px]">{activeDoc.name}</h2></div>}
+          {activeDoc && <div className="flex items-center gap-3 overflow-hidden"><div className="bg-brand-proph p-2 rounded-xl text-black"><BookOpen className="w-4 h-4" /></div><h2 className="text-sm font-black text-gray-900 dark:text-white truncate max-w-[200px]">{activeDoc.courseTitle || activeDoc.courseCode}</h2></div>}
         </div>
         <div className="flex items-center gap-2">
            <button onClick={() => navigate('/ai-assistant')} className="bg-brand-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2" title="AI Assistant"><Brain className="w-4 h-4" /> Study Buddy</button>
@@ -75,7 +81,7 @@ const StudyHub: React.FC<StudyHubProps> = ({ onAction }) => {
         <aside className="hidden sm:flex w-72 flex-shrink-0 bg-white dark:bg-brand-card border-r border-brand-border flex-col overflow-hidden">
           <div className="p-6 border-b border-brand-border"><h3 className="text-[10px] font-black text-brand-muted uppercase tracking-widest">Active Archives</h3></div>
           <div className="flex-grow overflow-y-auto p-3 space-y-2 custom-scrollbar">
-            {documents.map(doc => <div key={doc.id} onClick={() => setActiveDocId(doc.id)} className={`p-4 rounded-2xl cursor-pointer transition-all border flex items-center gap-4 ${activeDocId === doc.id ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`} title={doc.name}><div className="p-2 rounded-xl bg-gray-100 dark:bg-brand-border"><FileText className="w-4 h-4" /></div><span className="text-xs font-bold truncate dark:text-white">{doc.name}</span></div>)}
+            {questions.map(doc => <div key={doc.id} onClick={() => setActiveDocId(doc.id)} className={`p-4 rounded-2xl cursor-pointer transition-all border flex items-center gap-4 ${activeDocId === doc.id ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`} title={doc.courseTitle || doc.courseCode}><div className="p-2 rounded-xl bg-gray-100 dark:bg-brand-border"><FileText className="w-4 h-4" /></div><span className="text-xs font-bold truncate dark:text-white">{doc.courseTitle || doc.courseCode}</span></div>)}
           </div>
         </aside>
 
@@ -93,7 +99,7 @@ const StudyHub: React.FC<StudyHubProps> = ({ onAction }) => {
                         ))}
                      </div>
                   ) : (
-                    <iframe src={activeDoc.data ? `data:${activeDoc.type};base64,${activeDoc.data}#toolbar=0` : activeDoc.url} className="w-full h-full border-none rounded-xl" title={activeDoc.name} />
+                    <iframe src={activeDoc.data ? `data:${activeDoc.type === 'image' ? 'image/png' : 'application/pdf'};base64,${activeDoc.data}#toolbar=0` : activeDoc.fileUrl} className="w-full h-full border-none rounded-xl" title={activeDoc.courseTitle || activeDoc.courseCode} />
                   )}
                </div>
             </div>

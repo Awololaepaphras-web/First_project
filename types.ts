@@ -58,6 +58,7 @@ export interface Post {
   tags?: string[];
   visibility?: 'public' | 'node_only' | 'private';
   isEdited?: boolean;
+  adId?: string;
   createdAt: number;
   stats: {
     linkClicks: number;
@@ -142,18 +143,20 @@ export interface User {
 
 export interface PastQuestion {
   id: string;
-  universityId: string;
-  courseCode: string;
-  courseTitle: string;
-  year: number;
-  semester: 'First' | 'Second';
-  faculty: string;
-  department: string;
-  level: string;
-  description: string;
+  universityId?: string;
+  courseCode?: string;
+  courseTitle?: string;
+  year?: number;
+  semester?: 'First' | 'Second';
+  faculty?: string;
+  department?: string;
+  level?: string;
+  description?: string;
   fileUrl: string;
+  data?: string; // Base64 data for Gemini analysis
+  visibility?: 'public' | 'private';
   type: 'document' | 'image';
-  status: 'pending' | 'approved';
+  status: 'pending' | 'approved' | 'rejected';
   uploadedBy: string;
   createdAt: number;
   reviews?: { userId: string; rating: number; comment: string; createdAt: number }[];
@@ -279,6 +282,7 @@ export interface SystemConfig {
   isCommunityEnabled: boolean;
   isAdsEnabled: boolean;
   isUserAdsEnabled: boolean;
+  isSplashScreenEnabled: boolean;
   feedWeights: { engagement: number; recency: number; relationship: number; quality: number; eduRelevance: number };
   adWeights: { budget: number; relevance: number; performance: number; targetMatch: number };
   earnRates: {
@@ -308,6 +312,7 @@ export interface SystemConfig {
   paystackPublicKey?: string;
   appLogo?: string;
   appIcon?: string;
+  splashScreenUrl?: string;
   globalAnnouncement?: {
     text: string;
     isEnabled: boolean;

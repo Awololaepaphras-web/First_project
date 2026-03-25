@@ -50,6 +50,7 @@ interface AdminDashboardProps {
   onUpdateAd: (ad: Advertisement) => void;
   onUpdateLogo: (logoUrl: string) => void;
   onUpdateIcon: (iconUrl: string) => void;
+  onUpdateSplashScreen: (url: string) => void;
   onLogout: () => void;
 }
 
@@ -60,7 +61,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   universities, universityColleges, collegeDepartments,
   onAddUniversity, onRemoveUniversity, onAddCollege, onRemoveCollege, onAddDept, onRemoveDept,
   onApproveQuestion, onRejectQuestion, onApproveWithdrawal, onRejectWithdrawal,
-  globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onUpdateIcon, onLogout
+  globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onUpdateIcon, onUpdateSplashScreen, onLogout
 }) => {
   const [activeTab, setActiveTab] = useState('command');
   const [conversations, setConversations] = useState<any[]>([]);
@@ -102,6 +103,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setConversations(data);
       };
       fetchConversations();
+
+      // Subscribe to real-time updates for conversations
+      const sub = SupabaseService.subscribeToTable('conversations', (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setConversations(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setConversations(prev => prev.map(c => c.id === payload.new.id ? payload.new : c));
+        } else if (payload.eventType === 'DELETE') {
+          setConversations(prev => prev.filter(c => c.id === payload.old.id));
+        }
+      });
+
+      return () => {
+        sub.unsubscribe();
+      };
     }
   }, [activeTab]);
 
@@ -119,6 +135,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setLoadingMessages(false);
       };
       fetchMessages();
+
+      // Subscribe to real-time updates for messages in this conversation
+      const sub = SupabaseService.subscribeToTable('messages', (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const msg = payload.new;
+          if (selectedConversation.id === 'global') {
+            if (!msg.receiver_id) {
+              setMessages(prev => [...prev, msg]);
+            }
+          } else {
+            const isPart = (msg.sender_id === selectedConversation.user1_id && msg.receiver_id === selectedConversation.user2_id) ||
+                           (msg.sender_id === selectedConversation.user2_id && msg.receiver_id === selectedConversation.user1_id);
+            if (isPart) {
+              setMessages(prev => [...prev, msg]);
+            }
+          }
+        }
+      });
+
+      return () => {
+        sub.unsubscribe();
+      };
     }
   }, [selectedConversation]);
 
@@ -235,6 +273,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const tabs = [
     { id: 'command', label: 'Mainframe', icon: <Cpu className="w-5 h-5" /> },
     { id: 'financials', label: 'Financial Matrix', icon: <DollarSign className="w-5 h-5" /> },
+    { id: 'engagement-rating', label: 'Engagement Rating', icon: <Award className="w-5 h-5" /> },
     { id: 'engagement', label: 'Engage Matrix', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'submissions', label: 'Asset Review', icon: <FileCheck className="w-5 h-5" /> },
     { id: 'payouts', label: 'Payout Flow', icon: <CreditCard className="w-5 h-5" /> },
@@ -249,6 +288,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'sug', label: 'SUG Verify', icon: <Award className="w-5 h-5" /> },
     { id: 'staff', label: 'Staff Matrix', icon: <ShieldCheck className="w-5 h-5" /> },
     { id: 'chat-monitor', label: 'Chat Matrix', icon: <MessageSquare className="w-5 h-5" /> },
+    { id: 'vercel-sql', label: 'Vercel SQL', icon: <Globe className="w-5 h-5" />, isLink: true, path: '/vercel-sql' },
     { id: 'payments', label: 'Payment Verify', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/Epaphrastheadminofprophandloveforx/payments' },
   ];
 
@@ -343,7 +383,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
                    <h3 className="text-xl font-black text-white flex items-center gap-3"><Settings2 className="w-5 h-5 text-red-500" /> Operational Gates</h3>
                    <div className="space-y-4">
-                      {[{ label: 'AI Study Logic', key: 'isAiEnabled' }, { label: 'Archive Submissions', key: 'isUploadEnabled' }, { label: 'Purse Portal', key: 'isWithdrawalEnabled' }, { label: 'Community Feed', key: 'isCommunityEnabled' }, { label: 'Maintenance Mode', key: 'isMaintenanceMode' }].map(f => (
+                      {[{ label: 'AI Study Logic', key: 'isAiEnabled' }, { label: 'Archive Submissions', key: 'isUploadEnabled' }, { label: 'Purse Portal', key: 'isWithdrawalEnabled' }, { label: 'Community Feed', key: 'isCommunityEnabled' }, { label: 'Maintenance Mode', key: 'isMaintenanceMode' }, { label: 'Splash Screen', key: 'isSplashScreenEnabled' }].map(f => (
                         <div key={f.label} className="flex justify-between items-center p-5 bg-gray-950/80 rounded-2xl border border-gray-800">
                            <span className="text-[10px] font-black uppercase text-gray-300">{f.label}</span>
                            <button onClick={() => handleUpdateConfig({ [f.key]: !config[f.key as keyof SystemConfig] })} className={`p-2 rounded-xl transition-all ${config[f.key as keyof SystemConfig] ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`} title="Toggle Node Gate">
@@ -374,7 +414,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Earn Rates Section */}
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Zap className="w-5 h-5 text-yellow-500" /> Earn Handbook Rates (PT)</h3>
+                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Zap className="w-5 h-5 text-yellow-500" /> Earn Handbook Rates (P-PT)</h3>
                    <div className="grid grid-cols-2 gap-4">
                       {Object.entries(config.earnRates).map(([key, val]) => (
                         <div key={key} className="space-y-2">
@@ -388,7 +428,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       ))}
                       <div className="space-y-2">
-                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Naira Per Point</label>
+                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Naira Per Prophy Point</label>
                            <input 
                             type="number" step="0.1"
                             className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
@@ -531,7 +571,92 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Removed: Synchronize Matrix Configuration */}
 
-        {/* ... Rest of the existing activeTab conditions (engagement, submissions, payouts, ad-engine, academic, users, broadcast, tasks) ... */}
+        {activeTab === 'engagement-rating' && (
+          <div className="space-y-12 animate-fade-in">
+             <div className="flex justify-between items-end">
+               <div>
+                 <h1 className="text-4xl font-black tracking-tighter uppercase italic">Engagement Rating</h1>
+                 <p className="text-brand-muted font-medium italic">Ranking nodes by their contribution to the academic matrix.</p>
+               </div>
+               <div className="bg-brand-proph/10 border border-brand-proph/20 p-4 rounded-2xl">
+                 <p className="text-[10px] font-black uppercase text-brand-proph">Algorithm</p>
+                 <p className="text-xs font-bold text-white italic">Weighted Engagement Score</p>
+               </div>
+             </div>
+
+             <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-800 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                      <tr>
+                        <th className="p-8">Rank</th>
+                        <th className="p-8">Scholar Identity</th>
+                        <th className="p-8">Engagement Stats</th>
+                        <th className="p-8">Rating Score</th>
+                        <th className="p-8 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {allUsers
+                        .filter(u => u.role !== 'admin')
+                        .map(u => {
+                          const stats = u.engagementStats || { totalLikesGiven: 0, totalRepliesGiven: 0, totalRepostsGiven: 0 };
+                          const score = (stats.totalLikesGiven * (config.engagementWeights?.likes || 1)) + 
+                                        (stats.totalRepliesGiven * (config.engagementWeights?.replies || 5)) + 
+                                        (stats.totalRepostsGiven * (config.engagementWeights?.reposts || 2.5));
+                          return { ...u, engagementScore: score };
+                        })
+                        .sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))
+                        .map((u, index) => (
+                          <tr key={u.id} className="hover:bg-white/5 transition-colors group">
+                            <td className="p-8">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black italic ${
+                                index === 0 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' :
+                                index === 1 ? 'bg-gray-300 text-black' :
+                                index === 2 ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-400'
+                              }`}>
+                                #{index + 1}
+                              </div>
+                            </td>
+                            <td className="p-8">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center font-black text-brand-proph border border-gray-700">
+                                  {u.name[0]}
+                                </div>
+                                <div>
+                                  <p className="font-black italic text-white group-hover:text-brand-proph transition-colors">{u.name}</p>
+                                  <p className="text-[9px] text-gray-500 uppercase">@{u.nickname} • {u.university}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-8">
+                              <div className="flex gap-4 text-[10px] font-black uppercase tracking-tighter">
+                                <span className="text-gray-400">Likes: <span className="text-white">{u.engagementStats?.totalLikesGiven || 0}</span></span>
+                                <span className="text-gray-400">Replies: <span className="text-white">{u.engagementStats?.totalRepliesGiven || 0}</span></span>
+                                <span className="text-gray-400">Reposts: <span className="text-white">{u.engagementStats?.totalRepostsGiven || 0}</span></span>
+                              </div>
+                            </td>
+                            <td className="p-8">
+                              <p className="text-2xl font-black italic text-brand-proph">{(u.engagementScore || 0).toLocaleString()}</p>
+                              <p className="text-[8px] text-gray-500 uppercase font-black">Points Generated</p>
+                            </td>
+                            <td className="p-8 text-right">
+                              <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                (u.engagementScore || 0) > 5000 ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                (u.engagementScore || 0) > 1000 ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                'bg-gray-800 text-gray-500'
+                              }`}>
+                                {(u.engagementScore || 0) > 5000 ? 'Elite Node' : (u.engagementScore || 0) > 1000 ? 'Active Node' : 'Standard Node'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+             </div>
+          </div>
+        )}
         {activeTab === 'engagement' && (
           <div className="space-y-10 animate-fade-in">
              <h1 className="text-4xl font-black tracking-tighter uppercase italic">Engagement Matrix</h1>
@@ -566,13 +691,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                    <thead className="bg-gray-800 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      <tr><th className="p-8">Archive Intel</th><th className="p-8">Source Node</th><th className="p-8 text-right">Command</th></tr>
+                      <tr><th className="p-8">Archive Intel</th><th className="p-8">Source Node</th><th className="p-8">Status</th><th className="p-8 text-right">Command</th></tr>
                    </thead>
                    <tbody className="divide-y divide-gray-800">
-                      {questions.filter(q => q.status === 'pending').map(q => (
+                      {[...questions].sort((a, b) => b.createdAt - a.createdAt).map(q => (
                         <tr key={q.id} className="hover:bg-white/5 transition-colors">
                            <td className="p-8"><p className="font-black italic text-sm">{q.courseCode}</p><p className="text-[10px] text-gray-500 uppercase">{q.courseTitle}</p></td>
                            <td className="p-8 font-black uppercase tracking-tighter text-gray-400">{allUsers.find(u => u.id === q.uploadedBy)?.name || 'Anon'}</td>
+                           <td className="p-8">
+                              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${q.status === 'approved' ? 'bg-green-500/10 text-green-500' : q.status === 'rejected' ? 'bg-red-500/10 text-red-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                {q.status}
+                              </span>
+                           </td>
                            <td className="p-8 text-right flex justify-end gap-3">
                               <button onClick={() => {
                                 const link = document.createElement('a');
@@ -1114,7 +1244,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Bounty Identity" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
-                   <input type="number" className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Points" value={newTask.points} onChange={e => setNewTask({...newTask, points: parseInt(e.target.value) || 0})} />
+                   <input type="number" className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Prophy Points" value={newTask.points} onChange={e => setNewTask({...newTask, points: parseInt(e.target.value) || 0})} />
                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Bounty Link" value={newTask.link} onChange={e => setNewTask({...newTask, link: e.target.value})} />
                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Verification Task" value={newTask.question} onChange={e => setNewTask({...newTask, question: e.target.value})} />
                    <button onClick={deployTask} className="w-full bg-yellow-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3"><Zap className="w-4 h-4" /> Deploy Bounty</button>
@@ -1127,7 +1257,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                        </thead>
                       <tbody className="divide-y divide-gray-800">
                          {tasks.map(t => (
-                           <tr key={t.id} className="hover:bg-gray-800/20"><td className="p-8"><p className="font-black italic text-sm text-white">{t.title}</p><p className="text-[9px] text-gray-500 font-mono">{t.points} PT</p></td><td className="p-8 text-right"><button onClick={() => onDeleteTask(t.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button></td></tr>
+                           <tr key={t.id} className="hover:bg-gray-800/20"><td className="p-8"><p className="font-black italic text-sm text-white">{t.title}</p><p className="text-[9px] text-gray-500 font-mono">{t.points} P-PT</p></td><td className="p-8 text-right"><button onClick={() => onDeleteTask(t.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button></td></tr>
                          ))}
                       </tbody>
                    </table>
@@ -1438,6 +1568,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <AdminBranding 
             onUpdateLogo={onUpdateLogo} 
             onUpdateIcon={onUpdateIcon} 
+            onUpdateSplashScreen={onUpdateSplashScreen}
+            config={config}
           />
         )}
       </main>

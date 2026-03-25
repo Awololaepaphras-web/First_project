@@ -35,10 +35,22 @@ export const Database = {
       await SupabaseService.saveDocuments(docs);
     }
   },
+  saveDocument: async (doc: PastQuestion) => {
+    await SupabaseService.saveDocument(doc);
+    const current = await Database.getDocuments();
+    if (!current.some(d => d.id === doc.id)) {
+      localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify([doc, ...current]));
+    }
+  },
   updateDocumentStatus: async (id: string, status: 'approved' | 'rejected') => {
     await SupabaseService.updateDocumentStatus(id, status);
     const current = await Database.getDocuments();
     localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify(current.map(d => d.id === id ? { ...d, status } : d)));
+  },
+  deleteDocument: async (id: string) => {
+    await SupabaseService.deleteDocument(id);
+    const current = await Database.getDocuments();
+    localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify(current.filter(d => d.id !== id)));
   },
 
   // Proph Feed (Posts)
@@ -52,7 +64,7 @@ export const Database = {
     return data ? JSON.parse(data) : [];
   },
   subscribeToFeed: (callback: (payload: any) => void) => {
-    return SupabaseService.subscribeToFeed(callback);
+    return SupabaseService.subscribeToTable('posts', callback);
   },
   saveFeed: async (posts: Post[]) => {
     localStorage.setItem(KEYS.FEED, JSON.stringify(posts));
@@ -272,5 +284,8 @@ export const Database = {
     const data = localStorage.getItem(`${KEYS.MESSAGES}_${userId}`);
     const current = data ? JSON.parse(data) : [];
     localStorage.setItem(`${KEYS.MESSAGES}_${userId}`, JSON.stringify([...current, message]));
+  },
+  subscribeToTable: (table: string, callback: (payload: any) => void) => {
+    return SupabaseService.subscribeToTable(table, callback);
   }
 };

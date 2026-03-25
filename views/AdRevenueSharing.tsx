@@ -292,9 +292,9 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center font-black">02</div>
-                  <h4 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Network Activity</h4>
+                  <h4 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Engagement Dividends</h4>
                 </div>
-                <p className="text-brand-muted text-sm font-medium italic leading-relaxed">Daily interactions, successful peer referrals, and node uptime contribute to your Syndicate multiplier.</p>
+                <p className="text-brand-muted text-sm font-medium italic leading-relaxed">The top 10 users with the highest engagement metrics every month receive a commission percentage of global ad revenue by transferring their points.</p>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">

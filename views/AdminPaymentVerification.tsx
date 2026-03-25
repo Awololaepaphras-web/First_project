@@ -22,6 +22,21 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
 
   useEffect(() => {
     fetchVerifications();
+
+    // Subscribe to real-time updates for payment verifications
+    const sub = Database.subscribeToTable('payment_verifications', (payload) => {
+      if (payload.eventType === 'INSERT') {
+        setVerifications(prev => [payload.new, ...prev]);
+      } else if (payload.eventType === 'UPDATE') {
+        setVerifications(prev => prev.map(v => v.id === payload.new.id ? payload.new : v));
+      } else if (payload.eventType === 'DELETE') {
+        setVerifications(prev => prev.filter(v => v.id === payload.old.id));
+      }
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
   }, []);
 
   const fetchVerifications = async () => {

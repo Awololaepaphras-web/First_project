@@ -7,16 +7,18 @@ import {
   ChevronRight, Sparkles, Filter, X, Download, HardDrive,
   Swords, Shield, Zap, Brain, Loader2
 } from 'lucide-react';
-import { StudyDocument } from '../types';
+import { PastQuestion, User } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { CloudinaryService } from '../src/services/cloudinaryService';
+import { Database as DB } from '../src/services/database';
 
 interface MemoryBankProps {
+  user: User;
+  questions: PastQuestion[];
   onAction: (count: number) => void;
 }
 
-const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
-  const [documents, setDocuments] = useState<StudyDocument[]>([]);
+const MemoryBank: React.FC<MemoryBankProps> = ({ user, questions, onAction }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pdf' | 'image' | 'url'>('all');
   const [showAddUrl, setShowAddUrl] = useState(false);
@@ -25,14 +27,7 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('proph_study_docs');
-    if (saved) setDocuments(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('proph_study_docs', JSON.stringify(documents));
-  }, [documents]);
+  const userDocuments = questions.filter(q => q.uploadedBy === user.id);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -41,20 +36,22 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
       try {
         const url = await CloudinaryService.uploadFile(file, 'auto');
         
-        // We still need base64 for Gemini analysis in StudyHub if we want to avoid server-side fetching
-        // But for now, let's prioritize Cloudinary storage as requested.
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
           const base64Data = (reader.result as string).split(',')[1];
-          const newDoc: StudyDocument = {
+          const newDoc: PastQuestion = {
             id: Math.random().toString(36).substr(2, 9),
-            name: file.name,
-            url: url,
-            data: base64Data, // Keep base64 for Gemini analysis
-            type: file.type || 'application/octet-stream',
-            uploadedAt: Date.now()
+            courseCode: file.name.split('.')[0],
+            courseTitle: file.name,
+            fileUrl: url,
+            data: base64Data,
+            type: file.type.startsWith('image/') ? 'image' : 'document',
+            visibility: 'private',
+            status: 'approved', // Personal documents are auto-approved for self
+            uploadedBy: user.id,
+            createdAt: Date.now()
           };
-          setDocuments(prev => [newDoc, ...prev]);
+          await DB.saveDocument(newDoc);
           onAction(1);
         };
         reader.readAsDataURL(file);
@@ -67,25 +64,29 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
     }
   };
 
-  const handleUrlAdd = (e: React.FormEvent) => {
+  const handleUrlAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput.trim()) return;
-    const newDoc: StudyDocument = {
+    const newDoc: PastQuestion = {
       id: Math.random().toString(36).substr(2, 9),
-      name: urlInput.split('/').pop()?.replace(/[-_]/g, ' ') || 'Remote Node',
-      url: urlInput,
-      type: urlInput.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/html',
-      uploadedAt: Date.now()
+      courseCode: 'REMOTE',
+      courseTitle: urlInput.split('/').pop()?.replace(/[-_]/g, ' ') || 'Remote Node',
+      fileUrl: urlInput,
+      type: urlInput.toLowerCase().endsWith('.pdf') ? 'document' : 'document',
+      visibility: 'private',
+      status: 'approved',
+      uploadedBy: user.id,
+      createdAt: Date.now()
     };
-    setDocuments(prev => [newDoc, ...prev]);
+    await DB.saveDocument(newDoc);
     setUrlInput('');
     setShowAddUrl(false);
     onAction(1);
   };
 
-  const filteredDocs = documents.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || (filter === 'pdf' && doc.type === 'application/pdf') || (filter === 'image' && doc.type.startsWith('image/')) || (filter === 'url' && !!doc.url);
+  const filteredDocs = userDocuments.filter(doc => {
+    const matchesSearch = (doc.courseTitle || '').toLowerCase().includes(search.toLowerCase()) || (doc.courseCode || '').toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = filter === 'all' || (filter === 'pdf' && doc.type === 'document') || (filter === 'image' && doc.type === 'image') || (filter === 'url' && !!doc.fileUrl);
     return matchesSearch && matchesFilter;
   });
 
@@ -142,10 +143,10 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ onAction }) => {
            <div key={doc.id} onClick={() => { localStorage.setItem('proph_last_viewed_doc', doc.id); navigate('/study-hub'); }} className="bg-white dark:bg-brand-card rounded-[2.5rem] border border-brand-border shadow-sm hover:shadow-2xl transition-all cursor-pointer group flex flex-col overflow-hidden">
              <div className="h-40 bg-gray-50 dark:bg-brand-black relative overflow-hidden flex items-center justify-center border-b border-brand-border">
                 <FileText className="w-12 h-12 opacity-20 group-hover:opacity-40 transition-opacity" />
-                <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-brand-black/90 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-300 backdrop-blur-sm">{!!doc.url ? 'Remote' : 'Local'}</div>
-                <button onClick={(e) => { e.stopPropagation(); if(confirm('Purge material?')) setDocuments(prev => prev.filter(d => d.id !== doc.id)); }} className="absolute top-4 right-4 p-2 bg-red-600/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Purge Intel"><Trash2 className="w-4 h-4" /></button>
+                <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-brand-black/90 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-300 backdrop-blur-sm">{!!doc.fileUrl ? 'Remote' : 'Local'}</div>
+                <button onClick={(e) => { e.stopPropagation(); if(confirm('Purge material?')) DB.deleteDocument(doc.id); }} className="absolute top-4 right-4 p-2 bg-red-600/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Purge Intel"><Trash2 className="w-4 h-4" /></button>
              </div>
-             <div className="p-6"><h4 className="font-black text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors uppercase italic text-sm">{doc.name}</h4><div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none"><Clock className="w-3 h-3" /> ARCHIVED {new Date(doc.uploadedAt).toLocaleDateString()}</div></div>
+             <div className="p-6"><h4 className="font-black text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors uppercase italic text-sm">{doc.courseTitle || doc.courseCode}</h4><div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none"><Clock className="w-3 h-3" /> ARCHIVED {new Date(doc.createdAt).toLocaleDateString()}</div></div>
            </div>
         )) : <div className="col-span-full py-40 text-center opacity-40"><Database className="w-20 h-20 mx-auto mb-6" /><h3 className="text-2xl font-black uppercase italic">Vault Depleted</h3></div>}
       </div>

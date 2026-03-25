@@ -68,7 +68,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-6 overflow-x-auto no-scrollbar snap-x p-1">
          {[
            { label: 'Purse Balance', val: user.points || 0, icon: <Wallet className="w-6 h-6" />, color: 'text-brand-proph' },
-           { label: 'Monetization Points', val: user.monetization?.pointsEarned || 0, icon: <Star className="w-6 h-6" />, color: 'text-yellow-500' },
+           { label: 'Monetization Prophy Points', val: user.monetization?.pointsEarned || 0, icon: <Star className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Global Standing', val: '#422', icon: <Trophy className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Archived Assets', val: filteredQuestions.length, icon: <Database className="w-6 h-6" />, color: 'text-brand-primary' },
            { label: 'Study Minutes', val: user.lifetimeMinutes || 0, icon: <Clock className="w-6 h-6" />, color: 'text-orange-500' },

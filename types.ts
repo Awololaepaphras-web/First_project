@@ -219,10 +219,10 @@ export interface EarnTask {
   verificationQuestion?: string;
 }
 
-export type AdTimeFrame = '12am-6am' | '6am-12pm' | '12pm-6pm' | '6pm-12am';
+export type AdTimeFrame = '12am-6am' | '6am-12pm' | '12pm-6pm' | '6pm-12am' | 'all-day';
 
-export type AdType = 'banner' | 'popup' | 'native';
-export type AdPlacement = 'timeline' | 'search' | 'post' | 'profile' | 'replies';
+export type AdType = 'banner' | 'popup' | 'native' | 'fullscreen';
+export type AdPlacement = 'timeline' | 'search' | 'post' | 'profile' | 'replies' | 'university' | 'study-hub' | 'startup';
 
 export interface Advertisement {
   id: string;

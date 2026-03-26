@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AdminBranding from './AdminBranding';
+import AdminAdVerification from './AdminAdVerification';
 import { 
   Cpu, Database, Megaphone, Users, List, 
   Settings2, Activity, ToggleRight, ToggleLeft, Trash2, 
@@ -805,14 +806,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Identifier</label>
                         <input className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" placeholder="Campaign Name" value={newAd.title} onChange={e => setNewAd({...newAd, title: e.target.value})} />
-                      </div>
-
-                      <div className="space-y-1">
+                                       <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Ad Format</label>
                         <select className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white font-bold uppercase" value={newAd.adType} onChange={e => setNewAd({...newAd, adType: e.target.value as AdType})}>
                            <option value="native">Native (X-Style)</option>
                            <option value="banner">Banner Ad</option>
                            <option value="popup">Pop-up Ad</option>
+                           <option value="fullscreen">Full Screen App Ad</option>
                         </select>
                       </div>
 
@@ -823,10 +823,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            <option value="search">Search</option>
                            <option value="post">Post (Tweet)</option>
                            <option value="profile">Profile</option>
-                           <option value="video">Video</option>
                            <option value="replies">Replies</option>
+                           <option value="university">University Feed</option>
+                           <option value="study-hub">Study Hub</option>
+                           <option value="startup">Startup Launchpad</option>
                         </select>
                       </div>
+       </div>
 
                       <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Modality</label>
@@ -880,12 +883,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            <input type="text" className="flex-grow bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" placeholder="e.g. 500 or all" value={newAd.targetReach} onChange={e => setNewAd({...newAd, targetReach: e.target.value === 'all' ? 'all' : (parseInt(e.target.value) || 0)})} />
                            <button type="button" onClick={() => setNewAd({...newAd, targetReach: 'all'})} className={`px-4 rounded-xl font-black text-[10px] uppercase border-2 transition-all ${newAd.targetReach === 'all' ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>All</button>
                         </div>
-                      </div>
-
-                      <div className="space-y-1">
+                                       <div className="space-y-1">
                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Display Windows</label>
                         <div className="grid grid-cols-2 gap-2">
-                          {(['12am-6am', '6am-12pm', '12pm-6pm', '6pm-12am'] as AdTimeFrame[]).map(tf => (
+                          {(['12am-6am', '6am-12pm', '12pm-6pm', '6pm-12am', 'all-day'] as AdTimeFrame[]).map(tf => (
                             <button
                               key={tf}
                               type="button"
@@ -901,6 +902,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           ))}
                         </div>
                       </div>
+       </div>
 
                       <button type="button" onClick={() => adFileInputRef.current?.click()} className="w-full p-4 bg-gray-800 border border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-gray-700 transition-all text-white">
                          <Upload className="w-4 h-4" /> {newAd.mediaUrl ? 'Asset Linked' : 'Upload Content'}
@@ -941,102 +943,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {activeTab === 'ad-review' && (
-          <div className="space-y-10 animate-fade-in">
-             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Ad Verification & Placement</h1>
-             <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                   <thead className="bg-gray-800 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      <tr><th className="p-8">Ad Asset</th><th className="p-8">Details</th><th className="p-8">Placement Logic</th><th className="p-8 text-right">Command</th></tr>
-                   </thead>
-                   <tbody className="divide-y divide-gray-800">
-                      {globalAds.filter(ad => ad.status === 'pending_review').map(ad => (
-                        <tr key={ad.id} className="hover:bg-white/5 transition-colors">
-                           <td className="p-8">
-                             <div className="flex items-center gap-4">
-                               <div className="w-20 h-20 rounded-2xl bg-gray-800 overflow-hidden border border-gray-700">
-                                 {ad.type === 'image' ? <img src={ad.mediaUrl} className="w-full h-full object-cover" /> : <PlayCircle className="w-full h-full p-4 text-green-500" />}
-                               </div>
-                               <div>
-                                 <p className="font-black italic text-base text-white break-words max-w-[200px]">{ad.title}</p>
-                                 <p className="text-[10px] text-blue-400 font-black uppercase">{ad.adType}</p>
-                               </div>
-                             </div>
-                           </td>
-                           <td className="p-8">
-                             <div className="space-y-1">
-                               <p className="text-xs font-bold text-gray-300">Duration: {ad.campaignDuration} {ad.campaignUnit}</p>
-                               <p className="text-[10px] text-gray-500 uppercase">Target: {ad.targetLocation}</p>
-                               <p className="text-[10px] text-gray-500 uppercase">Reach: {ad.targetReach === 'all' ? 'Global' : ad.targetReach}</p>
-                             </div>
-                           </td>
-                           <td className="p-8">
-                             <div className="space-y-4">
-                               <div>
-                                 <label className="text-[9px] font-black uppercase text-gray-500 block mb-1">Set Placement</label>
-                                 <select 
-                                   value={ad.placement} 
-                                   onChange={(e) => onUpdateAd({ ...ad, placement: e.target.value as AdPlacement })}
-                                   className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-3 py-2 rounded-xl outline-none text-white w-full focus:border-brand-proph transition-colors"
-                                 >
-                                   <option value="timeline">Timeline (Main Feed)</option>
-                                   <option value="search">Search Results</option>
-                                   <option value="post">Inside Posts</option>
-                                   <option value="profile">User Profiles</option>
-                                   <option value="video">Video Stream</option>
-                                   <option value="replies">Post Replies</option>
-                                 </select>
-                               </div>
-                               <div>
-                                 <label className="text-[9px] font-black uppercase text-gray-500 block mb-1">Set Ad Type</label>
-                                 <select 
-                                   value={ad.adType} 
-                                   onChange={(e) => onUpdateAd({ ...ad, adType: e.target.value as AdType })}
-                                   className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-3 py-2 rounded-xl outline-none text-white w-full focus:border-brand-proph transition-colors"
-                                 >
-                                   <option value="native">Native (X-Style)</option>
-                                   <option value="banner">Banner</option>
-                                   <option value="popup">Pop-up</option>
-                                 </select>
-                               </div>
-                             </div>
-                           </td>
-                           <td className="p-8 text-right">
-                             <div className="flex justify-end gap-3">
-                               <button 
-                                 onClick={() => onUpdateAd({ ...ad, status: 'active' })}
-                                 className="p-4 bg-green-600/10 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white transition-all group relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)]"
-                                 title="Approve & Deploy"
-                               >
-                                 <CheckCircle2 className="w-6 h-6 relative z-10" />
-                                 <div className="absolute inset-0 bg-green-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                               </button>
-                               <button 
-                                 onClick={() => onUpdateAd({ ...ad, status: 'rejected' })}
-                                 className="p-4 bg-red-600/10 text-red-500 rounded-2xl hover:bg-red-600 hover:text-white transition-all"
-                                 title="Reject Campaign"
-                               >
-                                 <XCircle className="w-6 h-6" />
-                               </button>
-                             </div>
-                           </td>
-                        </tr>
-                      ))}
-                      {globalAds.filter(ad => ad.status === 'pending_review').length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="p-20 text-center">
-                            <div className="flex flex-col items-center gap-4 opacity-20">
-                              <Target className="w-16 h-16" />
-                              <p className="text-sm font-black uppercase tracking-widest">No Campaigns Pending Verification</p>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                   </tbody>
-                </table>
-             </div>
-          </div>
-         </div>
+          <AdminAdVerification ads={globalAds} onUpdateAd={onUpdateAd} />
         )}
 
         {activeTab === 'academic' && (

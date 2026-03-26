@@ -70,7 +70,7 @@ const AdminPaymentVerification: React.FC<AdminPaymentVerificationProps> = ({ use
             const allAds = await Database.getAds();
             const targetAd = allAds.find(a => a.id === verification.details.adId);
             if (targetAd) {
-              const updatedAd = { ...targetAd, status: 'active' };
+              const updatedAd = { ...targetAd, status: 'pending_review' };
               await Database.saveAd(updatedAd);
             }
           }

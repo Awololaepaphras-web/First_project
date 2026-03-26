@@ -3,13 +3,85 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
 import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X } from 'lucide-react';
-import { User } from '../../types';
+import { User, Advertisement, AdTimeFrame } from '../../types';
 
 interface UniversityFeedProps {
   user: User;
+  globalAds: Advertisement[];
 }
 
-export default function UniversityFeed({ user }: UniversityFeedProps) {
+const BannerAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
+  <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-brand-proph/5 animate-fade-in">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="bg-brand-proph p-1 rounded text-[8px] font-black uppercase text-black">Ad</div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Sponsored</span>
+        </div>
+        <span className="text-[10px] font-black italic text-brand-proph">{ad.title}</span>
+      </div>
+      <a href={ad.link} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-2xl border border-brand-proph/20 aspect-[3/1]">
+        {ad.mediaType === 'image' ? (
+          <img src={ad.mediaUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={ad.title} referrerPolicy="no-referrer" />
+        ) : (
+          <video src={ad.mediaUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+          <div className="flex justify-between items-center w-full">
+            <p className="text-xs font-bold text-white line-clamp-1">{ad.description}</p>
+            <div className="bg-brand-proph text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-brand-proph/20">
+              Learn More <Share2 className="w-3 h-3" />
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+);
+
+const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
+  <div className="p-4 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group relative overflow-hidden">
+    <div className="absolute top-0 left-0 w-1 h-full bg-brand-proph shadow-[0_0_15px_rgba(0,186,124,0.6)]" />
+    <div className="flex gap-3">
+      <div className="w-12 h-12 rounded-full bg-brand-proph/10 flex-shrink-0 flex items-center justify-center font-black text-brand-proph overflow-hidden border border-brand-proph/20">
+        {ad.title.charAt(0)}
+      </div>
+      <div className="flex-grow min-w-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="font-black text-[15px] truncate text-gray-900 dark:text-white">{ad.title}</span>
+            <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
+            <span className="text-gray-500 text-[15px] truncate">@sponsored</span>
+            <span className="text-gray-500 text-[15px]">•</span>
+            <span className="text-brand-proph text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-brand-proph/10 rounded border border-brand-proph/20">Ad</span>
+          </div>
+        </div>
+        <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all">{ad.description}</div>
+        {ad.mediaUrl && (
+          <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-black/5">
+            {ad.mediaType === 'image' ? (
+              <img src={ad.mediaUrl} className="w-full h-auto max-h-96 object-cover" alt={ad.title} referrerPolicy="no-referrer" />
+            ) : (
+              <video src={ad.mediaUrl} className="w-full h-auto max-h-96 object-cover" autoPlay muted loop playsInline />
+            )}
+          </div>
+        )}
+        <div className="mt-4 flex justify-between items-center">
+          <div className="flex gap-6 text-gray-500">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"><MessageCircle className="w-4 h-4" /> 0</div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"><Repeat2 className="w-4 h-4" /> 0</div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"><Heart className="w-4 h-4" /> 0</div>
+          </div>
+          <a href={ad.link} target="_blank" rel="noopener noreferrer" className="px-4 py-1.5 bg-brand-proph text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-brand-proph/20">
+            Learn More
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedProps) {
   const [posts, setPosts] = useState<any[]>([]);
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -218,8 +290,30 @@ export default function UniversityFeed({ user }: UniversityFeedProps) {
             <p className="text-gray-500 font-medium italic">No intel has been shared at {user.university} yet. Be the first to broadcast!</p>
           </div>
         ) : (
-          posts.map((post) => (
-            <div key={post.id} className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
+          posts.map((post, index) => {
+            const hour = new Date().getHours();
+            let currentTimeFrame: AdTimeFrame = 'all-day';
+            if (hour >= 0 && hour < 6) currentTimeFrame = '12am-6am';
+            else if (hour >= 6 && hour < 12) currentTimeFrame = '6am-12pm';
+            else if (hour >= 12 && hour < 18) currentTimeFrame = '12pm-6pm';
+            else if (hour >= 18) currentTimeFrame = '6pm-12am';
+
+            const universityAds = globalAds.filter(ad => 
+              ad.status === 'active' && 
+              (ad.adType === 'native' || ad.adType === 'banner') && 
+              (ad.placement === 'university' || ad.placement === 'timeline') &&
+              (!ad.timeFrames || ad.timeFrames.length === 0 || ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day'))
+            );
+
+            const showAd = index > 0 && index % 5 === 0 && universityAds.length > 0;
+            const adToShow = showAd ? universityAds[Math.floor((index / 5) % universityAds.length)] : null;
+
+            return (
+              <React.Fragment key={post.id}>
+                {adToShow && (
+                  adToShow.adType === 'banner' ? <BannerAd ad={adToShow} /> : <NativeAd ad={adToShow} />
+                )}
+                <div className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
               <div className="flex gap-3">
                 <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center font-bold">
                   {post.user_name?.[0]}
@@ -261,7 +355,9 @@ export default function UniversityFeed({ user }: UniversityFeedProps) {
                 </div>
               </div>
             </div>
-          ))
+          </React.Fragment>
+            );
+          })
         )}
       </div>
     </div>

@@ -616,12 +616,14 @@ const App: React.FC = () => {
 
     const validAds = globalAds.filter(ad => {
       if (ad.status !== 'active') return false;
+      // Only trigger popups or fullscreens via this controller
+      if (ad.adType !== 'popup' && ad.adType !== 'fullscreen') return false;
+      
       if (!ad.timeFrames || ad.timeFrames.length === 0) return true;
-      return ad.timeFrames.includes(currentTimeFrame);
+      return ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day');
     });
 
     if (validAds.length > 0) {
-      // Trigger all ads as fullscreen popups
       const randomAd = validAds[Math.floor(Math.random() * validAds.length)];
       setCurrentAd(randomAd);
       setShowAd(true);
@@ -802,7 +804,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
-          <Route path="/university-feed" element={user ? <UniversityFeed user={user} /> : <Navigate to="/login" />} />
+          <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
             const newMsg = {

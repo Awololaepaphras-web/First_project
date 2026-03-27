@@ -1,11 +1,11 @@
 
 export const CloudinaryService = {
   async uploadFile(file: File | string, type: 'image' | 'video' | 'raw' | 'auto' = 'auto'): Promise<string> {
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || import.meta.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || import.meta.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'prophs_cloud';
 
-    if (!cloudName || !uploadPreset) {
-      console.error('Cloudinary configuration missing. Please set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.');
+    if (!cloudName) {
+      console.error('Cloudinary configuration missing. Please set VITE_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.');
       // Fallback to base64 if no Cloudinary config (for local dev)
       if (typeof file === 'string') return file;
       return new Promise((resolve) => {

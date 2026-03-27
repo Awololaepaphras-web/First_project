@@ -96,11 +96,23 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
     // Initial Load: Sort by Newest, Filtered by University
     const fetchPosts = async () => {
       try {
-        const { data, error } = await supabase
+        // Try 'university' first as it's more standard, fallback to 'user_university' if needed
+        let { data, error } = await supabase
           .from('posts')
           .select('*')
-          .eq('user_university', user.university)
+          .eq('university', user.university)
           .order('created_at', { ascending: false });
+        
+        if (error && error.code === '42703') {
+          // If 'university' column doesn't exist, try 'user_university'
+          const retry = await supabase
+            .from('posts')
+            .select('*')
+            .eq('user_university', user.university)
+            .order('created_at', { ascending: false });
+          data = retry.data;
+          error = retry.error;
+        }
         
         if (error) {
           console.error('Error fetching university posts:', error);
@@ -165,7 +177,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
         user_id: user.id,
         user_name: user.name, 
         user_nickname: user.nickname,
-        user_university: user.university,
+        university: user.university, // Use 'university' instead of 'user_university'
         content, 
         media_url: imageUrl,
         media_type: image ? 'image' : null,
@@ -176,7 +188,33 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       }
     ]).select();
 
-    if (!error && data) {
+    if (error && error.code === '42703') {
+      // Fallback to 'user_university' if 'university' fails
+      const retry = await supabase.from('posts').insert([
+        { 
+          user_id: user.id,
+          user_name: user.name, 
+          user_nickname: user.nickname,
+          user_university: user.university,
+          content, 
+          media_url: imageUrl,
+          media_type: image ? 'image' : null,
+          created_at: Date.now(),
+          likes: [],
+          reposts: [],
+          comments: []
+        }
+      ]).select();
+      
+      if (!retry.error && retry.data) {
+        setContent("");
+        setImage(null);
+        setPosts(prev => [retry.data[0], ...prev]);
+      } else if (retry.error) {
+        console.error("Post failed on retry", retry.error);
+        alert("Failed to broadcast intel: " + retry.error.message);
+      }
+    } else if (!error && data) {
       setContent("");
       setImage(null);
       // Optimistic update in case real-time is slow

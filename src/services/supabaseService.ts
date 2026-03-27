@@ -240,7 +240,7 @@ export const SupabaseService = {
       userId: p.user_id,
       userName: p.user_name,
       userNickname: p.user_nickname,
-      userUniversity: p.user_university,
+      userUniversity: p.user_university || p.university, // Support both column names
       userAvatar: p.user_avatar,
       mediaUrl: p.media_url,
       mediaType: p.media_type,
@@ -259,7 +259,7 @@ export const SupabaseService = {
       user_id: userId,
       user_name: userName,
       user_nickname: userNickname,
-      user_university: userUniversity,
+      user_university: userUniversity, // Keep as user_university but we'll also handle the query
       user_avatar: userAvatar,
       media_url: mediaUrl,
       media_type: mediaType,
@@ -482,21 +482,34 @@ export const SupabaseService = {
   },
 
   async getPaymentVerifications(): Promise<PaymentVerification[]> {
-    const { data, error } = await supabase
-      .from('payment_verifications')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching payment verifications:', error);
+    try {
+      const { data, error } = await supabase
+        .from('payment_verifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        if (error.code === 'PGRST116' || error.message?.includes('not found')) {
+          console.warn('payment_verifications table missing, returning mock data');
+          return [];
+        }
+        console.error('Error fetching payment verifications:', error);
+        return [];
+      }
+      return (data || []).map(v => this.mapPayment(v));
+    } catch (err) {
+      console.warn('Payment verifications table might be missing:', err);
       return [];
     }
-    return (data || []).map(v => this.mapPayment(v));
   },
 
   async savePaymentVerification(verification: PaymentVerification) {
-    const dbVerification = this.toDbPayment(verification);
-    const { error } = await supabase.from('payment_verifications').upsert(dbVerification);
-    if (error) console.error('Error saving payment verification:', error);
+    try {
+      const dbVerification = this.toDbPayment(verification);
+      const { error } = await supabase.from('payment_verifications').upsert(dbVerification);
+      if (error) console.error('Error saving payment verification:', error);
+    } catch (err) {
+      console.error('Fatal error saving payment verification:', err);
+    }
   },
 
   async updatePaymentVerificationStatus(id: string, status: 'approved' | 'rejected') {
@@ -796,8 +809,12 @@ export const SupabaseService = {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: table
-      }, callback)
-      .subscribe();
+        table: table 
+      }, (payload) => {
+        callback(payload);
+      })
+      .subscribe((status) => {
+        console.log(`Realtime status for ${table}:`, status);
+      });
   }
 };

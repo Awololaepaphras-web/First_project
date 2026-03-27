@@ -44,6 +44,7 @@ import ResetPassword from './views/ResetPassword';
 import FullscreenAd from './components/FullscreenAd';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
+import { supabase } from './src/lib/supabase';
 import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, PaymentVerification } from './types';
 import { MOCK_QUESTIONS, UNIVERSITIES as INITIAL_UNIVERSITIES, UNIVERSITY_COLLEGES as INITIAL_COLLEGES, COLLEGE_DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants';
 
@@ -270,44 +271,37 @@ const App: React.FC = () => {
 
     initData();
 
-    // Global Subscriptions (don't depend on user)
-    const feedSub = DB.subscribeToFeed((payload) => {
-      if (payload.new) {
-        const mappedPost = payload.new as Post;
-        if (payload.eventType === 'INSERT') {
-          console.log('New post arrived!', mappedPost);
-          setPosts(prev => {
-            if (prev.some(p => p.id === mappedPost.id)) return prev;
-            return [mappedPost, ...prev];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          setPosts(prev => prev.map(p => p.id === mappedPost.id ? mappedPost : p));
+    // Real-time Feed Subscription
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to inserts, updates, and deletes
+          schema: 'public',
+          table: 'posts',
+        },
+        (payload) => {
+          console.log('Change received!', payload);
+          if (payload.eventType === 'INSERT') {
+            const newPost = SupabaseService.mapPost(payload.new);
+            setPosts(prev => {
+              if (prev.some(p => p.id === newPost.id)) return prev;
+              return [newPost, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedPost = SupabaseService.mapPost(payload.new);
+            setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+          } else if (payload.eventType === 'DELETE') {
+            setPosts(prev => prev.filter(p => p.id !== payload.old.id));
+          }
         }
-      }
-      if (payload.eventType === 'DELETE') {
-        setPosts(prev => prev.filter(p => p.id !== payload.old.id));
-      }
-    });
+      )
+      .subscribe();
 
     const adsSub = SupabaseService.subscribeToTable('advertisements', (payload: any) => {
       if (payload.new) {
-        const a = payload.new;
-        const mappedAd = {
-          ...a,
-          userId: a.user_id,
-          mediaUrl: a.media_url,
-          type: a.media_type,
-          adType: a.ad_type,
-          placement: a.placement,
-          link: a.link,
-          duration: a.duration,
-          targetLocation: a.target_location,
-          campaignDuration: a.campaign_duration,
-          campaignUnit: a.campaign_unit,
-          timesPerDay: a.times_per_day,
-          targetReach: a.target_reach,
-          timeFrames: a.time_frames
-        };
+        const mappedAd = SupabaseService.mapAd(payload.new);
         if (payload.eventType === 'INSERT') setGlobalAds(prev => [mappedAd, ...prev]);
         if (payload.eventType === 'UPDATE') setGlobalAds(prev => prev.map(item => item.id === mappedAd.id ? mappedAd : item));
       }
@@ -316,13 +310,7 @@ const App: React.FC = () => {
 
     const tasksSub = SupabaseService.subscribeToTable('tasks', (payload: any) => {
       if (payload.new) {
-        const t = payload.new;
-        const mappedTask = {
-          ...t,
-          completedBy: t.completed_by,
-          createdAt: new Date(t.created_at).getTime(),
-          expiryDate: t.expiry_date ? new Date(t.expiry_date).getTime() : undefined
-        };
+        const mappedTask = SupabaseService.mapTask(payload.new);
         if (payload.eventType === 'INSERT') setTasks(prev => [mappedTask, ...prev]);
         if (payload.eventType === 'UPDATE') setTasks(prev => prev.map(item => item.id === mappedTask.id ? mappedTask : item));
       }
@@ -331,18 +319,7 @@ const App: React.FC = () => {
 
     const withdrawalsSub = SupabaseService.subscribeToTable('withdrawal_requests', (payload: any) => {
       if (payload.new) {
-        const r = payload.new;
-        const mappedReq = {
-          ...r,
-          userId: r.user_id,
-          userName: r.user_name,
-          bankDetails: {
-            bankName: r.bank_name,
-            accountNumber: r.account_number,
-            accountName: r.account_name
-          },
-          createdAt: new Date(r.created_at).getTime()
-        };
+        const mappedReq = SupabaseService.mapWithdrawal(payload.new);
         if (payload.eventType === 'INSERT') setWithdrawalRequests(prev => [mappedReq, ...prev]);
         if (payload.eventType === 'UPDATE') setWithdrawalRequests(prev => prev.map(w => w.id === mappedReq.id ? mappedReq : w));
       }
@@ -362,16 +339,7 @@ const App: React.FC = () => {
 
     const docsSub = SupabaseService.subscribeToTable('documents', (payload: any) => {
       if (payload.new) {
-        const d = payload.new;
-        const mappedDoc = {
-          ...d,
-          universityId: d.university_id,
-          courseCode: d.course_code,
-          courseTitle: d.course_title,
-          fileUrl: d.file_url,
-          uploadedBy: d.uploaded_by,
-          createdAt: new Date(d.created_at).getTime()
-        };
+        const mappedDoc = SupabaseService.mapDocument(payload.new);
         if (payload.eventType === 'INSERT') {
           setQuestions(prev => [mappedDoc, ...prev]);
           // Forceful visibility: notify users if it's a public document
@@ -393,14 +361,7 @@ const App: React.FC = () => {
 
     const paymentsSub = SupabaseService.subscribeToTable('payment_verifications', (payload: any) => {
       if (payload.new) {
-        const v = payload.new;
-        const mappedPayment = {
-          ...v,
-          userId: v.user_id,
-          userName: v.user_name,
-          userEmail: v.user_email,
-          createdAt: new Date(v.created_at).getTime()
-        };
+        const mappedPayment = SupabaseService.mapPayment(payload.new);
         if (payload.eventType === 'INSERT') setPaymentVerifications(prev => [mappedPayment, ...prev]);
         if (payload.eventType === 'UPDATE') setPaymentVerifications(prev => prev.map(item => item.id === mappedPayment.id ? mappedPayment : item));
       }
@@ -408,21 +369,22 @@ const App: React.FC = () => {
 
     const unisSub = SupabaseService.subscribeToTable('universities', (payload: any) => {
       if (payload.new) {
-        if (payload.eventType === 'INSERT') setUniversities(prev => [payload.new, ...prev]);
-        if (payload.eventType === 'UPDATE') setUniversities(prev => prev.map(u => u.id === payload.new.id ? payload.new : u));
+        const mappedUni = SupabaseService.mapUniversity(payload.new);
+        if (payload.eventType === 'INSERT') setUniversities(prev => [mappedUni, ...prev]);
+        if (payload.eventType === 'UPDATE') setUniversities(prev => prev.map(u => u.id === mappedUni.id ? mappedUni : u));
       }
       if (payload.eventType === 'DELETE') setUniversities(prev => prev.filter(u => u.id === payload.old.id));
     });
 
     return () => {
-      feedSub.unsubscribe();
-      adsSub.unsubscribe();
-      tasksSub.unsubscribe();
-      withdrawalsSub.unsubscribe();
-      configSub.unsubscribe();
-      docsSub.unsubscribe();
-      paymentsSub.unsubscribe();
-      unisSub.unsubscribe();
+      supabase.removeChannel(channel);
+      supabase.removeChannel(adsSub);
+      supabase.removeChannel(tasksSub);
+      supabase.removeChannel(withdrawalsSub);
+      supabase.removeChannel(configSub);
+      supabase.removeChannel(docsSub);
+      supabase.removeChannel(paymentsSub);
+      supabase.removeChannel(unisSub);
     };
   }, []);
 

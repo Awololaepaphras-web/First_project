@@ -125,6 +125,7 @@ export interface User {
   }
   bankDetails?: { accountName: string; accountNumber: string; bankName: string };
   gladiatorEarnings?: number;
+  createdAt?: number;
   monetization?: {
     isMonetized: boolean;
     isEligibleForPoints: boolean;
@@ -179,6 +180,10 @@ export interface University {
   acronym: string;
   location: string;
   logo: string;
+  logoUrl?: string;
+  studentCount?: number;
+  isVerified?: boolean;
+  createdAt?: number;
   rating?: number;
 }
 

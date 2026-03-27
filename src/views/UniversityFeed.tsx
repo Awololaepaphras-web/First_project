@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
+import { SupabaseService } from '../services/supabaseService';
 import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X } from 'lucide-react';
-import { User, Advertisement, AdTimeFrame } from '../../types';
+import { User, Advertisement, AdTimeFrame, Post } from '../../types';
 
 interface UniversityFeedProps {
   user: User;
@@ -82,7 +83,7 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
 );
 
 export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedProps) {
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -106,7 +107,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
           setConnectionStatus('error');
         } else {
           console.log('Fetched university posts:', data?.length);
-          if (data) setPosts(data);
+          if (data) setPosts(data.map(p => SupabaseService.mapPost(p)));
           setConnectionStatus('connected');
         }
       } catch (err) {
@@ -117,44 +118,28 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
     fetchPosts();
 
     // Real-time Subscription
-    const channel = supabase
-      .channel('realtime-university-posts')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'posts'
-        }, 
-        (payload) => {
-          console.log('Real-time payload received:', payload);
-          
-          const newPost = payload.new as any;
-          const oldPost = payload.old as any;
+    const channel = SupabaseService.subscribeToTable('posts', (payload: any) => {
+      console.log('University Change received!', payload);
+      
+      if (payload.eventType === 'INSERT') {
+        const newPost = SupabaseService.mapPost(payload.new);
+        if (newPost.userUniversity === user.university) {
+          setPosts((prev) => {
+            if (prev.some(p => p.id === newPost.id)) return prev;
+            return [newPost, ...prev];
+          });
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        const updatedPost = SupabaseService.mapPost(payload.new);
+        if (updatedPost.userUniversity === user.university) {
+          setPosts((prev) => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+        }
+      } else if (payload.eventType === 'DELETE') {
+        setPosts((prev) => prev.filter(p => p.id !== payload.old.id));
+      }
+    });
 
-          if (payload.eventType === 'INSERT') {
-            if (newPost.user_university === user.university) {
-              setPosts((prev) => {
-                if (prev.some(p => p.id === newPost.id)) return prev;
-                return [newPost, ...prev];
-              });
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            if (newPost.user_university === user.university) {
-              setPosts((prev) => prev.map(p => p.id === newPost.id ? newPost : p));
-            }
-          } else if (payload.eventType === 'DELETE') {
-            setPosts((prev) => prev.filter(p => p.id !== oldPost.id));
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          setConnectionStatus('connected');
-        } else if (status === 'CHANNEL_ERROR') {
-          setConnectionStatus('error');
-        }
-      });
+    setConnectionStatus('connected');
 
     return () => {
       supabase.removeChannel(channel);
@@ -316,20 +301,20 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                 <div className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
               <div className="flex gap-3">
                 <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center font-bold">
-                  {post.user_name?.[0]}
+                  {post.userName?.[0]}
                 </div>
                 <div className="flex-grow">
                   <div className="flex items-center gap-1">
-                    <span className="font-bold hover:underline">{post.user_name}</span>
+                    <span className="font-bold hover:underline">{post.userName}</span>
                     <ShieldCheck className="w-4 h-4 text-brand-proph" />
-                    <span className="text-gray-500">@{post.user_nickname}</span>
+                    <span className="text-gray-500">@{post.userNickname}</span>
                     <span className="text-gray-500">·</span>
-                    <span className="text-gray-500">{new Date(post.created_at).toLocaleDateString()}</span>
+                    <span className="text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</span>
                   </div>
                   <div className="mt-1 text-[15px] leading-normal">{post.content}</div>
-                  {post.media_url && (
+                  {post.mediaUrl && (
                     <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                      <img src={post.media_url} className="w-full h-auto max-h-96 object-cover" />
+                      <img src={post.mediaUrl} className="w-full h-auto max-h-96 object-cover" />
                     </div>
                   )}
                   <div className="flex justify-between mt-3 max-w-md text-gray-500">

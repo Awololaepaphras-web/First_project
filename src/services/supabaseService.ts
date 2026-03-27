@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest } from '../../types';
+import { User, Post, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, EarnTask as Task, StudyDocument as Document } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -52,23 +52,31 @@ export const SupabaseService = {
       console.error('Error fetching user profile:', error);
       return null;
     }
-    return {
-      ...data,
-      themePreference: data.theme_preference,
-      isSugVerified: data.is_sug_verified,
-      staffPermissions: data.staff_permissions,
-      isPremium: data.is_premium,
-      premiumExpiry: data.premium_until,
-      referralCode: data.referral_code,
-      referralStats: data.referral_stats,
-      bankDetails: data.bank_details,
-      gladiatorEarnings: data.gladiator_earnings,
-      isVerified: data.is_verified,
-      verificationCode: data.verification_code,
-      referredBy: data.referred_by,
-      engagementStats: data.engagement_stats,
-      createdAt: new Date(data.created_at).getTime()
-    };
+    return this.mapUser(data);
+  },
+
+  async getUsers(): Promise<User[]> {
+    try {
+      const { data, error } = await supabase.from('users').select('*');
+      if (error) {
+        if (error.message.includes('relation "public.users" does not exist')) {
+          console.error('CRITICAL: Supabase "users" table not found. Please run the setup SQL script.');
+        } else {
+          console.error('Error fetching users:', error);
+        }
+        return [];
+      }
+      return (data || []).map(u => this.mapUser(u));
+    } catch (err) {
+      console.error('Unexpected error in getUsers:', err);
+      return [];
+    }
+  },
+
+  async saveUser(user: User) {
+    const dbUser = this.toDbUser(user);
+    const { error } = await supabase.from('users').upsert(dbUser);
+    if (error) console.error('Error saving user:', error);
   },
 
   async isNicknameAvailable(nickname: string): Promise<boolean> {
@@ -97,49 +105,35 @@ export const SupabaseService = {
     }
   },
 
-  async getUsers(): Promise<User[]> {
-    try {
-      const { data, error } = await supabase.from('users').select('*');
-      if (error) {
-        if (error.message.includes('relation "public.users" does not exist')) {
-          console.error('CRITICAL: Supabase "users" table not found. Please run the setup SQL script.');
-        } else {
-          console.error('Error fetching users:', error);
-        }
-        return [];
-      }
-      return (data || []).map(u => ({
-        ...u,
-        themePreference: u.theme_preference,
-        isSugVerified: u.is_sug_verified,
-        staffPermissions: u.staff_permissions,
-        isPremium: u.is_premium,
-        premiumExpiry: u.premium_until,
-        referralCode: u.referral_code,
-        referralStats: u.referral_stats,
-        bankDetails: u.bank_details,
-        gladiatorEarnings: u.gladiator_earnings,
-        isVerified: u.is_verified,
-        verificationCode: u.verification_code,
-        referredBy: u.referred_by,
-        engagementStats: u.engagement_stats,
-        createdAt: new Date(u.created_at).getTime()
-      }));
-    } catch (err) {
-      console.error('Unexpected error in getUsers:', err);
-      return [];
-    }
+  mapUser(u: any): User {
+    return {
+      ...u,
+      themePreference: u.theme_preference,
+      isSugVerified: u.is_sug_verified,
+      staffPermissions: u.staff_permissions,
+      isPremium: u.is_premium,
+      premiumExpiry: u.premium_until,
+      referralCode: u.referral_code,
+      referralStats: u.referral_stats,
+      bankDetails: u.bank_details,
+      gladiatorEarnings: u.gladiator_earnings,
+      isVerified: u.is_verified,
+      verificationCode: u.verification_code,
+      referredBy: u.referred_by,
+      engagementStats: u.engagement_stats,
+      createdAt: new Date(u.created_at).getTime()
+    };
   },
 
-  async saveUser(user: User) {
+  toDbUser(user: User): any {
     const { 
       themePreference, isSugVerified, staffPermissions, isPremium, 
       premiumExpiry, referralCode, referralStats, bankDetails, 
       gladiatorEarnings, isVerified, verificationCode, referredBy,
-      engagementStats, ...rest 
+      engagementStats, createdAt, ...rest 
     } = user;
     
-    const dbUser = { 
+    return { 
       ...rest, 
       theme_preference: themePreference,
       is_sug_verified: isSugVerified,
@@ -153,10 +147,9 @@ export const SupabaseService = {
       is_verified: isVerified,
       verification_code: verificationCode,
       referred_by: referredBy,
-      engagement_stats: engagementStats
+      engagement_stats: engagementStats,
+      created_at: createdAt ? new Date(createdAt).toISOString() : undefined
     };
-    const { error } = await supabase.from('users').upsert(dbUser);
-    if (error) console.error('Error saving user:', error);
   },
 
   async followUser(followerId: string, followingId: string) {
@@ -225,15 +218,20 @@ export const SupabaseService = {
 
   // Feed
   async getFeed(): Promise<Post[]> {
-    const { data, error } = await supabase
-      .from('posts')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching feed:', error);
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error fetching feed:', error);
+        return [];
+      }
+      return (data || []).map(p => this.mapPost(p));
+    } catch (err) {
+      console.error('Fatal error fetching feed:', err);
       return [];
     }
-    return (data || []).map(p => this.mapPost(p));
   },
 
   mapPost(p: any): Post {
@@ -250,13 +248,13 @@ export const SupabaseService = {
       visibility: p.visibility,
       isEdited: p.is_edited,
       adId: p.ad_id,
-      createdAt: Number(p.created_at)
+      createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now()
     };
   },
 
-  async savePost(post: Post) {
+  toDbPost(post: Post): any {
     const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, createdAt, ...rest } = post as any;
-    const dbPost = {
+    return {
       ...rest,
       user_id: userId,
       user_name: userName,
@@ -269,12 +267,21 @@ export const SupabaseService = {
       visibility: visibility || 'public',
       is_edited: isEdited || false,
       ad_id: adId,
-      created_at: createdAt
+      created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
     };
-    const { error } = await supabase.from('posts').upsert(dbPost);
-    if (error) {
-      console.error('Error saving post:', error);
-      throw error;
+  },
+
+  async savePost(post: Post) {
+    try {
+      const dbPost = this.toDbPost(post);
+      const { error } = await supabase.from('posts').upsert(dbPost);
+      if (error) {
+        console.error('Error saving post:', error);
+        throw error;
+      }
+    } catch (err) {
+      console.error('Fatal error saving post:', err);
+      throw err;
     }
   },
 
@@ -306,7 +313,7 @@ export const SupabaseService = {
       courseTitle: d.course_title,
       fileUrl: d.file_url,
       uploadedBy: d.uploaded_by,
-      createdAt: Number(d.created_at)
+      createdAt: d.created_at ? new Date(d.created_at).getTime() : Date.now()
     };
   },
 
@@ -323,35 +330,43 @@ export const SupabaseService = {
   },
 
   async saveDocument(doc: PastQuestion) {
-    const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc as any;
-    const dbDoc = {
-      ...rest,
-      university_id: universityId,
-      course_code: courseCode,
-      course_title: courseTitle,
-      file_url: fileUrl,
-      uploaded_by: uploadedBy,
-      created_at: createdAt
-    };
-    const { error } = await supabase.from('documents').upsert(dbDoc);
-    if (error) console.error('Error saving document:', error);
-  },
-
-  async saveDocuments(docs: PastQuestion[]) {
-    const dbDocs = docs.map(doc => {
-      const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc;
-      return {
+    try {
+      const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc as any;
+      const dbDoc = {
         ...rest,
         university_id: universityId,
         course_code: courseCode,
         course_title: courseTitle,
         file_url: fileUrl,
         uploaded_by: uploadedBy,
-        created_at: createdAt
+        created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
       };
-    });
-    const { error } = await supabase.from('documents').upsert(dbDocs);
-    if (error) console.error('Error saving documents:', error);
+      const { error } = await supabase.from('documents').upsert(dbDoc);
+      if (error) console.error('Error saving document:', error);
+    } catch (err) {
+      console.error('Fatal error saving document:', err);
+    }
+  },
+
+  async saveDocuments(docs: PastQuestion[]) {
+    try {
+      const dbDocs = docs.map(doc => {
+        const { universityId, courseCode, courseTitle, fileUrl, uploadedBy, createdAt, ...rest } = doc;
+        return {
+          ...rest,
+          university_id: universityId,
+          course_code: courseCode,
+          course_title: courseTitle,
+          file_url: fileUrl,
+          uploaded_by: uploadedBy,
+          created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
+        };
+      });
+      const { error } = await supabase.from('documents').upsert(dbDocs);
+      if (error) console.error('Error saving documents:', error);
+    } catch (err) {
+      console.error('Fatal error saving documents:', err);
+    }
   },
 
   async deleteDocument(id: string) {
@@ -445,6 +460,27 @@ export const SupabaseService = {
   },
 
   // Payment Verification
+  mapPayment(v: any): PaymentVerification {
+    return {
+      ...v,
+      userId: v.user_id,
+      userName: v.user_name,
+      userEmail: v.user_email,
+      createdAt: new Date(v.created_at).getTime()
+    };
+  },
+
+  toDbPayment(verification: PaymentVerification): any {
+    const { userId, userName, userEmail, createdAt, ...rest } = verification;
+    return {
+      ...rest,
+      user_id: userId,
+      user_name: userName,
+      user_email: userEmail,
+      created_at: new Date(createdAt).toISOString()
+    };
+  },
+
   async getPaymentVerifications(): Promise<PaymentVerification[]> {
     const { data, error } = await supabase
       .from('payment_verifications')
@@ -454,24 +490,11 @@ export const SupabaseService = {
       console.error('Error fetching payment verifications:', error);
       return [];
     }
-    return (data || []).map(v => ({
-      ...v,
-      userId: v.user_id,
-      userName: v.user_name,
-      userEmail: v.user_email,
-      createdAt: new Date(v.created_at).getTime()
-    }));
+    return (data || []).map(v => this.mapPayment(v));
   },
 
   async savePaymentVerification(verification: PaymentVerification) {
-    const { userId, userName, userEmail, createdAt, ...rest } = verification;
-    const dbVerification = {
-      ...rest,
-      user_id: userId,
-      user_name: userName,
-      user_email: userEmail,
-      created_at: new Date(createdAt).toISOString()
-    };
+    const dbVerification = this.toDbPayment(verification);
     const { error } = await supabase.from('payment_verifications').upsert(dbVerification);
     if (error) console.error('Error saving payment verification:', error);
   },
@@ -611,13 +634,8 @@ export const SupabaseService = {
   },
 
   // Withdrawal Requests
-  async getWithdrawalRequests(): Promise<any[]> {
-    const { data, error } = await supabase.from('withdrawal_requests').select('*');
-    if (error) {
-      console.error('Error fetching withdrawal requests:', error);
-      return [];
-    }
-    return (data || []).map(r => ({
+  mapWithdrawal(r: any): any {
+    return {
       ...r,
       userId: r.user_id,
       userName: r.user_name,
@@ -627,12 +645,12 @@ export const SupabaseService = {
         accountName: r.account_name
       },
       createdAt: new Date(r.created_at).getTime()
-    }));
+    };
   },
 
-  async saveWithdrawalRequest(req: WithdrawalRequest) {
+  toDbWithdrawal(req: WithdrawalRequest): any {
     const { userId, userName, bankDetails, createdAt, ...rest } = req;
-    const dbReq = {
+    return {
       ...rest,
       user_id: userId,
       user_name: userName,
@@ -641,6 +659,19 @@ export const SupabaseService = {
       account_name: bankDetails.accountName,
       created_at: new Date(createdAt).toISOString()
     };
+  },
+
+  async getWithdrawalRequests(): Promise<any[]> {
+    const { data, error } = await supabase.from('withdrawal_requests').select('*');
+    if (error) {
+      console.error('Error fetching withdrawal requests:', error);
+      return [];
+    }
+    return (data || []).map(r => this.mapWithdrawal(r));
+  },
+
+  async saveWithdrawalRequest(req: WithdrawalRequest) {
+    const dbReq = this.toDbWithdrawal(req);
     const { error } = await supabase.from('withdrawal_requests').upsert(dbReq);
     if (error) console.error('Error saving withdrawal request:', error);
   },
@@ -679,27 +710,35 @@ export const SupabaseService = {
   },
 
   // Tasks
+  mapTask(t: any): any {
+    return {
+      ...t,
+      completedBy: t.completed_by,
+      createdAt: new Date(t.created_at).getTime(),
+      expiryDate: t.expiry_date ? new Date(t.expiry_date).getTime() : undefined
+    };
+  },
+
+  toDbTask(task: any): any {
+    const { completedBy, expiryDate, ...rest } = task;
+    return {
+      ...rest,
+      completed_by: completedBy,
+      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null
+    };
+  },
+
   async getTasks(): Promise<any[]> {
     const { data, error } = await supabase.from('tasks').select('*');
     if (error) {
       console.error('Error fetching tasks:', error);
       return [];
     }
-    return (data || []).map(t => ({
-      ...t,
-      completedBy: t.completed_by,
-      createdAt: new Date(t.created_at).getTime(),
-      expiryDate: t.expiry_date ? new Date(t.expiry_date).getTime() : undefined
-    }));
+    return (data || []).map(t => this.mapTask(t));
   },
 
   async saveTask(task: any) {
-    const { completedBy, expiryDate, ...rest } = task;
-    const dbTask = {
-      ...rest,
-      completed_by: completedBy,
-      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null
-    };
+    const dbTask = this.toDbTask(task);
     const { error } = await supabase.from('tasks').upsert(dbTask);
     if (error) console.error('Error saving task:', error);
   },
@@ -709,18 +748,40 @@ export const SupabaseService = {
     if (error) console.error('Error deleting task:', error);
   },
 
+  mapUniversity(u: any): University {
+    return {
+      ...u,
+      logoUrl: u.logo_url,
+      studentCount: u.student_count,
+      isVerified: u.is_verified,
+      createdAt: new Date(u.created_at).getTime()
+    };
+  },
+
+  toDbUniversity(uni: University): any {
+    const { logoUrl, studentCount, isVerified, createdAt, ...rest } = uni;
+    return {
+      ...rest,
+      logo_url: logoUrl,
+      student_count: studentCount,
+      is_verified: isVerified,
+      created_at: createdAt ? new Date(createdAt).toISOString() : undefined
+    };
+  },
+
   // Universities
-  async getUniversities(): Promise<any[]> {
+  async getUniversities(): Promise<University[]> {
     const { data, error } = await supabase.from('universities').select('*');
     if (error) {
       console.error('Error fetching universities:', error);
       return [];
     }
-    return data || [];
+    return (data || []).map(u => this.mapUniversity(u));
   },
 
-  async saveUniversity(uni: any) {
-    const { error } = await supabase.from('universities').upsert(uni);
+  async saveUniversity(uni: University) {
+    const dbUni = this.toDbUniversity(uni);
+    const { error } = await supabase.from('universities').upsert(dbUni);
     if (error) console.error('Error saving university:', error);
   },
 

@@ -2,7 +2,7 @@
 import React from 'react';
 import { 
   CheckCircle2, XCircle, PlayCircle, Target, 
-  Clock, Monitor, Zap, ShieldCheck, AlertCircle
+  Clock, Monitor, Zap, ShieldCheck, AlertCircle, Users
 } from 'lucide-react';
 import { Advertisement, AdPlacement, AdType, AdTimeFrame } from '../types';
 

@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, EarnTask as Task, StudyDocument as Document } from '../../types';
+import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, EarnTask as Task, StudyDocument as Document } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -192,6 +192,24 @@ export const SupabaseService = {
 
   async transferPoints(senderId: string, receiverId: string, amount: number) {
     try {
+      // Check if sender has been active for 3 weeks (21 days)
+      const { data: sender, error: sErr } = await supabase
+        .from('users')
+        .select('created_at')
+        .eq('id', senderId)
+        .single();
+      
+      if (sErr) throw sErr;
+      
+      const createdAt = new Date(sender.created_at).getTime();
+      const threeWeeksInMs = 21 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      
+      if (now - createdAt < threeWeeksInMs) {
+        const daysRemaining = Math.ceil((threeWeeksInMs - (now - createdAt)) / (24 * 60 * 60 * 1000));
+        throw new Error(`You must be active for at least 3 weeks to tip. ${daysRemaining} days remaining.`);
+      }
+
       // We now use a secure RPC function that handles the transfer atomically on the server
       // First, we need to get the receiver's referral code (Proph ID)
       const { data: receiver, error: rErr } = await supabase
@@ -210,8 +228,138 @@ export const SupabaseService = {
       if (error) throw error;
 
       return { success: true, data };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in transferPoints:', error);
+      return { success: false, error: error.message || error };
+    }
+  },
+
+  async togglePostLike(postId: string, userId: string) {
+    try {
+      const { data: post, error: fErr } = await supabase.from('posts').select('likes, user_id').eq('id', postId).single();
+      if (fErr) throw fErr;
+
+      const likes = post.likes || [];
+      const isLiked = likes.includes(userId);
+      const newLikes = isLiked ? likes.filter((id: string) => id !== userId) : [...likes, userId];
+
+      const { error: uErr } = await supabase.from('posts').update({ likes: newLikes }).eq('id', postId);
+      if (uErr) throw uErr;
+
+      // Reward author if liked
+      if (!isLiked && post.user_id !== userId) {
+        await this.rewardEngagement(post.user_id, 'like');
+      }
+
+      return { success: true, isLiked: !isLiked };
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      return { success: false, error };
+    }
+  },
+
+  async addPostComment(postId: string, comment: PostComment) {
+    try {
+      const { data: post, error: fErr } = await supabase.from('posts').select('comments, user_id').eq('id', postId).single();
+      if (fErr) throw fErr;
+
+      const comments = post.comments || [];
+      const newComments = [...comments, comment];
+
+      const { error: uErr } = await supabase.from('posts').update({ comments: newComments }).eq('id', postId);
+      if (uErr) throw uErr;
+
+      // Reward author
+      if (post.user_id !== comment.userId) {
+        await this.rewardEngagement(post.user_id, 'comment');
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      return { success: false, error };
+    }
+  },
+
+  async togglePostRepost(postId: string, userId: string) {
+    try {
+      const { data: post, error: fErr } = await supabase.from('posts').select('reposts, user_id').eq('id', postId).single();
+      if (fErr) throw fErr;
+
+      const reposts = post.reposts || [];
+      const isReposted = reposts.includes(userId);
+      const newReposts = isReposted ? reposts.filter((id: string) => id !== userId) : [...reposts, userId];
+
+      const { error: uErr } = await supabase.from('posts').update({ reposts: newReposts }).eq('id', postId);
+      if (uErr) throw uErr;
+
+      // Reward author if reposted
+      if (!isReposted && post.user_id !== userId) {
+        await this.rewardEngagement(post.user_id, 'repost');
+      }
+
+      return { success: true, isReposted: !isReposted };
+    } catch (error) {
+      console.error('Error toggling repost:', error);
+      return { success: false, error };
+    }
+  },
+
+  async rewardEngagement(authorId: string, type: 'like' | 'comment' | 'repost' | 'link' | 'profile' | 'media') {
+    try {
+      const config = await this.getConfig();
+      if (!config) return;
+
+      // Points mapping from config or defaults
+      const pointsMap = {
+        like: config.earnRates.likeReward || 0.1,
+        comment: config.earnRates.replyReward || 0.5,
+        repost: config.earnRates.repostReward || 1.0,
+        link: 0.05,
+        profile: 0.05,
+        media: 0.05
+      };
+      const pointsToAdd = pointsMap[type];
+
+      const { data: user, error: fErr } = await supabase.from('users').select('points').eq('id', authorId).single();
+      if (fErr) throw fErr;
+
+      const newPoints = (user.points || 0) + pointsToAdd;
+      await supabase.from('users').update({ points: newPoints }).eq('id', authorId);
+    } catch (error) {
+      console.error('Error rewarding engagement:', error);
+    }
+  },
+
+  async trackPostEngagement(postId: string, type: 'link' | 'profile' | 'media' | 'ad_click', userId: string) {
+    try {
+      const { data: post, error: fErr } = await supabase.from('posts').select('stats, user_id').eq('id', postId).single();
+      if (fErr) throw fErr;
+
+      const stats = post.stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 };
+      if (type === 'link') stats.linkClicks++;
+      if (type === 'profile') stats.profileClicks++;
+      if (type === 'media') stats.mediaViews++;
+      
+      const { error: uErr } = await supabase.from('posts').update({ stats }).eq('id', postId);
+      if (uErr) throw uErr;
+
+      // Reward author for engagement
+      if (post.user_id !== userId) {
+        if (type === 'ad_click') {
+          const config = await this.getConfig();
+          if (config) {
+            const rewardPoints = config.earnRates.adClick / 100;
+            await this.updateUserPoints(post.user_id, rewardPoints);
+          }
+        } else {
+          await this.rewardEngagement(post.user_id, type as any);
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error tracking post engagement:', error);
       return { success: false, error };
     }
   },

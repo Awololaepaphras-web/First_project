@@ -72,8 +72,10 @@ const GladiatorLanding: React.FC<GladiatorLandingProps> = ({ user }) => {
                  <div className="w-16 h-16 bg-green-600 text-white rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-12 transition-transform">
                     <Trophy className="w-8 h-8" />
                  </div>
-                 <h3 className="text-2xl font-black uppercase italic">3. Divide Spoils</h3>
-                 <p className="text-brand-muted leading-relaxed font-medium italic">1000 points are distributed proportionally based on performance. High scores claim larger cuts.</p>
+                 <h3 className="text-2xl font-black uppercase italic">3. Claim Rewards</h3>
+                 <p className="text-brand-muted leading-relaxed font-medium italic">
+                   Earn <span className="text-green-500 font-black">Prophy Points</span> based on your performance. These points are your ticket to the global ad revenue pool, where you get paid based on ads deployed across the network.
+                 </p>
               </div>
            </div>
         </div>

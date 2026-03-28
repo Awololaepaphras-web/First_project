@@ -4,7 +4,7 @@ import {
   Trophy, Zap, Wallet, Users, ArrowLeft, 
   CheckCircle2, Database, Swords, 
   TrendingUp, ShieldCheck, DollarSign, Award,
-  Sparkles, Star, ArrowRight
+  Sparkles, Star, ArrowRight, Megaphone, Info, AlertCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SystemConfig } from '../types';
@@ -22,35 +22,48 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
       icon: <Database className="w-8 h-8 text-brand-proph" />,
       desc: 'Synchronize academic intel with the federal grid. Upload verified past questions or handouts to earn instant point allocations.',
       points: `${config.earnRates.contribution} pts per Approved Upload`,
-      status: 'High Priority'
+      status: 'High Priority',
+      details: 'Points are awarded after admin verification of the document quality and relevance.'
     },
     {
       title: 'Referral Network',
       icon: <Users className="w-8 h-8 text-blue-500" />,
       desc: 'Build your scholar downline. Multi-stage point rewards for every student you link to the Proph ecosystem.',
       points: `Up to ${config.earnRates.referral} pts per Referral`,
-      status: 'Exponential'
+      status: 'Exponential',
+      details: 'Earn 10 points on signup, 10 points for 4-day login streak, and 60 points on their first withdrawal.'
+    },
+    {
+      title: 'Ad Revenue Sharing',
+      icon: <Megaphone className="w-8 h-8 text-orange-500" />,
+      desc: 'The core of our economy. Users are paid based on the total ads deployed across the platform. Your share of the monthly ad revenue pool is directly proportional to your accumulated Prophy Points.',
+      points: 'Ad Pool % based on Prophy Points',
+      status: 'Passive Yield',
+      details: 'Requires monetization eligibility (1,000 followers + 2.5M impressions in 3 months).'
     },
     {
       title: 'Arena Commissions',
       icon: <Swords className="w-8 h-8 text-purple-500" />,
       desc: 'Host specialized study hub arenas. Earn commissions from the pool for every gladiator who completes your challenge.',
-      points: `${config.earnRates.arena} pts per Peer Result`,
-      status: 'Commission'
+      points: `${config.earnRates.arena}% Commission`,
+      status: 'Commission',
+      details: 'Commissions are deducted from the total bounty pool of the arena you host.'
     },
     {
       title: 'Bounty Board Tasks',
       icon: <Zap className="w-8 h-8 text-yellow-500" />,
       desc: 'Complete specific institutional actions, surveys, or verifications to claim one-time point drops.',
       points: 'Varies (10 - 200 pts)',
-      status: 'Active'
+      status: 'Active',
+      details: 'Check the Tasks section daily for new high-reward opportunities.'
     },
     {
       title: 'Engagement Dividends',
       icon: <TrendingUp className="w-8 h-8 text-green-500" />,
-      desc: 'High-frequency interaction yields institutional dividends. The top 10 users with the highest engagement metrics every month receive a commission percentage of global ad revenue by transferring their points.',
-      points: 'Ad Revenue % Share',
-      status: 'Top 10 Monthly'
+      desc: 'High-frequency interaction yields institutional dividends. The top performers with the highest engagement metrics every month receive a bonus commission percentage of global ad revenue.',
+      points: 'Bonus Ad Revenue %',
+      status: 'Monthly Performance',
+      details: `Likes: ${config.engagementWeights.likes}pt, Replies: ${config.engagementWeights.replies}pt, Reposts: ${config.engagementWeights.reposts}pt.`
     }
   ];
 
@@ -114,6 +127,11 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
                    </div>
                    <h4 className="text-2xl font-black italic uppercase tracking-tight text-white">{section.title}</h4>
                    <p className="text-brand-muted font-medium italic leading-relaxed">{section.desc}</p>
+                   {section.details && (
+                     <p className="text-[10px] text-brand-muted/60 font-medium italic mt-2 flex items-center gap-2">
+                       <Info className="w-3 h-3" /> {section.details}
+                     </p>
+                   )}
                 </div>
                 <div className="mt-10 pt-8 border-t border-brand-border flex justify-between items-center">
                    <p className="text-lg font-black text-brand-proph italic">{section.points}</p>
@@ -151,12 +169,17 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
            <p className="text-brand-muted max-w-2xl mx-auto font-medium italic">
              All rewards are verified through the Institutional Payout Flow. Payouts are processed within 48 operational cycles after a withdrawal request is authenticated. Minimum withdrawal: 1,000 points.
            </p>
-           <button 
-            onClick={() => navigate('/withdraw')}
-            className="px-12 py-4 bg-white text-black rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-proph transition-all shadow-xl"
-           >
-             Initialize Purse Payout
-           </button>
+           <div className="flex flex-col items-center gap-4">
+              <button 
+                onClick={() => navigate('/withdraw')}
+                className="px-12 py-4 bg-white text-black rounded-full font-black uppercase text-xs tracking-widest hover:bg-brand-proph transition-all shadow-xl"
+              >
+                Initialize Purse Payout
+              </button>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-muted">
+                <ShieldCheck className="w-3 h-3 text-brand-proph" /> Secured by Paystack Infrastructure
+              </div>
+           </div>
         </div>
 
         <footer className="py-20 border-t border-brand-border text-center">

@@ -7,7 +7,7 @@ import {
   BarChart, Image as ImageIcon, Twitter, Facebook, Instagram, Ghost, MessageSquare,
   Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone, ExternalLink
 } from 'lucide-react';
-import { User, Post, Comment, Advertisement } from '../types';
+import { User, Post, PostComment, Advertisement } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface CommunityProps {
@@ -438,7 +438,43 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
             </div>
           </div>
         ) : (
-          filteredPosts.map((post, index) => {
+          <div className="divide-y divide-brand-border">
+            {searchQuery && (
+              <div className="p-4 bg-brand-proph/5 border-b border-brand-border animate-fade-in">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-brand-muted mb-3">Matching Users</h3>
+                <div className="flex flex-wrap gap-3">
+                  {allUsers.filter(u => 
+                    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    u.nickname.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).slice(0, 5).map(u => (
+                    <div key={u.id} className="flex items-center gap-2 bg-white dark:bg-brand-card p-2 rounded-xl border border-brand-border hover:border-brand-proph transition-all cursor-pointer group">
+                      <div className="w-8 h-8 rounded-full bg-brand-border overflow-hidden flex-shrink-0">
+                        {u.profilePicture ? <img src={u.profilePicture} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-[10px] text-gray-400">{u.name.charAt(0)}</div>}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black dark:text-white truncate">{u.name}</p>
+                        <p className="text-[8px] text-brand-muted truncate">@{u.nickname}</p>
+                      </div>
+                      {u.id !== user.id && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onFollow(u.id); }}
+                          className={`ml-1 p-1 rounded-full transition-all ${user.following?.includes(u.id) ? 'text-brand-proph' : 'text-brand-muted hover:text-brand-proph'}`}
+                        >
+                          {user.following?.includes(u.id) ? <Check className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {allUsers.filter(u => 
+                    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    u.nickname.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <p className="text-[10px] italic text-brand-muted">No users found matching "{searchQuery}"</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {filteredPosts.map((post, index) => {
             const now = new Date();
             const hour = now.getHours();
             let currentTimeFrame: any = '12am-6am';
@@ -636,8 +672,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                 </div>
               </React.Fragment>
             );
-          })
-        )}
+          })}
+        </div>
+      )}
       </div>
     </div>
   );

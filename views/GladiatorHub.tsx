@@ -471,6 +471,26 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
                   </div>
                </div>
 
+                <div className="pt-8 border-t border-brand-border">
+                  <h3 className="text-[10px] font-black text-brand-muted uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <Zap className="w-3.5 h-3.5 text-brand-proph" /> Monetization Context
+                  </h3>
+                  <div className="p-5 bg-brand-proph/5 rounded-3xl border border-brand-proph/20 space-y-3">
+                    <p className="text-[10px] font-bold text-brand-proph uppercase tracking-widest italic">Ad Revenue Model</p>
+                    <p className="text-[11px] text-brand-muted font-medium italic leading-relaxed">
+                      Your earnings are powered by ads deployed across the PROPH network. The total payout you receive is directly dependent on your accumulated <span className="text-brand-proph font-black">Prophy Points</span>.
+                    </p>
+                    <div className="pt-2">
+                       <button 
+                        onClick={() => navigate('/ad-revenue-sharing')}
+                        className="w-full py-2 bg-brand-proph text-black rounded-xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all"
+                       >
+                          View Revenue Syndicate
+                       </button>
+                    </div>
+                  </div>
+               </div>
+
                <div className="pt-8 border-t border-brand-border">
                   <h3 className="text-[10px] font-black text-brand-muted uppercase tracking-widest mb-4">Arena Rules</h3>
                   <ul className="space-y-4">

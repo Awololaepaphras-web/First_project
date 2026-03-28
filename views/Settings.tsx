@@ -1,9 +1,10 @@
 
 import React, { useState, useRef } from 'react';
-import { User as UserIcon, Camera, Save, ArrowLeft, ShieldCheck, Mail, Phone, Building, AtSign, Loader2 } from 'lucide-react';
+import { User as UserIcon, Camera, Save, ArrowLeft, ShieldCheck, Mail, Phone, Building, AtSign, Loader2, Download } from 'lucide-react';
 import { User } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { CloudinaryService } from '../src/services/cloudinaryService';
+import { usePWA } from '../src/hooks/usePWA';
 
 interface SettingsProps {
   user: User;
@@ -13,6 +14,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isInstallable, installPWA } = usePWA();
   const [formData, setFormData] = useState({
     name: user.name,
     nickname: user.nickname || '',
@@ -51,9 +53,21 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-brand-black py-12 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto space-y-8">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 dark:hover:text-white font-black text-[10px] uppercase tracking-widest" title="Go Back">
-          <ArrowLeft className="w-4 h-4" /> Back to Core
-        </button>
+        <div className="flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 dark:hover:text-white font-black text-[10px] uppercase tracking-widest" title="Go Back">
+            <ArrowLeft className="w-4 h-4" /> Back to Core
+          </button>
+          
+          {isInstallable && (
+            <button 
+              onClick={installPWA}
+              className="flex items-center gap-2 bg-brand-proph/10 text-brand-proph px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-proph/20 transition-all"
+              title="Download PWA"
+            >
+              <Download className="w-4 h-4" /> Download App
+            </button>
+          )}
+        </div>
 
         <div className="bg-white dark:bg-brand-card rounded-[3rem] shadow-2xl border border-gray-100 dark:border-brand-border overflow-hidden">
           <div className="h-32 bg-gradient-to-r from-green-600 to-emerald-600 relative">

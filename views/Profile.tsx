@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   User as UserIcon, MapPin, GraduationCap, Calendar, 
   ShieldCheck, ArrowLeft, MessageSquare, UserPlus, UserMinus,
-  Grid, Users, Heart, BarChart2
+  Grid, Users, Heart, BarChart2, Coins, X
 } from 'lucide-react';
 import { User, Post } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
@@ -21,6 +21,22 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'posts' | 'followers' | 'following'>('posts');
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [tipAmount, setTipAmount] = useState(10);
+  const [isTippingInProgress, setIsTippingInProgress] = useState(false);
+
+  const handleTip = async () => {
+    if (!user || !currentUser) return;
+    setIsTippingInProgress(true);
+    const result = await SupabaseService.transferPoints(currentUser.id, user.id, tipAmount);
+    if (result.success) {
+      alert(`Successfully tipped ${tipAmount} points to ${user.name}!`);
+      setShowTipModal(false);
+    } else {
+      alert(result.error);
+    }
+    setIsTippingInProgress(false);
+  };
 
   useEffect(() => {
     const targetUser = allUsers.find(u => u.id === id);
@@ -78,6 +94,12 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
                 className="p-3 border border-brand-border rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-all"
               >
                 <MessageSquare className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setShowTipModal(true)}
+                className="p-3 border border-yellow-500/50 rounded-full hover:bg-yellow-500/10 transition-all text-yellow-500"
+              >
+                <Coins className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => onFollow(user.id)}
@@ -288,6 +310,52 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
           )
         )}
       </div>
+      {/* Tip Modal */}
+      {showTipModal && user && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Coins className="w-10 h-10 text-yellow-500" />
+              </div>
+              <h3 className="text-xl font-black uppercase italic mb-2">Tip {user.name}</h3>
+              <p className="text-gray-500 text-sm mb-6">Support this student with some points!</p>
+              
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[10, 50, 100, 500, 1000, 5000].map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setTipAmount(amount)}
+                    className={`py-3 rounded-2xl font-black text-xs transition-all border-2 ${
+                      tipAmount === amount 
+                        ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
+                        : 'border-gray-100 dark:border-gray-800 hover:border-yellow-500/50'
+                    }`}
+                  >
+                    {amount}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowTipModal(false)}
+                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleTip}
+                  disabled={isTippingInProgress}
+                  className="flex-1 py-4 bg-yellow-500 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+                >
+                  {isTippingInProgress ? 'Processing...' : 'Send Tip'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

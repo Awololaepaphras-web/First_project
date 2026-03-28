@@ -13,12 +13,13 @@ export interface FileData {
 export const getAIResponse = async (history: AIMessage[], userInput: string, fileData?: FileData) => {
   try {
     // Initialize the Gemini API client using the API key from environment variables
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
     // Construct the contents array from the provided conversation history
-    const contents = history.map(msg => ({
+    // The history already includes the latest user message from the UI
+    const contents: any[] = history.map(msg => ({
       role: msg.role,
-      parts: [{ text: msg.text }]
+      parts: [{ text: msg.text }] as any[]
     }));
     
     // The Gemini API requires the first message in the contents array to have a 'user' role.
@@ -27,23 +28,15 @@ export const getAIResponse = async (history: AIMessage[], userInput: string, fil
       contents.shift();
     }
     
-    const userParts: any[] = [{ text: userInput }];
-    
-    // If there is an uploaded file, include it as inlineData in the prompt parts
-    if (fileData) {
-      userParts.push({
+    // If there is an uploaded file, we need to attach it to the LAST message (which is the user's latest prompt)
+    if (fileData && contents.length > 0 && contents[contents.length - 1].role === 'user') {
+      contents[contents.length - 1].parts.push({
         inlineData: {
           data: fileData.data,
           mimeType: fileData.mimeType,
         },
       });
     }
-
-    // Append the latest user message (and optional file) to the conversation
-    contents.push({
-      role: 'user',
-      parts: userParts
-    });
 
     // Execute the content generation using the gemini-3-flash-preview model
     const response = await ai.models.generateContent({

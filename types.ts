@@ -52,7 +52,7 @@ export interface Post {
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
   likes: string[];
-  comments: Comment[];
+  comments: PostComment[];
   reposts: string[];
   parentId?: string;
   tags?: string[];
@@ -69,7 +69,7 @@ export interface Post {
   }
 }
 
-export interface Comment {
+export interface PostComment {
   id: string;
   userId: string;
   userName: string;
@@ -108,6 +108,7 @@ export interface User {
     loginStreaks: number;
   };
   phone?: string;
+  createdAt?: number;
   themePreference?: 'light' | 'dark';
   staffPermissions?: string[];
   lifetimeMinutes?: number;
@@ -125,7 +126,6 @@ export interface User {
   }
   bankDetails?: { accountName: string; accountNumber: string; bankName: string };
   gladiatorEarnings?: number;
-  createdAt?: number;
   monetization?: {
     isMonetized: boolean;
     isEligibleForPoints: boolean;
@@ -241,7 +241,7 @@ export interface Advertisement {
   link?: string;
   targetLocation: string;
   campaignDuration?: number;
-  campaignUnit?: 'days' | 'weeks';
+  campaignUnit?: 'days' | 'weeks' | 'months';
   timesPerDay?: number;
   targetReach?: number | 'all';
   timeFrames?: AdTimeFrame[];
@@ -295,6 +295,9 @@ export interface SystemConfig {
     referral: number;
     adClick: number;
     arena: number;
+    likeReward: number;
+    replyReward: number;
+    repostReward: number;
   };
   nairaPerPoint: number;
   adPricing: AdPricing;

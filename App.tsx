@@ -45,7 +45,7 @@ import FullscreenAd from './components/FullscreenAd';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
 import { supabase } from './src/lib/supabase';
-import { User, Post, Comment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, PaymentVerification } from './types';
+import { User, Post, PostComment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, AdPlacement, PaymentVerification } from './types';
 import { MOCK_QUESTIONS, UNIVERSITIES as INITIAL_UNIVERSITIES, UNIVERSITY_COLLEGES as INITIAL_COLLEGES, COLLEGE_DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants';
 
 const DEFAULT_CONFIG: SystemConfig = {
@@ -63,7 +63,10 @@ const DEFAULT_CONFIG: SystemConfig = {
     contribution: 50,
     referral: 80,
     adClick: 200, // per 1k clicks
-    arena: 5
+    arena: 5,
+    likeReward: 0.1,
+    replyReward: 0.5,
+    repostReward: 1.0
   },
   nairaPerPoint: 0.5,
   adPricing: { daily: 1500, weekly: 8500, monthly: 30000 },
@@ -92,16 +95,22 @@ const DEFAULT_CONFIG: SystemConfig = {
   }
 };
 
+const DEFAULT_LOGO = 'https://picsum.photos/seed/proph-logo/512/512';
+const DEFAULT_SPLASH = 'https://picsum.photos/seed/proph-splash/1080/1920';
+
 const SplashScreen: React.FC<{ logo: string; splashUrl?: string; onComplete: () => void }> = ({ logo, splashUrl, onComplete }) => {
   useEffect(() => {
     const timer = setTimeout(onComplete, 4000); // Slightly longer for full image
     return () => clearTimeout(timer);
   }, [onComplete]);
 
+  const finalSplash = splashUrl || DEFAULT_SPLASH;
+  const finalLogo = logo || DEFAULT_LOGO;
+
   if (splashUrl) {
     return (
       <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center animate-in fade-in duration-700">
-        <img src={splashUrl} alt="Splash" className="w-full h-full object-cover animate-pulse" />
+        <img src={finalSplash} alt="Splash" className="w-full h-full object-cover animate-pulse" referrerPolicy="no-referrer" />
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-48 h-1 bg-white/10 rounded-full overflow-hidden">
           <div className="h-full bg-brand-proph animate-progress" style={{ width: '100%' }} />
         </div>
@@ -113,13 +122,7 @@ const SplashScreen: React.FC<{ logo: string; splashUrl?: string; onComplete: () 
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center animate-in fade-in duration-500">
       <div className="relative">
         <div className="w-32 h-32 rounded-[2.5rem] bg-brand-proph/20 animate-pulse absolute -inset-4 blur-xl" />
-        {logo ? (
-          <img src={logo} alt="Proph" className="w-32 h-32 rounded-[2.5rem] relative z-10 shadow-2xl animate-bounce" />
-        ) : (
-          <div className="w-32 h-32 rounded-[2.5rem] bg-brand-proph flex items-center justify-center relative z-10 shadow-2xl animate-bounce">
-            <span className="text-6xl font-black text-white italic">P</span>
-          </div>
-        )}
+        <img src={finalLogo} alt="Proph" className="w-32 h-32 rounded-[2.5rem] relative z-10 shadow-2xl animate-bounce" referrerPolicy="no-referrer" />
       </div>
       <div className="mt-12 text-center">
         <h1 className="text-5xl font-black text-white tracking-tighter italic">PROPH</h1>
@@ -376,6 +379,18 @@ const App: React.FC = () => {
       if (payload.eventType === 'DELETE') setUniversities(prev => prev.filter(u => u.id === payload.old.id));
     });
 
+    const usersSub = SupabaseService.subscribeToTable('users', (payload: any) => {
+      if (payload.new) {
+        const mappedUser = SupabaseService.mapUser(payload.new);
+        if (payload.eventType === 'INSERT') setAllUsers(prev => [mappedUser, ...prev]);
+        if (payload.eventType === 'UPDATE') {
+          setAllUsers(prev => prev.map(item => item.id === mappedUser.id ? mappedUser : item));
+          if (user && mappedUser.id === user.id) setUser(mappedUser);
+        }
+      }
+      if (payload.eventType === 'DELETE') setAllUsers(prev => prev.filter(u => u.id === payload.old.id));
+    });
+
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(adsSub);
@@ -385,6 +400,7 @@ const App: React.FC = () => {
       supabase.removeChannel(docsSub);
       supabase.removeChannel(paymentsSub);
       supabase.removeChannel(unisSub);
+      supabase.removeChannel(usersSub);
     };
   }, []);
 
@@ -407,30 +423,21 @@ const App: React.FC = () => {
     });
 
     const usersSub = SupabaseService.subscribeToTable('users', (payload: any) => {
-      if (payload.eventType === 'UPDATE' && payload.new) {
+      if (payload.eventType === 'INSERT' && payload.new) {
         const u = payload.new;
-        const mappedUser = {
-          ...u,
-          themePreference: u.theme_preference,
-          isSugVerified: u.is_sug_verified,
-          staffPermissions: u.staff_permissions,
-          isPremium: u.is_premium,
-          premiumExpiry: u.premium_until,
-          referralCode: u.referral_code,
-          referralStats: u.referral_stats,
-          bankDetails: u.bank_details,
-          gladiatorEarnings: u.gladiator_earnings,
-          isVerified: u.is_verified,
-          verificationCode: u.verification_code,
-          referredBy: u.referred_by,
-          engagementStats: u.engagement_stats,
-          createdAt: new Date(u.created_at).getTime()
-        };
+        const mappedUser = SupabaseService.mapUser(u);
+        setAllUsers(prev => {
+          if (prev.some(usr => usr.id === mappedUser.id)) return prev;
+          return [...prev, mappedUser];
+        });
+      } else if (payload.eventType === 'UPDATE' && payload.new) {
+        const u = payload.new;
+        const mappedUser = SupabaseService.mapUser(u);
         
         setAllUsers(prev => prev.map(usr => usr.id === mappedUser.id ? { ...usr, ...mappedUser } : usr));
         
         // Update current user if it's them
-        if (mappedUser.id === user.id) {
+        if (user && mappedUser.id === user.id) {
           // Only update if something actually changed to avoid loops
           setUser(prev => {
             if (!prev) return mappedUser;
@@ -442,6 +449,12 @@ const App: React.FC = () => {
             }
             return prev;
           });
+        }
+      } else if (payload.eventType === 'DELETE' && payload.old) {
+        setAllUsers(prev => prev.filter(usr => usr.id !== payload.old.id));
+        if (user && payload.old.id === user.id) {
+          setUser(null);
+          localStorage.removeItem('proph_session_user');
         }
       }
     });
@@ -568,7 +581,7 @@ const App: React.FC = () => {
     DB.updateWithdrawalStatus(id, 'rejected');
   };
 
-  const triggerAd = useCallback(() => {
+  const triggerAd = useCallback((placement?: AdPlacement) => {
     const now = new Date();
     const hour = now.getHours();
     let currentTimeFrame: AdTimeFrame = '12am-6am';
@@ -580,6 +593,9 @@ const App: React.FC = () => {
       if (ad.status !== 'active') return false;
       // Only trigger popups or fullscreens via this controller
       if (ad.adType !== 'popup' && ad.adType !== 'fullscreen') return false;
+      
+      // If a specific placement is requested, filter for it
+      if (placement && ad.placement !== placement) return false;
       
       if (!ad.timeFrames || ad.timeFrames.length === 0) return true;
       return ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day');
@@ -631,6 +647,7 @@ const App: React.FC = () => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
 
+    // Update local state for immediate feedback
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p;
       const stats = { ...p.stats };
@@ -643,7 +660,7 @@ const App: React.FC = () => {
       
       let comments = p.comments;
       if (type === 'reply' && text) {
-        const newComment: Comment = {
+        const newComment: PostComment = {
           id: Math.random().toString(36).substr(2, 9),
           userId: user.id,
           userName: user.name,
@@ -654,25 +671,29 @@ const App: React.FC = () => {
         comments = [...comments, newComment];
       }
 
-      const updatedPost = { ...p, stats, likes, reposts, comments };
-      DB.savePost(updatedPost);
-      return updatedPost;
+      return { ...p, stats, likes, reposts, comments };
     }));
 
-    // Reward post owner if it's an ad click
-    if (type === 'ad_click' && post.userId !== user.id) {
-      const rewardPoints = config.earnRates.adClick / 100; // 2 points if adClick is 200
-      await SupabaseService.updateUserPoints(post.userId, rewardPoints);
-      
-      // Update local state for all users if it's in allUsers
-      setAllUsers(prev => prev.map(u => {
-        if (u.id === post.userId) {
-          return { ...u, points: (u.points || 0) + rewardPoints };
-        }
-        return u;
-      }));
+    // Call Supabase Service
+    if (type === 'like') {
+      await SupabaseService.togglePostLike(postId, user.id);
+    } else if (type === 'repost') {
+      await SupabaseService.togglePostRepost(postId, user.id);
+    } else if (type === 'reply' && text) {
+      const newComment: PostComment = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId: user.id,
+        userName: user.name,
+        text,
+        createdAt: Date.now(),
+        likes: []
+      };
+      await SupabaseService.addPostComment(postId, newComment);
+    } else if (['link', 'profile', 'media', 'ad_click'].includes(type)) {
+      await SupabaseService.trackPostEngagement(postId, type as any, user.id);
     }
 
+    // Update local user engagement stats
     setAllUsers(prev => prev.map(u => {
       if (u.id !== user.id) return u;
       const es = u.engagementStats || { totalLikesGiven: 0, totalRepliesGiven: 0, totalRepostsGiven: 0, totalLinkClicks: 0, totalProfileClicks: 0, totalMediaViews: 0 };
@@ -750,6 +771,7 @@ const App: React.FC = () => {
           hasShownInitialAd={hasShownInitialAd}
           setHasShownInitialAd={setHasShownInitialAd}
           triggerAd={triggerAd}
+          globalAds={globalAds}
         />
         <Layout user={user} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} notifications={notifications} onSelectTrend={()=>{}} appLogo={appLogo} onSaveConfig={handleSaveConfig} config={config}>
         <Routes>
@@ -824,6 +846,22 @@ const App: React.FC = () => {
                   onVerifyPayment={(verification) => {
                     setPaymentVerifications([verification, ...paymentVerifications]);
                     DB.savePaymentVerification(verification);
+                    
+                    // If it's an ad payment and it's approved (card), update the ad status to pending_review
+                    if (verification.type === 'ad' && verification.status === 'approved' && verification.details?.adId) {
+                      const adId = verification.details.adId;
+                      setGlobalAds(prev => {
+                        const updatedAds = prev.map(ad => 
+                          ad.id === adId ? { ...ad, status: 'pending_review' as const } : ad
+                        );
+                        // Also update in DB
+                        const targetAd = updatedAds.find(a => a.id === adId);
+                        if (targetAd) {
+                          DB.saveAd(targetAd);
+                        }
+                        return updatedAds;
+                      });
+                    }
                   }}
                   onDeploy={(ad) => {
                     const fullAd = { ...ad, id: ad.id || Math.random().toString(), createdAt: Date.now() } as Advertisement;
@@ -905,8 +943,9 @@ const AdController: React.FC<{
   setNavigationCount: (c: number | ((prev: number) => number)) => void;
   hasShownInitialAd: boolean;
   setHasShownInitialAd: (b: boolean) => void;
-  triggerAd: () => void;
-}> = ({ user, loginTime, navigationCount, setNavigationCount, hasShownInitialAd, setHasShownInitialAd, triggerAd }) => {
+  triggerAd: (placement?: AdPlacement) => void;
+  globalAds: Advertisement[];
+}> = ({ user, loginTime, navigationCount, setNavigationCount, hasShownInitialAd, setHasShownInitialAd, triggerAd, globalAds }) => {
   const { pathname } = useLocation();
   
   const isUserPanel = pathname.startsWith('/dashboard') || 
@@ -930,6 +969,21 @@ const AdController: React.FC<{
     setNavigationCount(prev => prev + 1);
   }, [pathname, setNavigationCount]);
 
+  // Startup Ad Logic
+  useEffect(() => {
+    if (user && isUserPanel && !hasShownInitialAd) {
+      const startupAds = globalAds.filter(ad => ad.status === 'active' && ad.placement === 'startup');
+      if (startupAds.length > 0) {
+        // Delay slightly to allow layout to settle
+        const timer = setTimeout(() => {
+          triggerAd('startup');
+          setHasShownInitialAd(true);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, isUserPanel, hasShownInitialAd, globalAds, triggerAd, setHasShownInitialAd]);
+
   useEffect(() => {
     if (user && loginTime && !hasShownInitialAd && isUserPanel) {
       const timer = setInterval(() => {
@@ -942,14 +996,14 @@ const AdController: React.FC<{
       }, 5000);
       return () => clearInterval(timer);
     }
-  }, [user, loginTime, hasShownInitialAd, triggerAd, isUserPanel]);
+  }, [user, loginTime, hasShownInitialAd, triggerAd, isUserPanel, setHasShownInitialAd]);
 
   useEffect(() => {
     if (user && navigationCount >= 7 && isUserPanel) {
       triggerAd();
       setNavigationCount(0);
     }
-  }, [user, navigationCount, triggerAd, isUserPanel]);
+  }, [user, navigationCount, triggerAd, isUserPanel, setNavigationCount]);
 
   return null;
 };

@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
 import { SupabaseService } from '../services/supabaseService';
-import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X } from 'lucide-react';
-import { User, Advertisement, AdTimeFrame, Post } from '../../types';
+import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send } from 'lucide-react';
+import { User, Advertisement, AdTimeFrame, Post, PostComment } from '../../types';
 
 interface UniversityFeedProps {
   user: User;
@@ -172,72 +172,74 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       }
     }
 
-    const { data, error } = await supabase.from('posts').insert([
-      { 
-        user_id: user.id,
-        user_name: user.name, 
-        user_nickname: user.nickname,
-        university: user.university, // Use 'university' instead of 'user_university'
-        content, 
-        media_url: imageUrl,
-        media_type: image ? 'image' : null,
-        created_at: Date.now(),
-        likes: [],
-        reposts: [],
-        comments: []
-      }
-    ]).select();
+    const newPost: Post = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      userName: user.name,
+      userNickname: user.nickname || user.name,
+      userUniversity: user.university,
+      content,
+      mediaUrl: imageUrl || undefined,
+      mediaType: image ? 'image' : undefined,
+      likes: [],
+      comments: [],
+      reposts: [],
+      createdAt: Date.now(),
+      stats: { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 }
+    };
 
-    if (error && error.code === '42703') {
-      // Fallback to 'user_university' if 'university' fails
-      const retry = await supabase.from('posts').insert([
-        { 
-          user_id: user.id,
-          user_name: user.name, 
-          user_nickname: user.nickname,
-          user_university: user.university,
-          content, 
-          media_url: imageUrl,
-          media_type: image ? 'image' : null,
-          created_at: Date.now(),
-          likes: [],
-          reposts: [],
-          comments: []
-        }
-      ]).select();
-      
-      if (!retry.error && retry.data) {
-        setContent("");
-        setImage(null);
-        setPosts(prev => [retry.data[0], ...prev]);
-      } else if (retry.error) {
-        console.error("Post failed on retry", retry.error);
-        alert("Failed to broadcast intel: " + retry.error.message);
-      }
-    } else if (!error && data) {
+    try {
+      await SupabaseService.savePost(newPost);
       setContent("");
       setImage(null);
-      // Optimistic update in case real-time is slow
-      setPosts(prev => {
-        if (prev.some(p => p.id === data[0].id)) return prev;
-        return [data[0], ...prev];
-      });
-    } else if (error) {
+      // Real-time listener will handle the update
+    } catch (error: any) {
       console.error("Post failed", error);
       alert("Failed to broadcast intel: " + error.message);
     }
     setUploading(false);
   };
 
-  const handleLike = async (postId: string, currentLikes: string[]) => {
-    const newLikes = currentLikes.includes(user.id) 
-      ? currentLikes.filter(id => id !== user.id)
-      : [...currentLikes, user.id];
+  const handleLike = async (postId: string) => {
+    await SupabaseService.togglePostLike(postId, user.id);
+  };
 
-    await supabase
-      .from('posts')
-      .update({ likes: newLikes })
-      .eq('id', postId);
+  const [replyingTo, setReplyingTo] = useState<Post | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [tippingUser, setTippingUser] = useState<{ id: string, name: string } | null>(null);
+  const [tipAmount, setTipAmount] = useState(10);
+  const [tipping, setTipping] = useState(false);
+
+  const handleReply = async () => {
+    if (!replyingTo || !replyContent.trim()) return;
+    const comment: PostComment = {
+      id: Math.random().toString(36).substr(2, 9),
+      userId: user.id,
+      userName: user.name,
+      text: replyContent,
+      createdAt: Date.now(),
+      likes: []
+    };
+    await SupabaseService.addPostComment(replyingTo.id, comment);
+    setReplyingTo(null);
+    setReplyContent("");
+  };
+
+  const handleRepost = async (postId: string) => {
+    await SupabaseService.togglePostRepost(postId, user.id);
+  };
+
+  const handleTip = async () => {
+    if (!tippingUser) return;
+    setTipping(true);
+    const result = await SupabaseService.transferPoints(user.id, tippingUser.id, tipAmount);
+    if (result.success) {
+      alert(`Successfully tipped ${tipAmount} points to ${tippingUser.name}!`);
+      setTippingUser(null);
+    } else {
+      alert(result.error);
+    }
+    setTipping(false);
   };
 
   return (
@@ -356,20 +358,32 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                     </div>
                   )}
                   <div className="flex justify-between mt-3 max-w-md text-gray-500">
-                    <button className="flex items-center gap-2 hover:text-brand-proph transition-colors">
+                    <button 
+                      onClick={() => setReplyingTo(post)}
+                      className="flex items-center gap-2 hover:text-brand-proph transition-colors"
+                    >
                       <MessageCircle className="w-4.5 h-4.5" />
                       <span className="text-xs">{post.comments?.length || 0}</span>
                     </button>
-                    <button className="flex items-center gap-2 hover:text-green-500 transition-colors">
+                    <button 
+                      onClick={() => handleRepost(post.id)}
+                      className={`flex items-center gap-2 transition-colors ${post.reposts?.includes(user.id) ? "text-green-500" : "hover:text-green-500"}`}
+                    >
                       <Repeat2 className="w-4.5 h-4.5" />
                       <span className="text-xs">{post.reposts?.length || 0}</span>
                     </button>
                     <button 
-                      onClick={() => handleLike(post.id, post.likes || [])} 
+                      onClick={() => handleLike(post.id)} 
                       className={`flex items-center gap-2 transition-colors ${post.likes?.includes(user.id) ? "text-red-500" : "hover:text-red-500"}`}
                     >
                       <Heart className={`w-4.5 h-4.5 ${post.likes?.includes(user.id) ? "fill-current" : ""}`} />
                       <span className="text-xs">{post.likes?.length || 0}</span>
+                    </button>
+                    <button 
+                      onClick={() => setTippingUser({ id: post.userId, name: post.userName })}
+                      className="flex items-center gap-2 hover:text-yellow-500 transition-colors"
+                    >
+                      <Coins className="w-4.5 h-4.5" />
                     </button>
                     <button className="hover:text-brand-proph transition-colors">
                       <Share2 className="w-4.5 h-4.5" />
@@ -383,6 +397,90 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
           })
         )}
       </div>
+      {/* Modals */}
+      {replyingTo && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+              <h3 className="font-black uppercase italic text-sm">Reply to Intel</h3>
+              <button onClick={() => setReplyingTo(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="flex gap-3 mb-4 opacity-50">
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center font-bold">{replyingTo.userName[0]}</div>
+                <div className="flex-grow">
+                  <p className="text-sm font-bold">{replyingTo.userName}</p>
+                  <p className="text-sm line-clamp-2">{replyingTo.content}</p>
+                </div>
+              </div>
+              <textarea
+                autoFocus
+                className="w-full bg-transparent text-lg outline-none resize-none placeholder-gray-500 min-h-[120px]"
+                placeholder="Post your reply..."
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+              />
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleReply}
+                  disabled={!replyContent.trim()}
+                  className="bg-brand-proph hover:bg-brand-proph/90 disabled:opacity-50 text-white font-bold px-8 py-2.5 rounded-full transition-all flex items-center gap-2"
+                >
+                  Reply <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tippingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Coins className="w-10 h-10 text-yellow-500" />
+              </div>
+              <h3 className="text-xl font-black uppercase italic mb-2">Tip {tippingUser.name}</h3>
+              <p className="text-gray-500 text-sm mb-6">Support your fellow student with some points!</p>
+              
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[10, 50, 100, 500, 1000, 5000].map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setTipAmount(amount)}
+                    className={`py-3 rounded-2xl font-black text-xs transition-all border-2 ${
+                      tipAmount === amount 
+                        ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
+                        : 'border-gray-100 dark:border-gray-800 hover:border-yellow-500/50'
+                    }`}
+                  >
+                    {amount}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setTippingUser(null)}
+                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleTip}
+                  disabled={tipping}
+                  className="flex-1 py-4 bg-yellow-500 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+                >
+                  {tipping ? 'Processing...' : 'Send Tip'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

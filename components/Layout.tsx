@@ -70,6 +70,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/forgot-password';
 
+  const twoMonthsInMs = 2 * 30 * 24 * 60 * 60 * 1000;
+  const isEligibleForMonetization = user?.role === 'admin' || (user?.createdAt && (Date.now() - user.createdAt) > twoMonthsInMs);
+
   const navItems = [
     { name: 'Home', path: '/', icon: <Home className="w-6 h-6" /> },
     { name: 'Explore', path: '/universities', icon: <Compass className="w-6 h-6" /> },
@@ -83,10 +86,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     { name: 'Transfer', path: '/transfer', icon: <Send className="w-6 h-6" /> },
     { name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
-    { name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> },
+    ...(isEligibleForMonetization ? [{ name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> }] : []),
   ];
 
-  if (user) {
+  if (user && isEligibleForMonetization) {
     navItems.push({ name: 'Premium', path: '/premium', icon: <Award className="w-6 h-6 text-yellow-500" /> });
   }
 
@@ -321,7 +324,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
              >
                {isDark ? <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" /> : <Moon className="w-5 h-5 sm:w-6 sm:h-6 text-brand-muted" />}
              </button>
-             {user && !user.isPremium && (
+             {user && !user.isPremium && isEligibleForMonetization && (
                <Link to="/premium" className="hidden md:flex items-center gap-2 bg-yellow-500 text-black px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-yellow-500/20">
                  <Award className="w-4 h-4" /> Go Premium
                </Link>

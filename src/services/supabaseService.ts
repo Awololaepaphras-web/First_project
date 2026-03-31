@@ -371,21 +371,58 @@ export const SupabaseService = {
   },
 
   // Feed
-  async getFeed(): Promise<Post[]> {
+  async getFeed(limit: number = 20, offset: number = 0): Promise<Post[]> {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('fetch_secure_feed', {
+        limit_count: limit,
+        offset_count: offset
+      });
+      
       if (error) {
-        console.error('Error fetching feed:', error);
-        return [];
+        if (error.message.includes('429')) {
+          throw new Error('Rate limit exceeded. Please wait a minute.');
+        }
+        console.error('Error fetching secure feed:', error);
+        // Fallback to standard fetch if RPC fails (e.g. during migration)
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('visibility', 'public')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .limit(limit)
+          .range(offset, offset + limit - 1);
+          
+        if (fallbackError) throw fallbackError;
+        return (fallbackData || []).map(p => this.mapPost(p));
       }
-      return (data || []).map(p => this.mapPost(p));
-    } catch (err) {
+      
+      return (data || []).map((p: any) => this.mapPost(p));
+    } catch (err: any) {
       console.error('Fatal error fetching feed:', err);
-      return [];
+      throw err;
     }
+  },
+
+  async updateAlgorithmWeights(newWeights: any) {
+    const { error } = await supabase.rpc('update_algorithm_weights', {
+      new_weights: newWeights
+    });
+    if (error) throw error;
+  },
+
+  async getCloudinarySignature(params: { timestamp: number, folder: string, public_id?: string }) {
+    const { data, error } = await supabase.functions.invoke('cloudinary-signature', {
+      body: params
+    });
+    if (error) throw error;
+    return data.signature;
+  },
+
+  async getMyWallet() {
+    const { data, error } = await supabase.rpc('get_my_wallet');
+    if (error) throw error;
+    return data;
   },
 
   mapPost(p: any): Post {

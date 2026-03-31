@@ -134,57 +134,6 @@ async function startServer() {
     res.json({ success: true, balance: creatorStats[userId].pendingBalanceNGN });
   });
 
-  // Paystack Webhook
-  app.post("/api/paystack/webhook", async (req, res) => {
-    const event = req.body;
-    console.log("Paystack Webhook Event:", event);
-    
-    if (event.event === 'charge.success') {
-      const { reference, metadata, amount, customer } = event.data;
-      console.log(`Payment successful: Ref=${reference}, Amount=${amount/100}, Email=${customer.email}`);
-      
-      try {
-        // 1. Update Payment Verification status in Supabase
-        const { error: pErr } = await supabase
-          .from('payment_verifications')
-          .update({ status: 'approved' })
-          .eq('reference', reference);
-
-        if (pErr) console.error("Error updating payment status:", pErr);
-
-        // 2. If it's an ad payment, update the ad status to pending_review
-        if (metadata && metadata.adId) {
-          const { error: aErr } = await supabase
-            .from('advertisements')
-            .update({ status: 'pending_review' })
-            .eq('id', metadata.adId);
-          
-          if (aErr) console.error("Error updating ad status:", aErr);
-        }
-
-        // 3. If it's a premium upgrade, update the user status
-        if (metadata && metadata.type === 'premium' && metadata.userId) {
-          const premiumExpiry = new Date();
-          premiumExpiry.setMonth(premiumExpiry.getMonth() + 1); // 1 month from now
-
-          const { error: uErr } = await supabase
-            .from('users')
-            .update({ 
-              is_premium: true, 
-              premium_until: premiumExpiry.toISOString() 
-            })
-            .eq('id', metadata.userId);
-          
-          if (uErr) console.error("Error updating user premium status:", uErr);
-        }
-      } catch (err) {
-        console.error("Fatal error processing webhook:", err);
-      }
-    }
-    
-    res.sendStatus(200);
-  });
-
   // Admin Routes
   app.get("/api/admin/stats", (req, res) => {
     res.json({

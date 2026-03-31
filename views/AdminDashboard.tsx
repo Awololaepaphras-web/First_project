@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminBranding from './AdminBranding';
 import AdminAdVerification from './AdminAdVerification';
+import AdminLiveMonitor from '../src/components/AdminLiveMonitor';
 import { 
   Cpu, Database, Megaphone, Users, List, 
   Settings2, Activity, ToggleRight, ToggleLeft, Trash2, 
@@ -14,11 +15,16 @@ import {
   Palette, Download, Tv, Award, ShieldCheck, MessageSquare, RefreshCw, Globe, Loader2
 } from 'lucide-react';
 import { CloudinaryService } from '../src/services/cloudinaryService';
-import { User, PastQuestion, WithdrawalRequest, SystemConfig, EarnTask, Notification, University, Advertisement, AdTimeFrame, AdType, AdPlacement } from '../types';
+import { User, PastQuestion, WithdrawalRequest, SystemConfig, EarnTask, Notification, University, Advertisement, AdTimeFrame, AdType, AdPlacement, PaymentVerification } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
 
 import { useAlgorithmSettings, useRealtimeLeaderboard } from '../src/hooks/useRealtimeRanking';
 import { supabase } from '../src/lib/supabase';
+
+import { 
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell,
+  PieChart, Pie
+} from 'recharts';
 
 interface AdminDashboardProps {
   user: User;
@@ -284,12 +290,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const updateAlgorithmWeights = async (id: string, weights: any) => {
     try {
-      const { error } = await supabase
-        .from('algorithm_settings')
-        .update({ weights, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      
-      if (error) throw error;
+      await SupabaseService.updateAlgorithmWeights(weights);
       alert(`${id.replace('_', ' ')} weights updated successfully.`);
     } catch (err: any) {
       console.error('Error updating weights:', err);
@@ -297,10 +298,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerification[]>([]);
+  const [loadingFinancials, setLoadingFinancials] = useState(false);
+
+  React.useEffect(() => {
+    if (activeTab === 'revenue' || activeTab === 'financials') {
+      const fetchFinancials = async () => {
+        setLoadingFinancials(true);
+        const data = await SupabaseService.getPaymentVerifications();
+        setPaymentVerifications(data);
+        setLoadingFinancials(false);
+      };
+      fetchFinancials();
+    }
+  }, [activeTab]);
+
   const tabs = [
     { id: 'command', label: 'Dashboard', icon: <Cpu className="w-5 h-5" /> },
     { id: 'financials', label: 'Finances', icon: <DollarSign className="w-5 h-5" /> },
     { id: 'engagement-rating', label: 'User Ratings', icon: <Award className="w-5 h-5" /> },
+    { id: 'revenue', label: 'Revenue Dashboard', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'engagement', label: 'Engagement', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'submissions', label: 'Question Review', icon: <FileCheck className="w-5 h-5" /> },
     { id: 'payouts', label: 'Withdrawals', icon: <CreditCard className="w-5 h-5" /> },
@@ -406,30 +423,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Settings2 className="w-5 h-5 text-red-500" /> System Features</h3>
-                   <div className="space-y-4">
-                      {[{ label: 'AI Study Help', key: 'isAiEnabled' }, { label: 'Question Uploads', key: 'isUploadEnabled' }, { label: 'Past Question Contribution', key: 'isPastQuestionContributionEnabled' }, { label: 'Withdrawal Portal', key: 'isWithdrawalEnabled' }, { label: 'Community Feed', key: 'isCommunityEnabled' }, { label: 'Maintenance Mode', key: 'isMaintenanceMode' }, { label: 'Splash Screen', key: 'isSplashScreenEnabled' }].map(f => (
-                        <div key={f.label} className="flex justify-between items-center p-5 bg-gray-950/80 rounded-2xl border border-gray-800">
-                           <span className="text-[10px] font-black uppercase text-gray-300">{f.label}</span>
-                           <button onClick={() => handleUpdateConfig({ [f.key]: !config[f.key as keyof SystemConfig] })} className={`p-2 rounded-xl transition-all ${config[f.key as keyof SystemConfig] ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`} title="Toggle Feature">
-                             {config[f.key as keyof SystemConfig] ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
-                           </button>
-                        </div>
-                      ))}
-                   </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
+                      <h3 className="text-xl font-black text-white flex items-center gap-3"><Settings2 className="w-5 h-5 text-red-500" /> System Features</h3>
+                      <div className="space-y-4">
+                        {[{ label: 'AI Study Help', key: 'isAiEnabled' }, { label: 'Question Uploads', key: 'isUploadEnabled' }, { label: 'Past Question Contribution', key: 'isPastQuestionContributionEnabled' }, { label: 'Withdrawal Portal', key: 'isWithdrawalEnabled' }, { label: 'Community Feed', key: 'isCommunityEnabled' }, { label: 'Maintenance Mode', key: 'isMaintenanceMode' }, { label: 'Splash Screen', key: 'isSplashScreenEnabled' }].map(f => (
+                          <div key={f.label} className="flex justify-between items-center p-5 bg-gray-950/80 rounded-2xl border border-gray-800">
+                            <span className="text-[10px] font-black uppercase text-gray-300">{f.label}</span>
+                            <button onClick={() => handleUpdateConfig({ [f.key]: !config[f.key as keyof SystemConfig] })} className={`p-2 rounded-xl transition-all ${config[f.key as keyof SystemConfig] ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`} title="Toggle Feature">
+                              {config[f.key as keyof SystemConfig] ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6 flex flex-col justify-center">
+                      <h3 className="text-xl font-black text-white flex items-center gap-3"><Activity className="w-5 h-5 text-green-500" /> Platform Stats</h3>
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Users</p><p className="text-3xl font-black italic">{allUsers.length}</p></div>
+                        <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Questions</p><p className="text-3xl font-black italic">{questions.length}</p></div>
+                        <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Ads Active</p><p className="text-3xl font-black italic">{globalAds.length}</p></div>
+                        <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Pending Payouts</p><p className="text-3xl font-black italic">{withdrawalRequests.filter(r => r.status === 'pending').length}</p></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6 flex flex-col justify-center">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Activity className="w-5 h-5 text-green-500" /> Platform Stats</h3>
-                   <div className="grid grid-cols-2 gap-4 text-center">
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Users</p><p className="text-3xl font-black italic">{allUsers.length}</p></div>
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Questions</p><p className="text-3xl font-black italic">{questions.length}</p></div>
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Ads Active</p><p className="text-3xl font-black italic">{globalAds.length}</p></div>
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Pending Payouts</p><p className="text-3xl font-black italic">{withdrawalRequests.filter(r => r.status === 'pending').length}</p></div>
-                   </div>
+                <div className="lg:col-span-1">
+                  <AdminLiveMonitor />
                 </div>
-             </div>
+              </div>
           </div>
         )}
 
@@ -573,7 +597,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* Card Payment Configuration */}
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6 xl:col-span-3">
                    <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-black text-white flex items-center gap-3"><CreditCard className="w-5 h-5 text-blue-500" /> Card Payment Gateway (Paystack)</h3>
+                      <h3 className="text-xl font-black text-white flex items-center gap-3"><CreditCard className="w-5 h-5 text-blue-500" /> Card Payment Gateway</h3>
                       <button 
                         onClick={() => handleUpdateConfig({ isCardPaymentEnabled: !config.isCardPaymentEnabled })}
                         className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${config.isCardPaymentEnabled ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-500'}`}
@@ -582,14 +606,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </button>
                    </div>
                    <div className="space-y-2">
-                      <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Paystack Public Key</label>
-                      <input 
-                        className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white font-mono" 
-                        placeholder="pk_live_..." 
-                        value={config.paystackPublicKey || ''} 
-                        onChange={e => handleUpdateConfig({ paystackPublicKey: e.target.value })} 
-                      />
-                      <p className="text-[9px] text-gray-500 italic ml-2">Enabling this will allow students to pay directly via card/USSD/transfer through Paystack.</p>
+                      <p className="text-[9px] text-gray-500 italic ml-2">Card payments are currently handled manually. Students will see instructions to contact support or use simulation mode.</p>
                    </div>
                 </div>
              </div>
@@ -682,6 +699,184 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </table>
                 </div>
              </div>
+          </div>
+        )}
+
+        {activeTab === 'revenue' && (
+          <div className="space-y-12 animate-fade-in">
+            <div className="flex justify-between items-end">
+              <div>
+                <h1 className="text-4xl font-black tracking-tighter uppercase italic">Revenue Dashboard</h1>
+                <p className="text-gray-500 font-medium italic">Analyzing algorithm efficiency and financial performance.</p>
+              </div>
+              <div className="bg-green-600/10 border border-green-500/20 p-6 rounded-[2rem] text-right">
+                <p className="text-[10px] font-black uppercase text-green-500 tracking-widest">Total Verified Revenue</p>
+                <p className="text-3xl font-black text-white italic">
+                  ₦{paymentVerifications.filter(p => p.status === 'approved').reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Weight Contribution Analysis */}
+              <div className="bg-gray-900 p-8 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
+                <h3 className="text-xl font-black text-white flex items-center gap-3">
+                  <Target className="w-5 h-5 text-blue-500" /> Weight Contribution Analysis
+                </h3>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { 
+                        name: 'Likes', 
+                        volume: allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalLikesGiven || 0), 0),
+                        weighted: allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalLikesGiven || 0), 0) * (config.engagementWeights?.likes || 1)
+                      },
+                      { 
+                        name: 'Replies', 
+                        volume: allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalRepliesGiven || 0), 0),
+                        weighted: allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalRepliesGiven || 0), 0) * (config.engagementWeights?.replies || 5)
+                      },
+                      { 
+                        name: 'Reposts', 
+                        volume: allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalRepostsGiven || 0), 0),
+                        weighted: allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalRepostsGiven || 0), 0) * (config.engagementWeights?.reposts || 2.5)
+                      }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                      <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                      <YAxis stroke="#9CA3AF" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px' }}
+                        itemStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px' }} />
+                      <Bar dataKey="volume" name="Engagement Volume" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="weighted" name="Weighted Score" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[10px] text-gray-500 italic text-center">
+                  This chart compares raw engagement volume against the weighted score that drives revenue distribution.
+                </p>
+              </div>
+
+              {/* Revenue Stream Distribution */}
+              <div className="bg-gray-900 p-8 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
+                <h3 className="text-xl font-black text-white flex items-center gap-3">
+                  <Coins className="w-5 h-5 text-yellow-500" /> Revenue Stream Distribution
+                </h3>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Advertisements', value: paymentVerifications.filter(p => p.type === 'ad' && p.status === 'approved').reduce((acc, curr) => acc + curr.amount, 0) },
+                          { name: 'Subscriptions', value: paymentVerifications.filter(p => p.type === 'premium' && p.status === 'approved').reduce((acc, curr) => acc + curr.amount, 0) },
+                          { name: 'Other', value: paymentVerifications.filter(p => p.type === 'other' && p.status === 'approved').reduce((acc, curr) => acc + curr.amount, 0) }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {[0, 1, 2].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={['#10B981', '#8B5CF6', '#F59E0B'][index % 3]} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '12px' }}
+                        itemStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}
+                      />
+                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-950 rounded-2xl border border-gray-800">
+                    <p className="text-[8px] font-black text-gray-500 uppercase">Ad Revenue</p>
+                    <p className="text-lg font-black text-green-500 italic">
+                      ₦{paymentVerifications.filter(p => p.type === 'ad' && p.status === 'approved').reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-950 rounded-2xl border border-gray-800">
+                    <p className="text-[8px] font-black text-gray-500 uppercase">Premium Revenue</p>
+                    <p className="text-lg font-black text-purple-500 italic">
+                      ₦{paymentVerifications.filter(p => p.type === 'premium' && p.status === 'approved').reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Algorithm Weight Efficiency */}
+            <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
+              <div className="p-8 border-b border-gray-800 flex justify-between items-center">
+                <h3 className="text-xl font-black text-white flex items-center gap-3">
+                  <Activity className="w-5 h-5 text-brand-proph" /> Algorithm Weight Efficiency
+                </h3>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Real-time Analysis</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-800 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                    <tr>
+                      <th className="p-8">Engagement Type</th>
+                      <th className="p-8">Current Weight</th>
+                      <th className="p-8">Total Volume</th>
+                      <th className="p-8">Revenue Contribution %</th>
+                      <th className="p-8 text-right">Efficiency Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {[
+                      { name: 'Replies', weight: config.engagementWeights?.replies || 5, icon: <MessageSquare className="w-4 h-4 text-blue-500" />, color: 'text-blue-500' },
+                      { name: 'Reposts', weight: config.engagementWeights?.reposts || 2.5, icon: <RefreshCw className="w-4 h-4 text-green-500" />, color: 'text-green-500' },
+                      { name: 'Likes', weight: config.engagementWeights?.likes || 1, icon: <Star className="w-4 h-4 text-yellow-500" />, color: 'text-yellow-500' }
+                    ].map((item) => {
+                      const totalWeighted = (allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalLikesGiven || 0), 0) * (config.engagementWeights?.likes || 1)) +
+                                           (allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalRepliesGiven || 0), 0) * (config.engagementWeights?.replies || 5)) +
+                                           (allUsers.reduce((acc, u) => acc + (u.engagementStats?.totalRepostsGiven || 0), 0) * (config.engagementWeights?.reposts || 2.5));
+                      
+                      const volume = allUsers.reduce((acc, u) => acc + (u.engagementStats?.[`total${item.name}Given` as keyof typeof u.engagementStats] as number || 0), 0);
+                      const weighted = volume * item.weight;
+                      const percentage = totalWeighted > 0 ? (weighted / totalWeighted) * 100 : 0;
+
+                      return (
+                        <tr key={item.name} className="hover:bg-white/5 transition-colors">
+                          <td className="p-8">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-gray-800 rounded-lg">{item.icon}</div>
+                              <span className="font-black italic text-white">{item.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-8 font-black text-brand-proph italic">x{item.weight.toFixed(1)}</td>
+                          <td className="p-8 font-mono text-gray-400">{volume.toLocaleString()}</td>
+                          <td className="p-8">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                <div className={`h-full bg-brand-proph`} style={{ width: `${percentage}%` }} />
+                              </div>
+                              <span className="text-[10px] font-black text-white">{percentage.toFixed(1)}%</span>
+                            </div>
+                          </td>
+                          <td className="p-8 text-right">
+                            <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                              percentage > 50 ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                              percentage > 20 ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                              'bg-gray-800 text-gray-500'
+                            }`}>
+                              {percentage > 50 ? 'High Impact' : percentage > 20 ? 'Moderate Impact' : 'Low Impact'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
         {activeTab === 'engagement' && (

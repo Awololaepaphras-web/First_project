@@ -38,7 +38,7 @@ import AdRevenueSharing from './views/AdRevenueSharing';
 import AdminPaymentVerification from './views/AdminPaymentVerification';
 import Referrals from './views/Referrals';
 import LeaderboardView from './views/LeaderboardView';
-import MultCloudUploader from './components/MultCloudUploader';
+import CloudinaryUploader from './components/CloudinaryUploader';
 import PointTransfer from './views/PointTransfer';
 import VercelSqlView from './views/VercelSqlView';
 import ForgotPassword from './views/ForgotPassword';
@@ -92,7 +92,6 @@ const DEFAULT_CONFIG: SystemConfig = {
     accountName: 'PROPH ACADEMIC SERVICES'
   },
   isCardPaymentEnabled: true,
-  paystackPublicKey: 'pk_test_proph_academic_node_key',
   splashScreenUrl: '',
   globalAnnouncement: {
     text: 'Welcome to PROPH! The ultimate Federal Universities Past Questions Hub.',
@@ -146,6 +145,8 @@ const SplashScreen: React.FC<{ logo: string; splashUrl?: string; onComplete: () 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [wallet, setWallet] = useState<{ prophy_points: number } | null>(null);
+  const [isWalletLoading, setIsWalletLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [questions, setQuestions] = useState<PastQuestion[]>(MOCK_QUESTIONS);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
@@ -251,6 +252,15 @@ const App: React.FC = () => {
 
       if (savedUser) {
         setUser(savedUser);
+        
+        // Fetch wallet data
+        try {
+          const walletData = await SupabaseService.getMyWallet();
+          setWallet(walletData);
+        } catch (err) {
+          console.error("Failed to fetch wallet", err);
+        }
+
         // Fetch monetization status from backend
         fetch(`/api/monetization/status/${savedUser.id}?followers=${savedUser.followers?.length || 0}&impressions=${savedUser.engagementStats?.totalMediaViews || 0}`)
           .then(res => res.json())
@@ -275,8 +285,14 @@ const App: React.FC = () => {
       const savedConfig = localStorage.getItem('proph_system_config');
       if (savedConfig) setConfig(JSON.parse(savedConfig));
       
-      const savedPosts = await DB.getFeed();
-      if (savedPosts.length > 0) setPosts(savedPosts);
+      try {
+        const postsData = await SupabaseService.getFeed();
+        if (postsData.length > 0) setPosts(postsData);
+      } catch (err) {
+        console.error("Failed to fetch feed", err);
+        const savedPosts = await DB.getFeed();
+        if (savedPosts.length > 0) setPosts(savedPosts);
+      }
       
       const savedUsers = await DB.getUsers();
       if (savedUsers.length > 0) setAllUsers(savedUsers);
@@ -686,9 +702,16 @@ const App: React.FC = () => {
     DB.updateDocumentStatus(id, 'rejected');
   };
 
-  const handlePost = (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any) => {
+  const handlePost = async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any) => {
     if (!user && !customUser) return;
     const poster = customUser || user;
+    
+    // Check wallet if it's a new post (not a reply)
+    if (!parentId && wallet && wallet.prophy_points < 50) {
+      alert('Insufficient Prophy Points! Each post costs 50 points.');
+      return;
+    }
+
     const newPost: Post = {
       id: crypto.randomUUID(),
       userId: poster.id,
@@ -705,8 +728,17 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       stats: { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 }
     };
-    setPosts([newPost, ...posts]);
-    DB.savePost(newPost);
+    
+    try {
+      await SupabaseService.savePost(newPost);
+      // Update local wallet state
+      if (!parentId && wallet) {
+        setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - 50 } : null);
+      }
+      // Note: Realtime hook will handle adding the post to the list
+    } catch (error: any) {
+      alert(error.message || 'Failed to save post');
+    }
   };
 
   const trackEngagement = async (postId: string, type: 'like' | 'repost' | 'reply' | 'link' | 'profile' | 'media' | 'ad_click' | 'share', text?: string) => {
@@ -999,7 +1031,7 @@ const App: React.FC = () => {
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
           <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />
           <Route path="/leaderboard" element={<LeaderboardView />} />
-          <Route path="/storage" element={user ? <div className="p-6 lg:p-12 max-w-4xl mx-auto"><MultCloudUploader userId={user.id} /></div> : <Navigate to="/login" />} />
+          <Route path="/storage" element={user ? <div className="p-6 lg:p-12 max-w-4xl mx-auto"><CloudinaryUploader userId={user.id} /></div> : <Navigate to="/login" />} />
           <Route path="/transfer" element={user ? <PointTransfer user={user} /> : <Navigate to="/login" />} />
           <Route path="/blocked-users" element={user ? <BlockedUsers user={user} allUsers={allUsers} onUnblock={handleUnblock} /> : <Navigate to="/login" />} />
           <Route path="/forgot-password" element={<ForgotPassword allUsers={allUsers} />} />

@@ -10,11 +10,13 @@ import {
 import { User, Post, PostComment, Advertisement, Report } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import { SupabaseService } from '../src/services/supabaseService';
+import { useRealtimeFeed } from '../src/services/useRealtimeFeed';
 
 interface CommunityProps {
   user: User;
   allUsers: User[];
   posts: Post[];
+  wallet?: { prophy_points: number } | null;
   globalAds?: Advertisement[];
   onPost: (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string) => void;
   onLike: (postId: string) => void;
@@ -115,7 +117,8 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
   </div>
 );
 
-const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost, onShare }) => {
+const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPosts, wallet, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost, onShare }) => {
+  const { posts, setPosts } = useRealtimeFeed(initialPosts);
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'all' | 'following' | 'trends' | 'node'>('all');
   const [newPostContent, setNewPostContent] = useState('');
@@ -320,6 +323,17 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
               placeholder="Search users or posts..."
               className="w-full bg-brand-border/30 dark:bg-white/5 border border-transparent focus:border-brand-proph/50 rounded-full py-2 pl-10 pr-4 text-xs font-bold outline-none transition-all dark:text-white"
             />
+         </div>
+         <div className="flex items-center gap-2">
+            <div className="hidden sm:flex flex-col items-end">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-brand-proph/10 border border-brand-proph/20 rounded-full">
+                <Coins className="w-3.5 h-3.5 text-brand-proph" />
+                <span className="text-[11px] font-black text-brand-proph uppercase tracking-tighter">
+                  {wallet?.prophy_points?.toLocaleString() || '0'}
+                </span>
+              </div>
+              <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-1">Prophy Points</span>
+            </div>
          </div>
       </div>
 

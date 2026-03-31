@@ -5,7 +5,6 @@ import { User, AdPricing, Advertisement, SystemConfig, PaymentVerification } fro
 import { UNIVERSITIES } from '../constants';
 import { useNavigate } from 'react-router-dom';
 import { CloudinaryService } from '../src/services/cloudinaryService';
-import { PaystackButton } from 'react-paystack';
 
 interface UserAdsProps {
   user: User;
@@ -142,57 +141,6 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
       setIsSubmittingRef(false);
       setStep(5);
     }, 1500);
-  };
-
-  const handlePaystackSuccess = (reference: any) => {
-    setIsSubmittingRef(true);
-    
-    const verification: PaymentVerification = {
-      id: crypto.randomUUID(),
-      userId: user.id,
-      userName: user.name,
-      userEmail: user.email,
-      type: 'ad',
-      amount: totalCost,
-      reference: reference.reference,
-      status: 'approved',
-      createdAt: Date.now(),
-      details: {
-        adId: formData.id,
-        adTitle: formData.title || 'Pending Ad',
-        schools: selectedSchools,
-        paymentMethod: 'card'
-      }
-    };
-
-    onVerifyPayment(verification);
-    setPaymentRef(reference.reference);
-    
-    setTimeout(() => {
-      setIsSubmittingRef(false);
-      setStep(5);
-    }, 1500);
-  };
-
-  const paystackConfig = {
-    reference: (new Date()).getTime().toString(),
-    email: user.email || 'user@proph.app',
-    amount: totalCost * 100, // Paystack expects amount in Kobo
-    publicKey: config.paystackPublicKey || 'pk_test_placeholder',
-    text: 'Pay with Card (Paystack)',
-    onSuccess: handlePaystackSuccess,
-    onClose: () => console.log('Payment closed'),
-    metadata: {
-      adId: formData.id,
-      userId: user.id,
-      custom_fields: [
-        {
-          display_name: "Ad Title",
-          variable_name: "ad_title",
-          value: formData.title
-        }
-      ]
-    }
   };
 
   return (
@@ -423,11 +371,14 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
                     <div className="space-y-8">
                       <div className="p-8 bg-gray-950 rounded-[2.5rem] border border-brand-border space-y-6">
                         <div className="flex flex-col items-center gap-4">
-                          <p className="text-brand-muted font-medium italic text-center">Click the button below to pay securely via Paystack.</p>
-                          <PaystackButton 
-                            {...paystackConfig}
-                            className="w-full bg-brand-proph text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all"
-                          />
+                          <p className="text-brand-muted font-medium italic text-center">Card payment is currently being processed manually. Please use the Bank Transfer option for instant verification or contact support.</p>
+                          <button 
+                            onClick={handleSubmitPayment}
+                            disabled={isSubmittingRef}
+                            className="w-full bg-brand-proph text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all disabled:opacity-50"
+                          >
+                            {isSubmittingRef ? 'Processing...' : 'Simulate Card Settlement'}
+                          </button>
                         </div>
                       </div>
                     </div>

@@ -335,7 +335,6 @@ export interface SystemConfig {
     accountName: string;
   };
   isCardPaymentEnabled: boolean;
-  paystackPublicKey?: string;
   appLogo?: string;
   appIcon?: string;
   splashScreenUrl?: string;

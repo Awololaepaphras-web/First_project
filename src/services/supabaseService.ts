@@ -121,6 +121,9 @@ export const SupabaseService = {
       verificationCode: u.verification_code,
       referredBy: u.referred_by,
       engagementStats: u.engagement_stats,
+      blockedUsers: u.blocked_users || [],
+      hasSeenOnboarding: u.has_seen_onboarding || false,
+      status: u.status || 'active',
       createdAt: new Date(u.created_at).getTime()
     };
   },
@@ -130,7 +133,7 @@ export const SupabaseService = {
       themePreference, isSugVerified, staffPermissions, isPremium, 
       premiumExpiry, referralCode, referralStats, bankDetails, 
       gladiatorEarnings, isVerified, verificationCode, referredBy,
-      engagementStats, createdAt, ...rest 
+      engagementStats, blockedUsers, hasSeenOnboarding, createdAt, ...rest 
     } = user;
     
     return { 
@@ -148,6 +151,9 @@ export const SupabaseService = {
       verification_code: verificationCode,
       referred_by: referredBy,
       engagement_stats: engagementStats,
+      blocked_users: blockedUsers || [],
+      has_seen_onboarding: hasSeenOnboarding || false,
+      status: status || 'active',
       created_at: createdAt ? new Date(createdAt).toISOString() : undefined
     };
   },
@@ -396,12 +402,13 @@ export const SupabaseService = {
       visibility: p.visibility,
       isEdited: p.is_edited,
       adId: p.ad_id,
+      stats: p.stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
       createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now()
     };
   },
 
   toDbPost(post: Post): any {
-    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, createdAt, ...rest } = post as any;
+    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, stats, createdAt, ...rest } = post as any;
     return {
       ...rest,
       user_id: userId,
@@ -415,6 +422,7 @@ export const SupabaseService = {
       visibility: visibility || 'public',
       is_edited: isEdited || false,
       ad_id: adId,
+      stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
       created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
     };
   },
@@ -546,13 +554,19 @@ export const SupabaseService = {
       userId: a.user_id,
       mediaUrl: a.media_url,
       type: a.media_type,
-      adType: a.ad_type,
+      adType: Array.isArray(a.ad_type) ? a.ad_type[0] : a.ad_type,
+      adTypes: Array.isArray(a.ad_type) ? a.ad_type : (a.ad_type ? [a.ad_type] : []),
+      placement: Array.isArray(a.placement) ? a.placement[0] : a.placement,
+      placements: Array.isArray(a.placement) ? a.placement : (a.placement ? [a.placement] : []),
       targetLocation: a.target_location,
       campaignDuration: a.campaign_duration,
       campaignUnit: a.campaign_unit,
       timesPerDay: a.times_per_day,
       targetReach: a.target_reach,
-      timeFrames: a.time_frames
+      timeFrames: a.time_frames,
+      expiryDate: a.expiry_date,
+      isSponsored: a.is_sponsored || false,
+      analytics: a.analytics || []
     };
   },
 
@@ -569,19 +583,23 @@ export const SupabaseService = {
   },
 
   async saveAd(ad: any) {
-    const { userId, mediaUrl, type, adType, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, ...rest } = ad;
+    const { userId, mediaUrl, type, adType, adTypes, placement, placements, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, isSponsored, expiryDate, analytics, ...rest } = ad;
     const dbAd = {
       ...rest,
       user_id: userId,
       media_url: mediaUrl,
       media_type: type,
-      ad_type: adType,
+      ad_type: adTypes || (adType ? [adType] : []),
+      placement: placements || (placement ? [placement] : []),
       target_location: targetLocation,
       campaign_duration: campaignDuration,
       campaign_unit: campaignUnit,
       times_per_day: timesPerDay,
       target_reach: targetReach,
-      time_frames: timeFrames
+      time_frames: timeFrames,
+      expiry_date: expiryDate,
+      is_sponsored: isSponsored || false,
+      analytics: analytics || []
     };
     const { error } = await supabase.from('advertisements').upsert(dbAd);
     if (error) console.error('Error saving ad:', error);
@@ -766,6 +784,90 @@ export const SupabaseService = {
       content: message.content
     });
     if (error) console.error('Error sending message:', error);
+  },
+
+  // Blocking & Reporting
+  async blockUser(userId: string, targetId: string) {
+    try {
+      const { data: user, error: fErr } = await supabase.from('users').select('blocked_users').eq('id', userId).single();
+      if (fErr) throw fErr;
+
+      const blockedUsers = user.blocked_users || [];
+      if (blockedUsers.includes(targetId)) return { success: true };
+
+      const { error: uErr } = await supabase.from('users').update({ 
+        blocked_users: [...blockedUsers, targetId] 
+      }).eq('id', userId);
+      
+      if (uErr) throw uErr;
+      return { success: true };
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      return { success: false, error };
+    }
+  },
+
+  async unblockUser(userId: string, targetId: string) {
+    try {
+      const { data: user, error: fErr } = await supabase.from('users').select('blocked_users').eq('id', userId).single();
+      if (fErr) throw fErr;
+
+      const blockedUsers = user.blocked_users || [];
+      const newBlockedUsers = blockedUsers.filter((id: string) => id !== targetId);
+
+      const { error: uErr } = await supabase.from('users').update({ 
+        blocked_users: newBlockedUsers 
+      }).eq('id', userId);
+      
+      if (uErr) throw uErr;
+      return { success: true };
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+      return { success: false, error };
+    }
+  },
+
+  async submitReport(report: any) {
+    try {
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: report.reporterId,
+        target_id: report.targetId,
+        target_type: report.targetType,
+        reason: report.reason,
+        details: report.details,
+        status: 'pending'
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      return { success: false, error };
+    }
+  },
+
+  async getReports() {
+    try {
+      const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data.map((r: any) => ({
+        id: r.id,
+        reporterId: r.reporter_id,
+        targetId: r.target_id,
+        targetType: r.target_type,
+        reason: r.reason,
+        details: r.details,
+        status: r.status,
+        createdAt: new Date(r.created_at).getTime()
+      }));
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      return [];
+    }
+  },
+
+  async updateReportStatus(reportId: string, status: 'resolved' | 'dismissed') {
+    const { error } = await supabase.from('reports').update({ status }).eq('id', reportId);
+    if (error) console.error('Error updating report status:', error);
   },
 
   // Gladiator Hub

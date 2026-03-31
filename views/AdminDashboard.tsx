@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminBranding from './AdminBranding';
 import AdminAdVerification from './AdminAdVerification';
 import { 
@@ -10,12 +10,15 @@ import {
   Zap, Building2, BookOpen, Layers, PlusCircle, X, 
   PlayCircle, Monitor, Upload, Clock, CreditCard,
   FileCheck, AlertCircle, ChevronRight, Menu, Image as ImageIcon,
-  Star, BarChart3, Target, Wallet,
+  Star, BarChart3, Target, Wallet, Coins,
   Palette, Download, Tv, Award, ShieldCheck, MessageSquare, RefreshCw, Globe, Loader2
 } from 'lucide-react';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import { User, PastQuestion, WithdrawalRequest, SystemConfig, EarnTask, Notification, University, Advertisement, AdTimeFrame, AdType, AdPlacement } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
+
+import { useAlgorithmSettings, useRealtimeLeaderboard } from '../src/hooks/useRealtimeRanking';
+import { supabase } from '../src/lib/supabase';
 
 interface AdminDashboardProps {
   user: User;
@@ -64,6 +67,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onApproveQuestion, onRejectQuestion, onApproveWithdrawal, onRejectWithdrawal,
   globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onUpdateIcon, onUpdateSplashScreen, onLogout
 }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('command');
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
@@ -77,8 +81,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     title: '', 
     mediaUrl: '', 
     mediaType: 'image' as 'image' | 'video', 
-    adType: 'popup' as AdType,
-    placement: 'timeline' as AdPlacement,
+    adTypes: ['popup'] as AdType[],
+    placements: ['timeline'] as AdPlacement[],
     link: '', 
     duration: 15, 
     targetLocation: 'all',
@@ -86,7 +90,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     campaignUnit: 'days' as 'days' | 'weeks',
     timesPerDay: 5,
     targetReach: 'all' as number | 'all',
-    timeFrames: [] as AdTimeFrame[]
+    timeFrames: [] as AdTimeFrame[],
+    isSponsored: true
   });
   const [newUni, setNewUni] = useState({ name: '', acronym: '', location: '', logo: '' });
   const [selectedUniForCollege, setSelectedUniForCollege] = useState('');
@@ -224,8 +229,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       id: Math.random().toString(), 
       title: newAd.title, 
       type: newAd.mediaType, 
-      adType: newAd.adType,
-      placement: newAd.placement,
+      adTypes: newAd.adTypes,
+      placements: newAd.placements,
       mediaUrl: newAd.mediaUrl, 
       duration: newAd.duration, 
       link: newAd.link, 
@@ -234,14 +239,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       campaignUnit: newAd.campaignUnit,
       timesPerDay: newAd.timesPerDay,
       targetReach: newAd.targetReach,
-      timeFrames: newAd.timeFrames
+      timeFrames: newAd.timeFrames,
+      isSponsored: newAd.isSponsored
     });
     setNewAd({ 
       title: '', 
       mediaUrl: '', 
       mediaType: 'image', 
-      adType: 'native',
-      placement: 'timeline',
+      adTypes: ['native'],
+      placements: ['timeline'],
       link: '', 
       duration: 15, 
       targetLocation: 'all',
@@ -249,7 +255,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       campaignUnit: 'days',
       timesPerDay: 5,
       targetReach: 'all',
-      timeFrames: []
+      timeFrames: [],
+      isSponsored: true
     });
     alert("Ad Synchronized.");
   };
@@ -271,26 +278,45 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const { settings: postSettings, loading: loadingPostSettings } = useAlgorithmSettings('post_ranking');
+  const { settings: adSettings, loading: loadingAdSettings } = useAlgorithmSettings('ad_delivery');
+  const { leaderboard, loading: loadingLeaderboard } = useRealtimeLeaderboard();
+
+  const updateAlgorithmWeights = async (id: string, weights: any) => {
+    try {
+      const { error } = await supabase
+        .from('algorithm_settings')
+        .update({ weights, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      
+      if (error) throw error;
+      alert(`${id.replace('_', ' ')} weights updated successfully.`);
+    } catch (err: any) {
+      console.error('Error updating weights:', err);
+      alert(`Failed to update weights: ${err.message}`);
+    }
+  };
+
   const tabs = [
-    { id: 'command', label: 'Mainframe', icon: <Cpu className="w-5 h-5" /> },
-    { id: 'financials', label: 'Financial Matrix', icon: <DollarSign className="w-5 h-5" /> },
-    { id: 'engagement-rating', label: 'Engagement Rating', icon: <Award className="w-5 h-5" /> },
-    { id: 'engagement', label: 'Engage Matrix', icon: <BarChart3 className="w-5 h-5" /> },
-    { id: 'submissions', label: 'Asset Review', icon: <FileCheck className="w-5 h-5" /> },
-    { id: 'payouts', label: 'Payout Flow', icon: <CreditCard className="w-5 h-5" /> },
-    { id: 'ad-engine', label: 'Advert Engine', icon: <Monitor className="w-5 h-5" /> },
+    { id: 'command', label: 'Dashboard', icon: <Cpu className="w-5 h-5" /> },
+    { id: 'financials', label: 'Finances', icon: <DollarSign className="w-5 h-5" /> },
+    { id: 'engagement-rating', label: 'User Ratings', icon: <Award className="w-5 h-5" /> },
+    { id: 'engagement', label: 'Engagement', icon: <BarChart3 className="w-5 h-5" /> },
+    { id: 'submissions', label: 'Question Review', icon: <FileCheck className="w-5 h-5" /> },
+    { id: 'payouts', label: 'Withdrawals', icon: <CreditCard className="w-5 h-5" /> },
+    { id: 'ad-engine', label: 'Ad Management', icon: <Monitor className="w-5 h-5" /> },
     { id: 'ad-review', label: 'Ad Verification', icon: <Target className="w-5 h-5" /> },
-    { id: 'academic', label: 'Inst. Map', icon: <Building2 className="w-5 h-5" /> },
-    { id: 'users', label: 'Nodes', icon: <Users className="w-5 h-5" /> },
-    { id: 'broadcast', label: 'Signals', icon: <Megaphone className="w-5 h-5" /> },
-    { id: 'tasks', label: 'Bounty Forge', icon: <Zap className="w-5 h-5" /> },
-    { id: 'algorithms', label: 'Logic Matrix', icon: <Activity className="w-5 h-5" /> },
-    { id: 'branding', label: 'App Branding', icon: <Palette className="w-5 h-5" /> },
-    { id: 'sug', label: 'SUG Verify', icon: <Award className="w-5 h-5" /> },
-    { id: 'staff', label: 'Staff Matrix', icon: <ShieldCheck className="w-5 h-5" /> },
-    { id: 'chat-monitor', label: 'Chat Matrix', icon: <MessageSquare className="w-5 h-5" /> },
-    { id: 'vercel-sql', label: 'Vercel SQL', icon: <Globe className="w-5 h-5" />, isLink: true, path: '/vercel-sql' },
-    { id: 'payments', label: 'Payment Verify', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/Epaphrastheadminofprophandloveforx/payments' },
+    { id: 'academic', label: 'Universities', icon: <Building2 className="w-5 h-5" /> },
+    { id: 'users', label: 'Users', icon: <Users className="w-5 h-5" /> },
+    { id: 'broadcast', label: 'Announcements', icon: <Megaphone className="w-5 h-5" /> },
+    { id: 'tasks', label: 'Tasks', icon: <Zap className="w-5 h-5" /> },
+    { id: 'algorithms', label: 'Algorithms', icon: <Activity className="w-5 h-5" /> },
+    { id: 'branding', label: 'Branding', icon: <Palette className="w-5 h-5" /> },
+    { id: 'sug', label: 'SUG Verification', icon: <Award className="w-5 h-5" /> },
+    { id: 'staff', label: 'Staff Management', icon: <ShieldCheck className="w-5 h-5" /> },
+    { id: 'chat-monitor', label: 'Chat Monitor', icon: <MessageSquare className="w-5 h-5" /> },
+    { id: 'vercel-sql', label: 'Database SQL', icon: <Globe className="w-5 h-5" />, isLink: true, path: '/vercel-sql' },
+    { id: 'payments', label: 'Payment Verification', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/Epaphrastheadminofprophandloveforx/payments' },
   ];
 
   return (
@@ -331,7 +357,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <main className="flex-grow p-6 lg:p-12 bg-black/20 overflow-y-auto custom-scrollbar">
         {activeTab === 'command' && (
           <div className="space-y-12 animate-fade-in">
-             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Control Mainframe</h1>
+             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Admin Dashboard</h1>
              
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-gray-900 p-8 rounded-[2.5rem] border border-gray-800 space-y-4">
@@ -340,9 +366,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Active</span>
                    </div>
                    <div>
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Security Shield</p>
-                      <p className="text-2xl font-black text-white italic">HARDENED</p>
-                      <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase italic">Anti-Kali Protocol: Enabled</p>
+                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">System Security</p>
+                      <p className="text-2xl font-black text-white italic">SECURE</p>
+                      <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase italic">Protection: Enabled</p>
                    </div>
                 </div>
                 <div className="bg-gray-900 p-8 rounded-[2.5rem] border border-gray-800 space-y-4">
@@ -351,7 +377,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Stable</span>
                    </div>
                    <div>
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Network Load</p>
+                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Network Speed</p>
                       <p className="text-2xl font-black text-white italic">14.2 GB/s</p>
                       <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase italic">Latency: 12ms</p>
                    </div>
@@ -359,12 +385,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="bg-gray-900 p-8 rounded-[2.5rem] border border-gray-800 space-y-4">
                    <div className="flex justify-between items-start">
                       <div className="p-3 bg-yellow-600/10 rounded-2xl text-yellow-500"><Users className="w-6 h-6" /></div>
-                      <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">Syncing</span>
+                      <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">Online</span>
                    </div>
                    <div>
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Active Nodes</p>
+                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Active Users</p>
                       <p className="text-2xl font-black text-white italic">{allUsers.length}</p>
-                      <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase italic">Real-time Presence</p>
+                      <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase italic">Real-time Users</p>
                    </div>
                 </div>
                 <div className="bg-gray-900 p-8 rounded-[2.5rem] border border-gray-800 space-y-4">
@@ -373,7 +399,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Live</span>
                    </div>
                    <div>
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Daily Volume</p>
+                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Daily Revenue</p>
                       <p className="text-2xl font-black text-white italic">₦420.5K</p>
                       <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase italic">Payouts: ₦12.4K</p>
                    </div>
@@ -382,12 +408,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Settings2 className="w-5 h-5 text-red-500" /> Operational Gates</h3>
+                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Settings2 className="w-5 h-5 text-red-500" /> System Features</h3>
                    <div className="space-y-4">
-                      {[{ label: 'AI Study Logic', key: 'isAiEnabled' }, { label: 'Archive Submissions', key: 'isUploadEnabled' }, { label: 'Purse Portal', key: 'isWithdrawalEnabled' }, { label: 'Community Feed', key: 'isCommunityEnabled' }, { label: 'Maintenance Mode', key: 'isMaintenanceMode' }, { label: 'Splash Screen', key: 'isSplashScreenEnabled' }].map(f => (
+                      {[{ label: 'AI Study Help', key: 'isAiEnabled' }, { label: 'Question Uploads', key: 'isUploadEnabled' }, { label: 'Past Question Contribution', key: 'isPastQuestionContributionEnabled' }, { label: 'Withdrawal Portal', key: 'isWithdrawalEnabled' }, { label: 'Community Feed', key: 'isCommunityEnabled' }, { label: 'Maintenance Mode', key: 'isMaintenanceMode' }, { label: 'Splash Screen', key: 'isSplashScreenEnabled' }].map(f => (
                         <div key={f.label} className="flex justify-between items-center p-5 bg-gray-950/80 rounded-2xl border border-gray-800">
                            <span className="text-[10px] font-black uppercase text-gray-300">{f.label}</span>
-                           <button onClick={() => handleUpdateConfig({ [f.key]: !config[f.key as keyof SystemConfig] })} className={`p-2 rounded-xl transition-all ${config[f.key as keyof SystemConfig] ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`} title="Toggle Node Gate">
+                           <button onClick={() => handleUpdateConfig({ [f.key]: !config[f.key as keyof SystemConfig] })} className={`p-2 rounded-xl transition-all ${config[f.key as keyof SystemConfig] ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`} title="Toggle Feature">
                              {config[f.key as keyof SystemConfig] ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
                            </button>
                         </div>
@@ -395,12 +421,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    </div>
                 </div>
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6 flex flex-col justify-center">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Activity className="w-5 h-5 text-green-500" /> Matrix Volume</h3>
+                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Activity className="w-5 h-5 text-green-500" /> Platform Stats</h3>
                    <div className="grid grid-cols-2 gap-4 text-center">
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Nodes</p><p className="text-3xl font-black italic">{allUsers.length}</p></div>
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Archives</p><p className="text-3xl font-black italic">{questions.length}</p></div>
+                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Users</p><p className="text-3xl font-black italic">{allUsers.length}</p></div>
+                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Questions</p><p className="text-3xl font-black italic">{questions.length}</p></div>
                       <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Ads Active</p><p className="text-3xl font-black italic">{globalAds.length}</p></div>
-                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Payouts Req</p><p className="text-3xl font-black italic">{withdrawalRequests.filter(r => r.status === 'pending').length}</p></div>
+                      <div className="p-6 bg-gray-950/80 rounded-3xl border border-gray-800"><p className="text-[8px] font-black text-gray-500 uppercase mb-1">Pending Payouts</p><p className="text-3xl font-black italic">{withdrawalRequests.filter(r => r.status === 'pending').length}</p></div>
                    </div>
                 </div>
              </div>
@@ -429,7 +455,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       ))}
                       <div className="space-y-2">
-                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Naira Per Prophy Point</label>
+                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Naira Per Prophy Coin</label>
                            <input 
                             type="number" step="0.1"
                             className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
@@ -687,7 +713,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {activeTab === 'submissions' && (
           <div className="space-y-10 animate-fade-in">
-             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Asset Verification</h1>
+             <div className="flex justify-between items-center">
+               <h1 className="text-4xl font-black tracking-tighter uppercase italic">Asset Verification</h1>
+               <button onClick={() => navigate('/upload')} className="bg-green-600 text-white font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-green-900/20">
+                 <PlusCircle className="w-4 h-4" /> Archive Intel
+               </button>
+             </div>
              <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
@@ -807,27 +838,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Identifier</label>
                         <input className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" placeholder="Campaign Name" value={newAd.title} onChange={e => setNewAd({...newAd, title: e.target.value})} />
                                        <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Ad Format</label>
-                        <select className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white font-bold uppercase" value={newAd.adType} onChange={e => setNewAd({...newAd, adType: e.target.value as AdType})}>
-                           <option value="native">Native (X-Style)</option>
-                           <option value="banner">Banner Ad</option>
-                           <option value="popup">Pop-up Ad</option>
-                           <option value="fullscreen">Full Screen App Ad</option>
-                        </select>
+                        <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Ad Formats</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(['native', 'banner', 'popup', 'fullscreen'] as AdType[]).map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => {
+                                const current = newAd.adTypes || [];
+                                const next = current.includes(t) ? current.filter(x => x !== t) : [...current, t];
+                                setNewAd({ ...newAd, adTypes: next });
+                              }}
+                              className={`py-2 rounded-lg font-black text-[9px] uppercase border transition-all ${newAd.adTypes?.includes(t) ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Placement (X-Style)</label>
-                        <select className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white font-bold uppercase" value={newAd.placement} onChange={e => setNewAd({...newAd, placement: e.target.value as AdPlacement})}>
-                           <option value="timeline">Timeline</option>
-                           <option value="search">Search</option>
-                           <option value="post">Post (Tweet)</option>
-                           <option value="profile">Profile</option>
-                           <option value="replies">Replies</option>
-                           <option value="university">University Feed</option>
-                           <option value="study-hub">Study Hub</option>
-                           <option value="startup">Startup Launchpad</option>
-                        </select>
+                        <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Placements (X-Style)</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(['timeline', 'search', 'post', 'profile', 'replies', 'university', 'study-hub', 'startup'] as AdPlacement[]).map(p => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => {
+                                const current = newAd.placements || [];
+                                const next = current.includes(p) ? current.filter(x => x !== p) : [...current, p];
+                                setNewAd({ ...newAd, placements: next });
+                              }}
+                              className={`py-2 rounded-lg font-black text-[9px] uppercase border transition-all ${newAd.placements?.includes(p) ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}
+                            >
+                              {p.replace('-', ' ')}
+                            </button>
+                          ))}
+                        </div>
                       </div>
        </div>
 
@@ -914,7 +961,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <input className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" placeholder="https://..." value={newAd.link} onChange={e => setNewAd({...newAd, link: e.target.value})} />
                       </div>
 
-                      <button className="w-full bg-green-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl">Deploy Campaign</button>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Sponsorship Label</label>
+                        <div className="grid grid-cols-2 gap-2">
+                           <button type="button" onClick={() => setNewAd({...newAd, isSponsored: true})} className={`py-3 rounded-xl font-black text-[10px] uppercase border-2 transition-all ${newAd.isSponsored ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>Sponsored</button>
+                           <button type="button" onClick={() => setNewAd({...newAd, isSponsored: false})} className={`py-3 rounded-xl font-black text-[10px] uppercase border-2 transition-all ${!newAd.isSponsored ? 'bg-green-600 border-green-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>Not Sponsored</button>
+                        </div>
+                      </div>
+
+                      <button className="w-full bg-green-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl">Deploy Ad</button>
                    </form>
                 </div>
                 <div className="xl:col-span-2 bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden">
@@ -926,7 +981,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                          <tbody className="divide-y divide-gray-800">
                              {globalAds.map(ad => (
                              <tr key={ad.id} className="hover:bg-gray-800/20">
-                                 <td className="p-8"><div className="flex items-center gap-4"><div className="w-14 h-14 rounded-xl bg-gray-800 overflow-hidden border border-gray-700">{ad.type === 'image' ? <img src={ad.mediaUrl} className="w-full h-full object-cover" /> : <PlayCircle className="w-full h-full p-3 text-green-500" />}</div><div><p className="font-black italic text-sm text-white">{ad.title}</p><p className="text-[9px] font-black text-blue-400 uppercase">{ad.adType} • {ad.placement}</p></div></div></td>
+                                 <td className="p-8"><div className="flex items-center gap-4"><div className="w-14 h-14 rounded-xl bg-gray-800 overflow-hidden border border-gray-700">{ad.type === 'image' ? <img src={ad.mediaUrl} className="w-full h-full object-cover" /> : <PlayCircle className="w-full h-full p-3 text-green-500" />}</div><div><p className="font-black italic text-sm text-white">{ad.title}</p><p className="text-[9px] font-black text-blue-400 uppercase">{(ad.adTypes || [ad.adType]).join(' • ')} • {(ad.placements || [ad.placement]).join(' • ')}</p><p className="text-[8px] font-black uppercase tracking-widest text-gray-500 mt-1">{ad.isSponsored ? 'Sponsored' : 'Not Sponsored'}</p></div></div></td>
                                  <td className="p-8"><p className="font-black text-xs text-white">{ad.duration}s <span className="text-gray-500 font-normal uppercase text-[9px]">Limit</span></p><p className="uppercase text-[10px] font-black text-green-500">{ad.type}</p></td>
                                  <td className="p-8"><p className="font-black text-xs text-white">{ad.campaignDuration} {ad.campaignUnit}</p></td>
                                  <td className="p-8"><p className="font-black text-xs text-white">{ad.timesPerDay || 'N/A'} / day</p><p className="text-[9px] font-black text-blue-400 uppercase">{ad.targetReach === 'all' ? 'Unlimited Reach' : `${ad.targetReach || 0} People`}</p><div className="flex flex-wrap gap-1 mt-1">{ad.timeFrames?.map(tf => <span key={tf} className="text-[8px] bg-gray-800 px-1 rounded text-gray-400">{tf}</span>)}</div></td>
@@ -1151,7 +1206,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div className="bg-gray-900 p-10 rounded-[3rem] border border-gray-800 space-y-6 shadow-2xl">
                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Bounty Identity" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
-                   <input type="number" className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Prophy Points" value={newTask.points} onChange={e => setNewTask({...newTask, points: parseInt(e.target.value) || 0})} />
+                   <input type="number" className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Prophy Coins" value={newTask.points} onChange={e => setNewTask({...newTask, points: parseInt(e.target.value) || 0})} />
                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Bounty Link" value={newTask.link} onChange={e => setNewTask({...newTask, link: e.target.value})} />
                    <input className="w-full bg-gray-950 border border-gray-800 p-5 rounded-2xl text-white" placeholder="Verification Task" value={newTask.question} onChange={e => setNewTask({...newTask, question: e.target.value})} />
                    <button onClick={deployTask} className="w-full bg-yellow-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-3"><Zap className="w-4 h-4" /> Deploy Bounty</button>
@@ -1164,7 +1219,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                        </thead>
                       <tbody className="divide-y divide-gray-800">
                          {tasks.map(t => (
-                           <tr key={t.id} className="hover:bg-gray-800/20"><td className="p-8"><p className="font-black italic text-sm text-white">{t.title}</p><p className="text-[9px] text-gray-500 font-mono">{t.points} P-PT</p></td><td className="p-8 text-right"><button onClick={() => onDeleteTask(t.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button></td></tr>
+                           <tr key={t.id} className="hover:bg-gray-800/20"><td className="p-8"><p className="font-black italic text-sm text-white">{t.title}</p><p className="text-[9px] text-gray-500 font-mono">{t.points} P-COIN</p></td><td className="p-8 text-right"><button onClick={() => onDeleteTask(t.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button></td></tr>
                          ))}
                       </tbody>
                    </table>
@@ -1176,76 +1231,115 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {activeTab === 'algorithms' && (
           <div className="space-y-12 animate-fade-in">
-             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Algorithm Logic Matrix</h1>
-             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Proph Feed Algorithms */}
+             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Logic Matrix Control</h1>
+             
+             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Post Ranking Algorithm */}
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Tv className="w-5 h-5 text-blue-500" /> Feed Weights</h3>
-                   <div className="space-y-4">
-                      {Object.entries(config.feedWeights).map(([key, val]) => (
-                        <div key={key} className="space-y-2">
-                           <div className="flex justify-between items-center px-2">
-                             <label className="text-[9px] font-black uppercase text-gray-500">{key}</label>
-                             <span className="text-[10px] font-black text-blue-400">{((val as number) * 100).toFixed(0)}%</span>
-                           </div>
-                           <input 
-                            type="range" min="0" max="1" step="0.05"
-                            className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600" 
-                            value={val as number} 
-                            onChange={e => handleUpdateConfig({ feedWeights: { ...config.feedWeights, [key]: parseFloat(e.target.value) } })} 
-                           />
-                        </div>
-                      ))}
+                   <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-black text-white flex items-center gap-3"><Activity className="w-5 h-5 text-blue-500" /> Post Ranking (X-Style)</h3>
+                      {loadingPostSettings && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
                    </div>
-                </div>
-
-                {/* Advert Algorithms */}
-                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Megaphone className="w-5 h-5 text-red-500" /> Ad Weights</h3>
-                   <div className="space-y-4">
-                      {Object.entries(config.adWeights).map(([key, val]) => (
-                        <div key={key} className="space-y-2">
-                           <div className="flex justify-between items-center px-2">
-                             <label className="text-[9px] font-black uppercase text-gray-500">{key}</label>
-                             <span className="text-[10px] font-black text-red-400">{((val as number) * 100).toFixed(0)}%</span>
-                           </div>
-                           <input 
-                            type="range" min="0" max="1" step="0.05"
-                            className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-600" 
-                            value={val as number} 
-                            onChange={e => handleUpdateConfig({ adWeights: { ...config.adWeights, [key]: parseFloat(e.target.value) } })} 
-                           />
-                        </div>
-                      ))}
-                   </div>
-                </div>
-             </div>
-
-             <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
-                <h3 className="text-xl font-black text-white flex items-center gap-3"><DollarSign className="w-5 h-5 text-green-500" /> Earning Rates (₦)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                   {Object.entries(config.earnRates).map(([key, val]) => (
-                     <div key={key} className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400 font-black">₦</span>
-                          <input 
-                            type="number" step="0.01"
-                            className="bg-transparent border-none outline-none text-xl font-black italic w-full text-white"
-                            value={val}
-                            onChange={(e) => handleUpdateConfig({ earnRates: { ...config.earnRates, [key]: parseFloat(e.target.value) || 0 } })}
-                          />
+                   
+                   {postSettings && (
+                     <div className="space-y-6">
+                        {Object.entries(postSettings).map(([key, val]) => (
+                          <div key={key} className="space-y-2">
+                             <div className="flex justify-between items-center px-2">
+                               <label className="text-[9px] font-black uppercase text-gray-500">{key.replace('_', ' ')}</label>
+                               <span className="text-[10px] font-black text-blue-400">x{(val as number).toFixed(1)}</span>
+                             </div>
+                             <input 
+                               type="range" 
+                               min={key === 'gravity' ? "0.5" : "0"} 
+                               max={key === 'author_reply' ? "200" : "50"} 
+                               step="0.5"
+                               className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                               value={val as number} 
+                               onChange={e => {
+                                 const newWeights = { ...postSettings, [key]: parseFloat(e.target.value) };
+                                 updateAlgorithmWeights('post_ranking', newWeights);
+                               }} 
+                             />
+                          </div>
+                        ))}
+                        <div className="p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl">
+                           <p className="text-[9px] text-blue-400 font-bold leading-relaxed uppercase tracking-tighter">
+                             Formula: ((AuthorReplies * {postSettings.author_reply}) + (Replies * {postSettings.reply}) + (Bookmarks * {postSettings.bookmark}) + (Shares * {postSettings.share}) + (Likes * {postSettings.like})) / (Age + {postSettings.time_offset})^{postSettings.gravity}
+                           </p>
                         </div>
                      </div>
-                   ))}
+                   )}
+                </div>
+
+                {/* Ad Delivery Algorithm */}
+                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
+                   <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-black text-white flex items-center gap-3"><Target className="w-5 h-5 text-red-500" /> Ad Delivery Logic</h3>
+                      {loadingAdSettings && <Loader2 className="w-4 h-4 animate-spin text-red-500" />}
+                   </div>
+
+                   {adSettings && (
+                     <div className="space-y-6">
+                        {Object.entries(adSettings).map(([key, val]) => (
+                          <div key={key} className="space-y-2">
+                             <div className="flex justify-between items-center px-2">
+                               <label className="text-[9px] font-black uppercase text-gray-500">{key.replace('_', ' ')}</label>
+                               <span className="text-[10px] font-black text-red-400">x{(val as number).toFixed(1)}</span>
+                             </div>
+                             <input 
+                               type="range" min="0.1" max="10" step="0.1"
+                               className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-600" 
+                               value={val as number} 
+                               onChange={e => {
+                                 const newWeights = { ...adSettings, [key]: parseFloat(e.target.value) };
+                                 updateAlgorithmWeights('ad_delivery', newWeights);
+                               }} 
+                             />
+                          </div>
+                        ))}
+                        <div className="p-4 bg-red-600/10 border border-red-500/20 rounded-2xl">
+                           <p className="text-[9px] text-red-400 font-bold leading-relaxed uppercase tracking-tighter">
+                             Formula: (Bid * {adSettings.bid_weight}) * (Quality * {adSettings.quality_weight})
+                           </p>
+                        </div>
+                     </div>
+                   )}
                 </div>
              </div>
-             
-             <div className="bg-blue-600/10 border border-blue-500/20 p-6 rounded-3xl flex items-start gap-4">
-                <AlertCircle className="w-6 h-6 text-blue-500 flex-shrink-0 mt-1" />
-                <div>
-                   <p className="text-sm font-black uppercase tracking-widest text-blue-400 mb-2">Algorithm Calibration</p>
-                   <p className="text-xs text-gray-400 leading-relaxed">Adjusting these weights directly impacts the content distribution matrix. High engagement weights prioritize viral content, while high recency weights prioritize real-time updates. Ensure total weights for each section approximate 1.0 for balanced distribution.</p>
+
+             {/* Real-time Leaderboard Preview */}
+             <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
+                <h3 className="text-xl font-black text-white flex items-center gap-3"><Award className="w-5 h-5 text-yellow-500" /> Real-time Top 20 Leaderboard</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-800 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                      <tr>
+                        <th className="p-4">Rank</th>
+                        <th className="p-4">User</th>
+                        <th className="p-4">Posts (24h)</th>
+                        <th className="p-4">Total Engagement</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {leaderboard.map((u, i) => (
+                        <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-black italic text-brand-proph">#{i + 1}</td>
+                          <td className="p-4">
+                            <p className="font-bold text-white">{u.name}</p>
+                            <p className="text-[10px] text-gray-500 uppercase">@{u.nickname}</p>
+                          </td>
+                          <td className="p-4 font-mono text-gray-300">{u.post_count}</td>
+                          <td className="p-4 font-black text-brand-proph">{u.total_engagement.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                      {leaderboard.length === 0 && !loadingLeaderboard && (
+                        <tr>
+                          <td colSpan={4} className="p-8 text-center text-gray-600 font-black italic uppercase text-xs">No active nodes in the last 24h</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
              </div>
           </div>

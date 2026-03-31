@@ -4,7 +4,7 @@ import {
   Trophy, Zap, Wallet, Users, ArrowLeft, 
   CheckCircle2, Database, Swords, 
   TrendingUp, ShieldCheck, DollarSign, Award,
-  Sparkles, Star, ArrowRight, Megaphone, Info, AlertCircle
+  Sparkles, Star, ArrowRight, Megaphone, Info, AlertCircle, Coins
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SystemConfig } from '../types';
@@ -20,24 +20,24 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
     {
       title: 'Contribution Bounties',
       icon: <Database className="w-8 h-8 text-brand-proph" />,
-      desc: 'Synchronize academic intel with the federal grid. Upload verified past questions or handouts to earn instant point allocations.',
-      points: `${config.earnRates.contribution} pts per Approved Upload`,
+      desc: 'Synchronize academic intel with the federal grid. Upload verified past questions or handouts to earn instant coin allocations.',
+      points: `${config.earnRates.contribution} coins per Approved Upload`,
       status: 'High Priority',
-      details: 'Points are awarded after admin verification of the document quality and relevance.'
+      details: 'Coins are awarded after admin verification of the document quality and relevance.'
     },
     {
       title: 'Referral Network',
       icon: <Users className="w-8 h-8 text-blue-500" />,
-      desc: 'Build your scholar downline. Multi-stage point rewards for every student you link to the Proph ecosystem.',
-      points: `Up to ${config.earnRates.referral} pts per Referral`,
+      desc: 'Build your scholar downline. Multi-stage coin rewards for every student you link to the Proph ecosystem.',
+      points: `Up to ${config.earnRates.referral} coins per Referral`,
       status: 'Exponential',
-      details: 'Earn 10 points on signup, 10 points for 4-day login streak, and 60 points on their first withdrawal.'
+      details: 'Earn 10 coins on signup, 10 coins for 4-day login streak, and 60 coins on their first withdrawal.'
     },
     {
       title: 'Ad Revenue Sharing',
       icon: <Megaphone className="w-8 h-8 text-orange-500" />,
-      desc: 'The core of our economy. Users are paid based on the total ads deployed across the platform. Your share of the monthly ad revenue pool is directly proportional to your accumulated Prophy Points.',
-      points: 'Ad Pool % based on Prophy Points',
+      desc: 'The core of our economy. Users are paid based on the total ads deployed across the platform. Your share of the monthly ad revenue pool is directly proportional to your accumulated Prophy Coins.',
+      points: 'Ad Pool % based on Prophy Coins',
       status: 'Passive Yield',
       details: 'Requires monetization eligibility (1,000 followers + 2.5M impressions in 3 months).'
     },
@@ -52,8 +52,8 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
     {
       title: 'Bounty Board Tasks',
       icon: <Zap className="w-8 h-8 text-yellow-500" />,
-      desc: 'Complete specific institutional actions, surveys, or verifications to claim one-time point drops.',
-      points: 'Varies (10 - 200 pts)',
+      desc: 'Complete specific institutional actions, surveys, or verifications to claim one-time coin drops.',
+      points: 'Varies (10 - 200 coins)',
       status: 'Active',
       details: 'Check the Tasks section daily for new high-reward opportunities.'
     },
@@ -63,7 +63,7 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
       desc: 'High-frequency interaction yields institutional dividends. The top performers with the highest engagement metrics every month receive a bonus commission percentage of global ad revenue.',
       points: 'Bonus Ad Revenue %',
       status: 'Monthly Performance',
-      details: `Likes: ${config.engagementWeights.likes}pt, Replies: ${config.engagementWeights.replies}pt, Reposts: ${config.engagementWeights.reposts}pt.`
+      details: `Likes: ${config.engagementWeights.likes} coin, Replies: ${config.engagementWeights.replies} coin, Reposts: ${config.engagementWeights.reposts} coin.`
     }
   ];
 
@@ -92,11 +92,11 @@ const EarnManual: React.FC<EarnManualProps> = ({ config }) => {
 
         {/* Currency Conversion Card */}
         <div className="bg-brand-card p-10 rounded-[4rem] border border-brand-border shadow-2xl relative overflow-hidden group">
-           <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:rotate-12 transition-transform duration-1000"><Wallet className="w-64 h-64" /></div>
+           <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:rotate-12 transition-transform duration-1000"><Coins className="w-64 h-64" /></div>
            <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-10">
               <div className="space-y-4 text-center md:text-left">
                  <h3 className="text-3xl font-black italic uppercase">Purse Valuation</h3>
-                 <p className="text-brand-muted font-bold max-w-sm italic">Points are converted to Naira at a fixed institutional rate. Your War Chest balance is always visible in the dashboard.</p>
+                 <p className="text-brand-muted font-bold max-w-sm italic">Coins are converted to Naira at a fixed institutional rate. Your War Chest balance is always visible in the dashboard.</p>
               </div>
               <div className="bg-brand-black p-8 rounded-[3rem] border border-brand-border flex items-center gap-8 shadow-inner">
                  <div className="text-center">

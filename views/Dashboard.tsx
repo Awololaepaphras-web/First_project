@@ -5,9 +5,9 @@ import {
   ChevronDown, Info, Layers, BookOpen, ExternalLink, Megaphone,
   Trophy, Star, Award, Clock, Brain, Upload, Users, Lock, ChevronRight,
   GraduationCap, Zap, LayoutGrid, List, Plus, Wallet, Database,
-  Swords, Shield, Heart, Activity, Camera, Book, ListChecks
+  Swords, Shield, Heart, Activity, Camera, Book, ListChecks, Coins
 } from 'lucide-react';
-import { User, PastQuestion, Announcement, Badge, Advertisement } from '../types';
+import { User, PastQuestion, Announcement, Badge, Advertisement, SystemConfig } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
 
 interface DashboardProps {
@@ -16,9 +16,10 @@ interface DashboardProps {
   announcements?: Announcement[];
   activeBadges: Badge[];
   globalAds: Advertisement[];
+  config: SystemConfig;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = [], activeBadges = [], globalAds }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = [], activeBadges = [], globalAds, config }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -55,9 +56,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
            </div>
         </div>
         <div className="flex gap-3">
-           <button onClick={() => navigate('/upload')} className="bg-brand-proph text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-brand-proph/20">
-             <Plus className="w-4 h-4" /> Archive Intel
-           </button>
+           {(config.isUploadEnabled || user.role === 'admin') && (
+             <button onClick={() => navigate('/upload')} className="bg-brand-proph text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-brand-proph/20">
+               <Plus className="w-4 h-4" /> Archive Intel
+             </button>
+           )}
            <button onClick={() => navigate('/community')} className="bg-gray-900 dark:bg-white dark:text-black text-white font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:brightness-110 transition-all shadow-xl">
              <MessageSquareCode className="w-4 h-4" /> Peer Link
            </button>
@@ -67,8 +70,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       {/* Metrics (Slidable on Mobile) */}
       <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-6 overflow-x-auto no-scrollbar snap-x p-1">
          {[
-           { label: 'Purse Balance', val: user.points || 0, icon: <Wallet className="w-6 h-6" />, color: 'text-brand-proph' },
-           { label: 'Monetization Prophy Points', val: user.monetization?.pointsEarned || 0, icon: <Star className="w-6 h-6" />, color: 'text-yellow-500' },
+           { label: 'Purse Balance', val: user.points || 0, icon: <Coins className="w-6 h-6" />, color: 'text-brand-proph' },
+           { label: 'Monetization Prophy Coins', val: user.monetization?.pointsEarned || 0, icon: <Star className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Global Standing', val: '#422', icon: <Trophy className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Archived Assets', val: filteredQuestions.length, icon: <Database className="w-6 h-6" />, color: 'text-brand-primary' },
            { label: 'Study Minutes', val: user.lifetimeMinutes || 0, icon: <Clock className="w-6 h-6" />, color: 'text-orange-500' },

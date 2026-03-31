@@ -59,7 +59,9 @@ const AdminAdVerification: React.FC<AdminAdVerificationProps> = ({ ads, onUpdate
                       </div>
                       <div>
                         <p className="font-black italic text-base text-white break-words max-w-[200px]">{ad.title}</p>
-                        <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-1">{ad.adType}</p>
+                        <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-1">
+                          {ad.adTypes?.join(' • ') || ad.adType}
+                        </p>
                         <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-[9px] text-brand-muted hover:text-brand-proph transition-colors truncate block max-w-[150px] mt-1 font-mono">
                           {ad.link}
                         </a>
@@ -85,34 +87,40 @@ const AdminAdVerification: React.FC<AdminAdVerificationProps> = ({ ads, onUpdate
                   <td className="p-8">
                     <div className="space-y-4">
                       <div>
-                        <label className="text-[9px] font-black uppercase text-gray-500 block mb-1.5 tracking-widest">Set Placement</label>
-                        <select 
-                          value={ad.placement} 
-                          onChange={(e) => onUpdateAd({ ...ad, placement: e.target.value as AdPlacement })}
-                          className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-4 py-2.5 rounded-xl outline-none text-white w-full focus:border-brand-proph transition-colors cursor-pointer"
-                        >
-                          <option value="timeline">Timeline (Main Feed)</option>
-                          <option value="search">Search Results</option>
-                          <option value="post">Inside Posts</option>
-                          <option value="profile">User Profiles</option>
-                          <option value="replies">Post Replies</option>
-                          <option value="university">University Feed</option>
-                          <option value="study-hub">Study Hub</option>
-                          <option value="startup">Startup Launchpad</option>
-                        </select>
+                        <label className="text-[9px] font-black uppercase text-gray-500 block mb-1.5 tracking-widest">Set Placements</label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(['timeline', 'search', 'post', 'profile', 'replies', 'university', 'study-hub', 'startup'] as AdPlacement[]).map(p => (
+                            <button
+                              key={p}
+                              onClick={() => {
+                                const current = ad.placements || [];
+                                const next = current.includes(p) ? current.filter(x => x !== p) : [...current, p];
+                                onUpdateAd({ ...ad, placements: next });
+                              }}
+                              className={`px-2 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${ad.placements?.includes(p) ? 'bg-brand-proph border-brand-proph text-black' : 'bg-gray-950 border-gray-800 text-gray-500 hover:text-white hover:border-gray-600'}`}
+                            >
+                              {p.replace('-', ' ')}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div>
-                        <label className="text-[9px] font-black uppercase text-gray-500 block mb-1.5 tracking-widest">Set Ad Type</label>
-                        <select 
-                          value={ad.adType} 
-                          onChange={(e) => onUpdateAd({ ...ad, adType: e.target.value as AdType })}
-                          className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-4 py-2.5 rounded-xl outline-none text-white w-full focus:border-brand-proph transition-colors cursor-pointer"
-                        >
-                          <option value="native">Native (X-Style)</option>
-                          <option value="banner">Banner</option>
-                          <option value="popup">Pop-up</option>
-                          <option value="fullscreen">Full Screen App</option>
-                        </select>
+                        <label className="text-[9px] font-black uppercase text-gray-500 block mb-1.5 tracking-widest">Set Ad Formats</label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(['native', 'banner', 'popup', 'fullscreen'] as AdType[]).map(t => (
+                            <button
+                              key={t}
+                              onClick={() => {
+                                const current = ad.adTypes || [];
+                                const next = current.includes(t) ? current.filter(x => x !== t) : [...current, t];
+                                onUpdateAd({ ...ad, adTypes: next });
+                              }}
+                              className={`px-2 py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${ad.adTypes?.includes(t) ? 'bg-brand-proph border-brand-proph text-black' : 'bg-gray-950 border-gray-800 text-gray-500 hover:text-white hover:border-gray-600'}`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div>
                         <label className="text-[9px] font-black uppercase text-gray-500 block mb-1.5 tracking-widest">Set Time Frames</label>
@@ -137,7 +145,16 @@ const AdminAdVerification: React.FC<AdminAdVerificationProps> = ({ ads, onUpdate
                   <td className="p-8 text-right">
                     <div className="flex justify-end gap-3">
                       <button 
-                        onClick={() => onUpdateAd({ ...ad, status: 'active' })}
+                        onClick={() => {
+                          const duration = ad.campaignDuration || 0;
+                          const unit = ad.campaignUnit || 'days';
+                          let expiryDate = Date.now();
+                          if (unit === 'days') expiryDate += duration * 24 * 60 * 60 * 1000;
+                          else if (unit === 'weeks') expiryDate += duration * 7 * 24 * 60 * 60 * 1000;
+                          else if (unit === 'months') expiryDate += duration * 30 * 24 * 60 * 60 * 1000;
+                          
+                          onUpdateAd({ ...ad, status: 'active', expiryDate });
+                        }}
                         className="p-4 bg-green-600/10 text-green-500 rounded-2xl hover:bg-green-600 hover:text-white transition-all group relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)]"
                         title="Approve & Deploy"
                       >

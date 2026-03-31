@@ -154,7 +154,7 @@ const AnonymousUpload: React.FC<AnonymousUploadProps> = ({ isEnabled, onUpload, 
                   <div className="flex-grow text-center md:text-left">
                     <p className="text-sm font-bold text-yellow-500 uppercase tracking-widest mb-1">Attention Contributor</p>
                     <p className="text-brand-muted text-sm font-medium italic">
-                      No rewards or points will be awarded for anonymous submissions. To earn rewards for your contributions, please <Link to="/login" className="text-brand-proph underline font-black">Login</Link> or <Link to="/signup" className="text-brand-proph underline font-black">Create an Account</Link>.
+                      No rewards or coins will be awarded for anonymous submissions. To earn rewards for your contributions, please <Link to="/login" className="text-brand-proph underline font-black">Login</Link> or <Link to="/signup" className="text-brand-proph underline font-black">Create an Account</Link>.
                     </p>
                   </div>
                   <Link to="/signup" className="bg-yellow-500 text-black font-black px-8 py-4 rounded-full text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-xl flex items-center gap-2">

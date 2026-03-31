@@ -5,10 +5,11 @@ import {
   MessageCircle, Heart, Share2, ShieldCheck, 
   MoreHorizontal, Repeat2, X, Trash2, Loader2, 
   BarChart, Image as ImageIcon, Twitter, Facebook, Instagram, Ghost, MessageSquare,
-  Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone, ExternalLink
+  Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone, ExternalLink, Coins
 } from 'lucide-react';
-import { User, Post, PostComment, Advertisement } from '../types';
+import { User, Post, PostComment, Advertisement, Report } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
+import { SupabaseService } from '../src/services/supabaseService';
 
 interface CommunityProps {
   user: User;
@@ -23,6 +24,7 @@ interface CommunityProps {
   onFollow: (userId: string) => void;
   onDeletePost: (postId: string) => void;
   onEditPost: (postId: string, content: string) => void;
+  onShare: (postId: string) => void;
 }
 
 const formatRelativeTime = (timestamp: number) => {
@@ -43,7 +45,9 @@ const BannerAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="bg-brand-proph p-1 rounded text-[8px] font-black uppercase text-black">Ad</div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Sponsored</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted">
+            {ad.isSponsored ? 'Sponsored' : 'Not Sponsored'}
+          </span>
         </div>
         <span className="text-[10px] font-black italic text-brand-proph">{ad.title}</span>
       </div>
@@ -77,12 +81,12 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 min-w-0">
             <span className="font-black text-[15px] truncate text-gray-900 dark:text-white flex items-center gap-1 relative">
-              Promoted
+              {ad.isSponsored ? 'Sponsored' : 'Promoted'}
               <span className="absolute -inset-1 bg-brand-proph/10 blur-sm rounded-full -z-10" />
               <span className="w-1.5 h-1.5 rounded-full bg-brand-proph animate-pulse shadow-[0_0_12px_rgba(0,186,124,1)]" />
             </span>
             <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
-            <span className="text-brand-muted text-[15px] truncate">@sponsor</span>
+            <span className="text-brand-muted text-[15px] truncate">@{ad.isSponsored ? 'sponsored' : 'partner'}</span>
           </div>
         </div>
         <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal font-bold italic break-words break-all">{ad.title}</div>
@@ -111,7 +115,7 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
   </div>
 );
 
-const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost }) => {
+const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost, onShare }) => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'all' | 'following' | 'trends' | 'node'>('all');
   const [newPostContent, setNewPostContent] = useState('');
@@ -124,6 +128,13 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
   const [editContent, setEditContent] = useState('');
   const [mediaFile, setMediaFile] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [tippingUser, setTippingUser] = useState<{ id: string, name: string } | null>(null);
+  const [tipAmount, setTipAmount] = useState(10);
+  const [isTippingInProgress, setIsTippingInProgress] = useState(false);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -143,6 +154,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
     const matchesTrend = !selectedTrend || 
       p.content.toLowerCase().includes(selectedTrend.toLowerCase()) ||
       p.id === selectedTrend;
+
+    const isBlocked = user.blockedUsers?.includes(p.userId);
+    if (isBlocked) return false;
 
     if (activeTab === 'following') {
       return matchesSearch && matchesTrend && user.following?.includes(p.userId);
@@ -240,7 +254,57 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
     }
 
     if (shareUrl) window.open(shareUrl, '_blank');
+    onShare(post.id);
     setShowShareMenu(null);
+  };
+
+  const handleTip = async () => {
+    if (!tippingUser) return;
+    setIsTippingInProgress(true);
+    const result = await SupabaseService.transferPoints(user.id, tippingUser.id, tipAmount);
+    if (result.success) {
+      alert(`Successfully tipped ${tipAmount} coins to ${tippingUser.name}!`);
+      setTippingUser(null);
+    } else {
+      alert(result.error);
+    }
+    setIsTippingInProgress(false);
+  };
+
+  const handleBlockUser = async (targetId: string) => {
+    if (!window.confirm('Are you sure you want to block this user? Their posts and messages will no longer be visible to you.')) return;
+    const result = await SupabaseService.blockUser(user.id, targetId);
+    if (result.success) {
+      alert('User blocked successfully.');
+      window.location.reload(); // Refresh to update feed
+    } else {
+      alert('Failed to block user.');
+    }
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportReason) {
+      alert('Please select a reason for reporting.');
+      return;
+    }
+    setIsReporting(true);
+    const report: Partial<Report> = {
+      reporterId: user.id,
+      targetId: reportingPost?.id,
+      targetType: 'post',
+      reason: reportReason,
+      details: reportDetails,
+    };
+    const result = await SupabaseService.submitReport(report);
+    if (result.success) {
+      alert('Report submitted successfully. Our moderators will review it.');
+      setReportingPost(null);
+      setReportReason('');
+      setReportDetails('');
+    } else {
+      alert('Failed to submit report.');
+    }
+    setIsReporting(false);
   };
 
   return (
@@ -321,9 +385,38 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                     <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={async (e) => {
                        const file = e.target.files?.[0];
                        if(file) {
+                          const isVideo = file.type.startsWith('video/');
+                          
+                          if (isVideo) {
+                            // Check video duration
+                            const video = document.createElement('video');
+                            video.preload = 'metadata';
+                            video.onloadedmetadata = async () => {
+                              window.URL.revokeObjectURL(video.src);
+                              if (video.duration > 30) {
+                                alert('Video duration cannot exceed 30 seconds.');
+                                setIsUploading(false);
+                                return;
+                              }
+                              
+                              setIsUploading(true);
+                              try {
+                                const url = await CloudinaryService.uploadFile(file, 'video');
+                                setMediaFile({ url, type: 'video' });
+                              } catch (error) {
+                                console.error('Media upload failed:', error);
+                                alert('Failed to upload media.');
+                              } finally {
+                                setIsUploading(false);
+                              }
+                            };
+                            video.src = URL.createObjectURL(file);
+                            return;
+                          }
+
                           setIsUploading(true);
                           try {
-                            const type = file.type.startsWith('video/') ? 'video' : 'image';
+                            const type = 'image';
                             const url = await CloudinaryService.uploadFile(file, type);
                             setMediaFile({ url, type });
                           } catch (error) {
@@ -484,8 +577,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
 
             const timelineAds = globalAds.filter(ad => 
               ad.status === 'active' && 
-              (ad.adType === 'native' || ad.adType === 'banner') && 
-              ad.placement === 'timeline' &&
+              (!ad.expiryDate || ad.expiryDate > Date.now()) &&
+              ((ad.adTypes && (ad.adTypes.includes('native') || ad.adTypes.includes('banner'))) || (ad.adType === 'native' || ad.adType === 'banner')) && 
+              ((ad.placements && ad.placements.includes('timeline')) || ad.placement === 'timeline') &&
               (!ad.timeFrames || ad.timeFrames.length === 0 || ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day'))
             );
 
@@ -495,7 +589,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
             return (
               <React.Fragment key={post.id}>
                 {adToShow && (
-                  adToShow.adType === 'banner' ? <BannerAd ad={adToShow} /> : <NativeAd ad={adToShow} />
+                  (adToShow.adTypes?.includes('banner') || adToShow.adType === 'banner') ? <BannerAd ad={adToShow} /> : <NativeAd ad={adToShow} />
                 )}
                 <div className="p-4 hover:bg-black/[0.05] dark:hover:bg-brand-black transition-colors cursor-pointer group relative">
                   <div className="flex gap-3">
@@ -549,12 +643,20 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                                   </button>
                                 </>
                               ) : (
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); setShowOptions(null); }}
-                                  className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 text-brand-muted rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
-                                >
-                                  <AlertCircle className="w-4 h-4" /> Report
-                                </button>
+                                <>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setShowOptions(null); setReportingPost(post); }}
+                                    className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 text-brand-muted rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
+                                  >
+                                    <AlertCircle className="w-4 h-4" /> Report
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleBlockUser(post.userId); setShowOptions(null); }}
+                                    className="w-full flex items-center gap-3 p-3 hover:bg-red-500/10 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
+                                  >
+                                    <Ghost className="w-4 h-4" /> Block User
+                                  </button>
+                                </>
                               )}
                             </div>
                           )}
@@ -616,6 +718,13 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
                           <div className="p-2 rounded-full group-hover/btn:bg-red-500/10"><Heart className={`w-4.5 h-4.5 ${post.likes.includes(user.id) ? 'fill-current' : ''}`} /></div>
                           <span className="text-xs">{post.likes.length}</span>
                         </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setTippingUser({ id: post.userId, name: post.userName }); }}
+                          className="flex items-center gap-2 hover:text-yellow-500 group/btn transition-colors"
+                          title="Tip"
+                        >
+                          <div className="p-2 rounded-full group-hover/btn:bg-yellow-500/10"><Coins className="w-4.5 h-4.5" /></div>
+                        </button>
                         <button className="flex items-center gap-2 hover:text-brand-primary group/btn transition-colors" title="Views">
                           <div className="p-2 rounded-full group-hover/btn:bg-brand-primary/10"><BarChart className="w-4.5 h-4.5" /></div>
                           <span className="text-xs">{(post.stats.mediaViews + post.stats.linkClicks).toLocaleString()}</span>
@@ -676,6 +785,115 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts, globalAds 
         </div>
       )}
       </div>
+
+      {/* Tip Modal */}
+      {tippingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Coins className="w-10 h-10 text-yellow-500" />
+              </div>
+              <h3 className="text-xl font-black uppercase italic mb-2">Tip {tippingUser.name}</h3>
+              <p className="text-gray-500 text-sm mb-6">Support this student with some coins!</p>
+              
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[10, 50, 100, 500, 1000, 5000].map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setTipAmount(amount)}
+                    className={`py-3 rounded-2xl font-black text-xs transition-all border-2 ${
+                      tipAmount === amount 
+                        ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
+                        : 'border-gray-100 dark:border-gray-800 hover:border-yellow-500/50'
+                    }`}
+                  >
+                    {amount}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setTippingUser(null)}
+                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleTip}
+                  disabled={isTippingInProgress}
+                  className="flex-1 py-4 bg-yellow-500 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+                >
+                  {isTippingInProgress ? 'Processing...' : 'Send Tip'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {reportingPost && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black uppercase italic">Report Content</h3>
+                <button onClick={() => setReportingPost(null)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full"><X className="w-5 h-5" /></button>
+              </div>
+              
+              <div className="space-y-4 mb-6">
+                <p className="text-sm text-brand-muted font-bold uppercase tracking-widest">Why are you reporting this?</p>
+                {[
+                  'Nudity or sexual content',
+                  'Harassment or bullying',
+                  'Hate speech',
+                  'Violence or physical harm',
+                  'Spam or misleading',
+                  'Intellectual property violation',
+                  'Other'
+                ].map(reason => (
+                  <button
+                    key={reason}
+                    onClick={() => setReportReason(reason)}
+                    className={`w-full text-left p-4 rounded-2xl font-bold text-sm transition-all border-2 ${
+                      reportReason === reason 
+                        ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' 
+                        : 'border-gray-100 dark:border-gray-800 hover:border-brand-proph/30'
+                    }`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+
+              <textarea 
+                value={reportDetails}
+                onChange={e => setReportDetails(e.target.value)}
+                placeholder="Additional details (optional)..."
+                className="w-full bg-gray-50 dark:bg-white/5 border border-brand-border rounded-2xl p-4 text-sm outline-none focus:border-brand-proph mb-6 min-h-[100px]"
+              />
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setReportingPost(null)}
+                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleReportSubmit}
+                  disabled={isReporting}
+                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-500/20 disabled:opacity-50"
+                >
+                  {isReporting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

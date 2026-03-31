@@ -209,10 +209,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
                   <span className="hidden xl:block text-xl italic font-bold tracking-tight">{item.name}</span>
                 </Link>
               ))}
-              <button onClick={() => navigate('/upload')} className="mt-8 w-full bg-brand-proph text-black h-[56px] rounded-full font-black text-lg shadow-xl shadow-brand-proph/20 hover:brightness-110 transition-all flex items-center justify-center xl:px-8 active:scale-95" title="Archive Contribution">
-                <PlusCircle className="xl:hidden w-8 h-8" />
-                <span className="hidden xl:block uppercase tracking-widest text-sm font-black">Archive Intel</span>
-              </button>
+              {(config.isUploadEnabled || user.role === 'admin') && (
+                <button onClick={() => navigate('/upload')} className="mt-8 w-full bg-brand-proph text-black h-[56px] rounded-full font-black text-lg shadow-xl shadow-brand-proph/20 hover:brightness-110 transition-all flex items-center justify-center xl:px-8 active:scale-95" title="Archive Contribution">
+                  <PlusCircle className="xl:hidden w-8 h-8" />
+                  <span className="hidden xl:block uppercase tracking-widest text-sm font-black">Archive Intel</span>
+                </button>
+              )}
               <button onClick={onLogout} className="mt-4 w-full flex items-center gap-4 p-3.5 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all group" title="Logout">
                 <LogOut className="w-6 h-6" />
                 <span className="hidden xl:block text-xl italic font-bold tracking-tight">Logout</span>

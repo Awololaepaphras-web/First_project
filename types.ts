@@ -96,11 +96,13 @@ export interface User {
   referralCode: string;
   followers?: string[];
   following?: string[];
+  blockedUsers?: string[];
   completedTasks?: string[];
   arenaHistory?: string[];
   isVerified?: boolean;
   verificationCode?: string;
   referredBy?: string;
+  hasSeenOnboarding?: boolean;
   referralStats?: { 
     clicks: number; 
     signups: number; 
@@ -209,6 +211,17 @@ export interface Message {
   createdAt: number;
 }
 
+export interface Report {
+  id: string;
+  reporterId: string;
+  targetId: string; // Post ID or User ID
+  targetType: 'post' | 'user' | 'comment';
+  reason: string;
+  details?: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: number;
+}
+
 export interface AdPricing {
   daily: number;
   weekly: number;
@@ -234,8 +247,10 @@ export interface Advertisement {
   userId?: string;
   title: string;
   type: 'image' | 'video';
-  adType: AdType;
-  placement: AdPlacement;
+  adType?: AdType; // Deprecated: use adTypes
+  adTypes: AdType[];
+  placement?: AdPlacement; // Deprecated: use placements
+  placements: AdPlacement[];
   mediaUrl: string;
   duration: number;
   link?: string;
@@ -245,6 +260,8 @@ export interface Advertisement {
   timesPerDay?: number;
   targetReach?: number | 'all';
   timeFrames?: AdTimeFrame[];
+  expiryDate?: number;
+  isSponsored?: boolean;
   status: 'pending' | 'active' | 'paused' | 'completed' | 'payment_pending' | 'pending_review' | 'rejected';
   analytics?: {
     impressions: number;
@@ -287,6 +304,7 @@ export interface SystemConfig {
   isCommunityEnabled: boolean;
   isAdsEnabled: boolean;
   isUserAdsEnabled: boolean;
+  isPastQuestionContributionEnabled: boolean;
   isSplashScreenEnabled: boolean;
   feedWeights: { engagement: number; recency: number; relationship: number; quality: number; eduRelevance: number };
   adWeights: { budget: number; relevance: number; performance: number; targetMatch: number };

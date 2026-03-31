@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
 import { SupabaseService } from '../services/supabaseService';
 import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send } from 'lucide-react';
-import { User, Advertisement, AdTimeFrame, Post, PostComment } from '../../types';
+import { User, Advertisement, AdTimeFrame, Post, PostComment, Report } from '../../types';
 
 interface UniversityFeedProps {
   user: User;
@@ -17,7 +17,9 @@ const BannerAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="bg-brand-proph p-1 rounded text-[8px] font-black uppercase text-black">Ad</div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Sponsored</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+            {ad.isSponsored ? 'Sponsored' : 'Not Sponsored'}
+          </span>
         </div>
         <span className="text-[10px] font-black italic text-brand-proph">{ad.title}</span>
       </div>
@@ -52,9 +54,11 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
           <div className="flex items-center gap-1 min-w-0">
             <span className="font-black text-[15px] truncate text-gray-900 dark:text-white">{ad.title}</span>
             <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
-            <span className="text-gray-500 text-[15px] truncate">@sponsored</span>
+            <span className="text-gray-500 text-[15px] truncate">@{ad.isSponsored ? 'sponsored' : 'partner'}</span>
             <span className="text-gray-500 text-[15px]">•</span>
-            <span className="text-brand-proph text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-brand-proph/10 rounded border border-brand-proph/20">Ad</span>
+            <span className="text-brand-proph text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-brand-proph/10 rounded border border-brand-proph/20">
+              {ad.isSponsored ? 'Sponsored' : 'Partner'}
+            </span>
           </div>
         </div>
         <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all">{ad.description}</div>
@@ -88,6 +92,13 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+
+  // Reporting state
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [reportReason, setReportReason] = useState<Report['reason']>('offensive');
+  const [reportDetails, setReportDetails] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [showPostOptions, setShowPostOptions] = useState<string | null>(null);
 
   // --- THE UNIVERSITY ALGORITHM: LOAD & LISTEN ---
   useEffect(() => {
@@ -200,8 +211,55 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
     setUploading(false);
   };
 
+  const handleBlockUser = async (targetUserId: string) => {
+    if (!user) return;
+    if (window.confirm('Are you sure you want to block this user? Their posts will no longer appear in your feed.')) {
+      const result = await SupabaseService.blockUser(user.id, targetUserId);
+      if (result.success) {
+        alert('User blocked successfully.');
+        // Update local user state if possible, or rely on reload/re-fetch
+        // In a real app, we'd update the global user context
+      }
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!user || !reportingPost) return;
+    setSubmittingReport(true);
+    const result = await SupabaseService.submitReport({
+      reporterId: user.id,
+      targetId: reportingPost.id,
+      targetType: 'post',
+      reason: reportReason,
+      details: reportDetails,
+      status: 'pending',
+      createdAt: Date.now()
+    });
+
+    if (result.success) {
+      alert('Report submitted successfully. Administrators will review it shortly.');
+      setReportingPost(null);
+      setReportDetails('');
+    } else {
+      alert('Failed to submit report. Please try again.');
+    }
+    setSubmittingReport(false);
+  };
+
   const handleLike = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    
     await SupabaseService.togglePostLike(postId, user.id);
+    
+    if (post.userId !== user.id && !post.likes.includes(user.id)) {
+      SupabaseService.sendNotification(post.userId, {
+        title: 'New Like',
+        message: `${user.name} liked your post in ${user.university} feed.`,
+        type: 'success',
+        data: { postId, actorId: user.id }
+      });
+    }
   };
 
   const [replyingTo, setReplyingTo] = useState<Post | null>(null);
@@ -221,12 +279,50 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       likes: []
     };
     await SupabaseService.addPostComment(replyingTo.id, comment);
+    
+    if (replyingTo.userId !== user.id) {
+      SupabaseService.sendNotification(replyingTo.userId, {
+        title: 'New Reply',
+        message: `${user.name} replied to your post in ${user.university} feed.`,
+        type: 'info',
+        data: { postId: replyingTo.id, actorId: user.id }
+      });
+    }
+    
     setReplyingTo(null);
     setReplyContent("");
   };
 
   const handleRepost = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    
     await SupabaseService.togglePostRepost(postId, user.id);
+    
+    if (post.userId !== user.id && !post.reposts.includes(user.id)) {
+      SupabaseService.sendNotification(post.userId, {
+        title: 'New Repost',
+        message: `${user.name} shared your post in ${user.university} feed.`,
+        type: 'info',
+        data: { postId, actorId: user.id }
+      });
+    }
+  };
+
+  const handleShare = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    
+    await SupabaseService.togglePostRepost(postId, user.id);
+    
+    if (post.userId !== user.id && !post.reposts.includes(user.id)) {
+      SupabaseService.sendNotification(post.userId, {
+        title: 'New Share',
+        message: `${user.name} shared your post in ${user.university} feed.`,
+        type: 'info',
+        data: { postId, actorId: user.id }
+      });
+    }
   };
 
   const handleTip = async () => {
@@ -310,12 +406,14 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
 
       {/* Feed */}
       <div className="divide-y divide-gray-200 dark:divide-gray-800">
-        {posts.length === 0 ? (
+        {posts.filter(p => !user.blockedUsers?.includes(p.userId)).length === 0 ? (
           <div className="p-20 text-center">
             <p className="text-gray-500 font-medium italic">No intel has been shared at {user.university} yet. Be the first to broadcast!</p>
           </div>
         ) : (
-          posts.map((post, index) => {
+          posts
+            .filter(p => !user.blockedUsers?.includes(p.userId))
+            .map((post, index) => {
             const hour = new Date().getHours();
             let currentTimeFrame: AdTimeFrame = 'all-day';
             if (hour >= 0 && hour < 6) currentTimeFrame = '12am-6am';
@@ -325,8 +423,9 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
 
             const universityAds = globalAds.filter(ad => 
               ad.status === 'active' && 
-              (ad.adType === 'native' || ad.adType === 'banner') && 
-              (ad.placement === 'university' || ad.placement === 'timeline') &&
+              (!ad.expiryDate || ad.expiryDate > Date.now()) &&
+              ((ad.adTypes && (ad.adTypes.includes('native') || ad.adTypes.includes('banner'))) || (ad.adType === 'native' || ad.adType === 'banner')) && 
+              ((ad.placements && (ad.placements.includes('university') || ad.placements.includes('timeline'))) || (ad.placement === 'university' || ad.placement === 'timeline')) &&
               (!ad.timeFrames || ad.timeFrames.length === 0 || ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day'))
             );
 
@@ -336,7 +435,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
             return (
               <React.Fragment key={post.id}>
                 {adToShow && (
-                  adToShow.adType === 'banner' ? <BannerAd ad={adToShow} /> : <NativeAd ad={adToShow} />
+                  (adToShow.adTypes?.includes('banner') || adToShow.adType === 'banner') ? <BannerAd ad={adToShow} /> : <NativeAd ad={adToShow} />
                 )}
                 <div className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
               <div className="flex gap-3">
@@ -350,6 +449,45 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                     <span className="text-gray-500">@{post.userNickname}</span>
                     <span className="text-gray-500">·</span>
                     <span className="text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</span>
+                    
+                    <div className="ml-auto relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowPostOptions(showPostOptions === post.id ? null : post.id);
+                        }}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                      >
+                        <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                      </button>
+                      
+                      {showPostOptions === post.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden py-2">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportingPost(post);
+                              setShowPostOptions(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2"
+                          >
+                            <ShieldCheck className="w-4 h-4" /> Report Intel
+                          </button>
+                          {post.userId !== user.id && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleBlockUser(post.userId);
+                                setShowPostOptions(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-2"
+                            >
+                              <X className="w-4 h-4" /> Block User
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-1 text-[15px] leading-normal">{post.content}</div>
                   {post.mediaUrl && (
@@ -385,7 +523,10 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                     >
                       <Coins className="w-4.5 h-4.5" />
                     </button>
-                    <button className="hover:text-brand-proph transition-colors">
+                    <button 
+                      onClick={() => handleShare(post.id)}
+                      className="hover:text-brand-proph transition-colors"
+                    >
                       <Share2 className="w-4.5 h-4.5" />
                     </button>
                   </div>
@@ -398,6 +539,71 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
         )}
       </div>
       {/* Modals */}
+      {reportingPost && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+              <h3 className="font-black uppercase italic text-sm">Report Intel</h3>
+              <button onClick={() => setReportingPost(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm font-medium text-gray-500 mb-4 uppercase tracking-widest">Why are you reporting this intel?</p>
+              <div className="space-y-2 mb-6">
+                {[
+                  { id: 'nudity', label: 'Nudity or Sexual Content' },
+                  { id: 'offensive', label: 'Offensive or Hate Speech' },
+                  { id: 'harassment', label: 'Harassment or Bullying' },
+                  { id: 'spam', label: 'Spam or Misleading' },
+                  { id: 'other', label: 'Other Violation' }
+                ].map(reason => (
+                  <button
+                    key={reason.id}
+                    onClick={() => setReportReason(reason.id as any)}
+                    className={`w-full p-4 rounded-2xl text-left font-bold text-sm transition-all border-2 ${
+                      reportReason === reason.id 
+                        ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' 
+                        : 'border-gray-100 dark:border-gray-800 hover:border-brand-proph/50'
+                    }`}
+                  >
+                    {reason.label}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 text-sm outline-none focus:border-brand-proph transition-colors min-h-[100px]"
+                placeholder="Additional details (optional)..."
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+              />
+              
+              <div className="mt-6 p-4 bg-red-50 dark:bg-red-500/10 rounded-2xl border border-red-100 dark:border-red-500/20 mb-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 leading-relaxed">
+                  Strict Rule: Nudity, offensive content, or anything violating the rights of others is strictly prohibited. Violators face immediate penalties including point deduction or permanent ban.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setReportingPost(null)}
+                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSubmitReport}
+                  disabled={submittingReport}
+                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-500/20 disabled:opacity-50"
+                >
+                  {submittingReport ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {replyingTo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">

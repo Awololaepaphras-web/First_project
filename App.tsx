@@ -37,14 +37,19 @@ import AdAnalytics from './views/AdAnalytics';
 import AdRevenueSharing from './views/AdRevenueSharing';
 import AdminPaymentVerification from './views/AdminPaymentVerification';
 import Referrals from './views/Referrals';
+import LeaderboardView from './views/LeaderboardView';
+import MultCloudUploader from './components/MultCloudUploader';
 import PointTransfer from './views/PointTransfer';
 import VercelSqlView from './views/VercelSqlView';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
+import BlockedUsers from './views/BlockedUsers';
 import FullscreenAd from './components/FullscreenAd';
+import OnboardingTutorial from './src/components/OnboardingTutorial';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
 import { supabase } from './src/lib/supabase';
+import { useAlgorithmSettings } from './src/hooks/useRealtimeRanking';
 import { User, Post, PostComment, SystemConfig, University, PastQuestion, WithdrawalRequest, EarnTask, Notification, Message, Advertisement, AdTimeFrame, AdPlacement, PaymentVerification } from './types';
 import { MOCK_QUESTIONS, UNIVERSITIES as INITIAL_UNIVERSITIES, UNIVERSITY_COLLEGES as INITIAL_COLLEGES, COLLEGE_DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants';
 
@@ -56,6 +61,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   isCommunityEnabled: true,
   isAdsEnabled: true,
   isUserAdsEnabled: true,
+  isPastQuestionContributionEnabled: true,
   isSplashScreenEnabled: true,
   feedWeights: { engagement: 0.4, recency: 0.3, relationship: 0.1, quality: 0.1, eduRelevance: 0.1 },
   adWeights: { budget: 0.5, relevance: 0.2, performance: 0.2, targetMatch: 0.1 },
@@ -148,6 +154,7 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [globalAds, setGlobalAds] = useState<Advertisement[]>([]);
+  const { settings: adSettings } = useAlgorithmSettings('ad_delivery');
   const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerification[]>([]);
   const [universities, setUniversities] = useState<University[]>(INITIAL_UNIVERSITIES);
   const [universityColleges, setUniversityColleges] = useState<Record<string, string[]>>(INITIAL_COLLEGES);
@@ -155,6 +162,7 @@ const App: React.FC = () => {
   const [appLogo, setAppLogo] = useState<string>(localStorage.getItem('proph_app_logo') || '');
   const [appIcon, setAppIcon] = useState<string>(localStorage.getItem('proph_app_icon') || '');
   const [showSplashScreen, setShowSplashScreen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   useEffect(() => {
     if (config.isSplashScreenEnabled && !sessionStorage.getItem('proph_splash_shown')) {
@@ -187,11 +195,43 @@ const App: React.FC = () => {
     }
   }, [appIcon]);
 
+  useEffect(() => {
+    if (user && !user.hasSeenOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
+
+  const handleOnboardingComplete = async () => {
+    if (user) {
+      const updatedUser = { ...user, hasSeenOnboarding: true };
+      setUser(updatedUser);
+      setShowOnboarding(false);
+      await SupabaseService.saveUser(updatedUser);
+      DB.saveSession(updatedUser);
+    }
+  };
+
+  const handleOnboardingSkip = async () => {
+    if (user) {
+      const updatedUser = { ...user, hasSeenOnboarding: true };
+      setUser(updatedUser);
+      setShowOnboarding(false);
+      await SupabaseService.saveUser(updatedUser);
+      DB.saveSession(updatedUser);
+    }
+  };
+
   const [navigationCount, setNavigationCount] = useState(0);
   const [loginTime, setLoginTime] = useState<number | null>(null);
   const [showAd, setShowAd] = useState(false);
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [hasShownInitialAd, setHasShownInitialAd] = useState(false);
+
+  useEffect(() => {
+    if (user && !localStorage.getItem(`proph_tutorial_shown_${user.id}`)) {
+      localStorage.setItem(`proph_tutorial_shown_${user.id}`, 'true');
+    }
+  }, [user]);
 
   useEffect(() => {
     const initData = async () => {
@@ -591,22 +631,50 @@ const App: React.FC = () => {
 
     const validAds = globalAds.filter(ad => {
       if (ad.status !== 'active') return false;
+      if (ad.expiryDate && ad.expiryDate < Date.now()) return false;
       // Only trigger popups or fullscreens via this controller
-      if (ad.adType !== 'popup' && ad.adType !== 'fullscreen') return false;
+      const isPopupOrFullscreen = (ad.adTypes && (ad.adTypes.includes('popup') || ad.adTypes.includes('fullscreen'))) || (ad.adType === 'popup' || ad.adType === 'fullscreen');
+      if (!isPopupOrFullscreen) return false;
       
       // If a specific placement is requested, filter for it
-      if (placement && ad.placement !== placement) return false;
+      if (placement) {
+        const hasPlacement = (ad.placements && ad.placements.includes(placement)) || ad.placement === placement;
+        if (!hasPlacement) return false;
+      }
       
       if (!ad.timeFrames || ad.timeFrames.length === 0) return true;
       return ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day');
     });
 
     if (validAds.length > 0) {
-      const randomAd = validAds[Math.floor(Math.random() * validAds.length)];
-      setCurrentAd(randomAd);
+      // Apply Bid x Quality ranking algorithm
+      const bidWeight = adSettings?.bid_weight ?? 1.0;
+      const qualityWeight = adSettings?.quality_weight ?? 1.0;
+
+      const rankedAds = validAds.map(ad => {
+        // Calculate average CTR from analytics
+        const avgCtr = ad.analytics && ad.analytics.length > 0
+          ? ad.analytics.reduce((acc, curr) => acc + curr.ctr, 0) / ad.analytics.length
+          : 0.01; // Default low CTR for new ads
+
+        // Calculate total spend/bid
+        const totalBid = ad.analytics && ad.analytics.length > 0
+          ? ad.analytics.reduce((acc, curr) => acc + curr.spend, 0)
+          : 100; // Default base bid for ranking
+
+        const score = (totalBid * bidWeight) * (avgCtr * qualityWeight);
+        return { ad, score };
+      });
+
+      // Sort by score descending
+      rankedAds.sort((a, b) => b.score - a.score);
+
+      // Select the top ad
+      const topAd = rankedAds[0].ad;
+      setCurrentAd(topAd);
       setShowAd(true);
     }
-  }, [globalAds]);
+  }, [globalAds, adSettings]);
 
   const handleApproveQuestion = (id: string) => {
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'approved' } : q));
@@ -641,7 +709,7 @@ const App: React.FC = () => {
     DB.savePost(newPost);
   };
 
-  const trackEngagement = async (postId: string, type: 'like' | 'repost' | 'reply' | 'link' | 'profile' | 'media' | 'ad_click', text?: string) => {
+  const trackEngagement = async (postId: string, type: 'like' | 'repost' | 'reply' | 'link' | 'profile' | 'media' | 'ad_click' | 'share', text?: string) => {
     if (!user) return;
     
     const post = posts.find(p => p.id === postId);
@@ -656,7 +724,7 @@ const App: React.FC = () => {
       if (type === 'media') stats.mediaViews++;
       
       const likes = type === 'like' ? (p.likes.includes(user.id) ? p.likes.filter(id => id !== user.id) : [...p.likes, user.id]) : p.likes;
-      const reposts = type === 'repost' ? (p.reposts.includes(user.id) ? p.reposts.filter(id => id !== user.id) : [...p.reposts, user.id]) : p.reposts;
+      const reposts = (type === 'repost' || type === 'share') ? (p.reposts.includes(user.id) ? p.reposts.filter(id => id !== user.id) : [...p.reposts, user.id]) : p.reposts;
       
       let comments = p.comments;
       if (type === 'reply' && text) {
@@ -677,7 +745,7 @@ const App: React.FC = () => {
     // Call Supabase Service
     if (type === 'like') {
       await SupabaseService.togglePostLike(postId, user.id);
-    } else if (type === 'repost') {
+    } else if (type === 'repost' || type === 'share') {
       await SupabaseService.togglePostRepost(postId, user.id);
     } else if (type === 'reply' && text) {
       const newComment: PostComment = {
@@ -693,12 +761,42 @@ const App: React.FC = () => {
       await SupabaseService.trackPostEngagement(postId, type as any, user.id);
     }
 
+    // Send Notification to post owner if it's not the current user
+    if (post.userId !== user.id) {
+      let title = '';
+      let message = '';
+      let notifType: 'info' | 'success' | 'warning' | 'bounty' = 'info';
+
+      if (type === 'like' && !post.likes.includes(user.id)) {
+        title = 'New Like';
+        message = `${user.name} liked your post: "${post.content.substring(0, 30)}..."`;
+        notifType = 'success';
+      } else if ((type === 'repost' || type === 'share') && !post.reposts.includes(user.id)) {
+        title = type === 'repost' ? 'New Repost' : 'New Share';
+        message = `${user.name} ${type === 'repost' ? 'reposted' : 'shared'} your post: "${post.content.substring(0, 30)}..."`;
+        notifType = 'info';
+      } else if (type === 'reply') {
+        title = 'New Reply';
+        message = `${user.name} replied to your post: "${text?.substring(0, 30)}..."`;
+        notifType = 'info';
+      }
+
+      if (title) {
+        SupabaseService.sendNotification(post.userId, {
+          title,
+          message,
+          type: notifType,
+          data: { postId: post.id, actorId: user.id }
+        });
+      }
+    }
+
     // Update local user engagement stats
     setAllUsers(prev => prev.map(u => {
       if (u.id !== user.id) return u;
       const es = u.engagementStats || { totalLikesGiven: 0, totalRepliesGiven: 0, totalRepostsGiven: 0, totalLinkClicks: 0, totalProfileClicks: 0, totalMediaViews: 0 };
       if (type === 'like') es.totalLikesGiven++;
-      if (type === 'repost') es.totalRepostsGiven++;
+      if (type === 'repost' || type === 'share') es.totalRepostsGiven++;
       if (type === 'reply') es.totalRepliesGiven++;
       if (type === 'link') es.totalLinkClicks++;
       if (type === 'profile') es.totalProfileClicks++;
@@ -743,6 +841,18 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleUnblock = async (targetUserId: string) => {
+    if (!user) return;
+    const result = await SupabaseService.unblockUser(user.id, targetUserId);
+    if (result.success) {
+      const updatedBlocked = (user.blockedUsers || []).filter(id => id !== targetUserId);
+      const updatedUser = { ...user, blockedUsers: updatedBlocked };
+      setUser(updatedUser);
+      DB.saveSession(updatedUser);
+      alert('User unblocked successfully.');
+    }
+  };
+
   const handleDeletePost = async (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
     await DB.deletePost(postId);
@@ -761,6 +871,9 @@ const App: React.FC = () => {
           splashUrl={config.splashScreenUrl}
           onComplete={() => setShowSplashScreen(false)} 
         />
+      )}
+      {showOnboarding && user && (
+        <OnboardingTutorial onComplete={handleOnboardingComplete} onSkip={handleOnboardingSkip} />
       )}
       <Router>
         <AdController 
@@ -785,9 +898,9 @@ const App: React.FC = () => {
             (user ? <Navigate to="/dashboard" /> : <Signup onSignup={u => { setUser(u); setAllUsers([...allUsers, u]); setLoginTime(Date.now()); }} allUsers={allUsers} onReferralClick={()=>{}} />)
           } />
           
-          <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} /> : <Navigate to="/login" />} />
+          <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} config={config} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} /> : <Navigate to="/login" />} />
+          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} /> : <Navigate to="/login" />} />
           <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={globalAds} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
@@ -821,7 +934,7 @@ const App: React.FC = () => {
           <Route path="/monetization" element={user ? <AdRevenueSharing user={user} /> : <Navigate to="/login" />} />
           <Route path="/settings" element={user ? <Settings user={user} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
           <Route path="/withdraw" element={user ? <Withdrawal user={user} isEnabled={config.isWithdrawalEnabled} conversionRate={config.nairaPerPoint} onAddRequest={req => setWithdrawalRequests([req, ...withdrawalRequests])} requests={withdrawalRequests} /> : <Navigate to="/login" />} />
-          <Route path="/upload" element={user ? <UserUpload user={user} isEnabled={config.isUploadEnabled} onUpload={q => { 
+          <Route path="/upload" element={user ? <UserUpload user={user} isEnabled={config.isPastQuestionContributionEnabled} onUpload={q => { 
             setQuestions([q, ...questions]); 
             DB.saveDocument(q);
             // Forceful visibility: Post to community feed
@@ -885,7 +998,10 @@ const App: React.FC = () => {
           <Route path="/premium" element={user ? <Premium config={config} onUpgrade={(u) => setUser(u)} /> : <Navigate to="/login" />} />
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
           <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />
+          <Route path="/leaderboard" element={<LeaderboardView />} />
+          <Route path="/storage" element={user ? <div className="p-6 lg:p-12 max-w-4xl mx-auto"><MultCloudUploader userId={user.id} /></div> : <Navigate to="/login" />} />
           <Route path="/transfer" element={user ? <PointTransfer user={user} /> : <Navigate to="/login" />} />
+          <Route path="/blocked-users" element={user ? <BlockedUsers user={user} allUsers={allUsers} onUnblock={handleUnblock} /> : <Navigate to="/login" />} />
           <Route path="/forgot-password" element={<ForgotPassword allUsers={allUsers} />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/vercel-sql" element={<VercelSqlView />} />
@@ -985,25 +1101,25 @@ const AdController: React.FC<{
   }, [user, isUserPanel, hasShownInitialAd, globalAds, triggerAd, setHasShownInitialAd]);
 
   useEffect(() => {
-    if (user && loginTime && !hasShownInitialAd && isUserPanel) {
+    if (user && loginTime && isUserPanel) {
       const timer = setInterval(() => {
         const elapsed = Date.now() - loginTime;
         if (elapsed >= 60000) { // 1 minute
           triggerAd();
-          setHasShownInitialAd(true);
-          clearInterval(timer);
         }
-      }, 5000);
+      }, 60000); // Check every minute
       return () => clearInterval(timer);
     }
-  }, [user, loginTime, hasShownInitialAd, triggerAd, isUserPanel, setHasShownInitialAd]);
+  }, [user, loginTime, triggerAd, isUserPanel]);
 
   useEffect(() => {
     if (user && navigationCount >= 7 && isUserPanel) {
       triggerAd();
       setNavigationCount(0);
+    } else if (user && isUserPanel && Math.random() < 0.05) { // 5% random chance on navigation
+      triggerAd();
     }
-  }, [user, navigationCount, triggerAd, isUserPanel, setNavigationCount]);
+  }, [user, navigationCount, triggerAd, isUserPanel, setNavigationCount, pathname]);
 
   return null;
 };

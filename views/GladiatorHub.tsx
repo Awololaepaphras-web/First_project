@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Wifi, Users, CloudUpload, Play, CheckCircle2, 
   X, ShieldCheck, Loader2, Sparkles, Wand2, 
-  Wallet, AlertTriangle, ArrowRight, BookOpen,
+  Coins, AlertTriangle, ArrowRight, BookOpen,
   History, User as UserIcon, Swords, Zap, Award,
   Settings, Dice1, LayoutList
 } from 'lucide-react';
@@ -402,7 +402,7 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
                     <h2 className="text-3xl font-black text-white italic uppercase">Arena Verdict</h2>
                     {bountyResult?.shared && (
                       <div className="p-4 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 animate-bounce">
-                         <Zap className="w-4 h-4 fill-current" /> Tie Detected! 1000pt Bounty Shared Once Daily
+                         <Zap className="w-4 h-4 fill-current" /> Tie Detected! 1000 coin Bounty Shared Once Daily
                       </div>
                     )}
                  </div>
@@ -416,7 +416,7 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
                             </div>
                             <div>
                                <p className="font-black text-white uppercase italic">{m.name}</p>
-                               {bountyResult?.shared && <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">+{bountyResult.amount} PT Bounty</p>}
+                               {bountyResult?.shared && <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">+{bountyResult.amount} Coin Bounty</p>}
                             </div>
                          </div>
                          <div className="text-right">
@@ -454,11 +454,11 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
           </div>
 
           {/* Sidebar */}
-          <aside className="space-y-6">
+           <aside className="space-y-6">
             <div className="bg-brand-card p-8 rounded-[2.5rem] border border-brand-border shadow-sm space-y-8">
                <div className="space-y-4">
                   <h3 className="text-[10px] font-black text-brand-muted uppercase tracking-widest flex items-center gap-2">
-                    <Wallet className="w-3.5 h-3.5 text-green-500" /> Purse Context
+                    <Coins className="w-3.5 h-3.5 text-green-500" /> Purse Context
                   </h3>
                   <div className="p-5 bg-brand-black rounded-3xl border border-brand-border flex justify-between items-center">
                      <div>
@@ -478,7 +478,7 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
                   <div className="p-5 bg-brand-proph/5 rounded-3xl border border-brand-proph/20 space-y-3">
                     <p className="text-[10px] font-bold text-brand-proph uppercase tracking-widest italic">Ad Revenue Model</p>
                     <p className="text-[11px] text-brand-muted font-medium italic leading-relaxed">
-                      Your earnings are powered by ads deployed across the PROPH network. The total payout you receive is directly dependent on your accumulated <span className="text-brand-proph font-black">Prophy Points</span>.
+                      Your earnings are powered by ads deployed across the PROPH network. The total payout you receive is directly dependent on your accumulated <span className="text-brand-proph font-black">Prophy Coins</span>.
                     </p>
                     <div className="pt-2">
                        <button 
@@ -497,7 +497,7 @@ const LocalHub: React.FC<GladiatorHubProps> = ({ user }) => {
                     {[
                       'Unified challenges allow bounty splits',
                       'Individual trials test personal grit',
-                      'Ties split the 1000pt house pool',
+                      'Ties split the 1000 coin house pool',
                       'Bounty shared limit: 1 per day',
                       'Arena results linked to node reputation'
                     ].map((step, idx) => (

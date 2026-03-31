@@ -88,14 +88,14 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
               <DollarSign className="w-4 h-4" /> REVENUE SYNDICATE
             </div>
             <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none text-gray-900 dark:text-white">Ad Revenue <span className="text-brand-proph">Sharing</span></h1>
-            <p className="text-brand-muted font-medium italic">Monetize your neural contributions through the Federal Ad Stream. Your payout is directly linked to your <span className="text-brand-proph font-black">Prophy Points</span>.</p>
+            <p className="text-brand-muted font-medium italic">Monetize your neural contributions through the Federal Ad Stream. Your payout is directly linked to your <span className="text-brand-proph font-black">Prophy Coins</span>.</p>
           </div>
           
           <div className="flex flex-col items-end gap-4">
             <div className="flex items-center gap-6">
               <div className="text-right">
-                <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest">Prophy Points</p>
-                <p className="text-2xl font-black text-yellow-500 italic">{user.monetization?.pointsEarned || 0} PTS</p>
+                <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest">Prophy Coins</p>
+                <p className="text-2xl font-black text-yellow-500 italic">{user.monetization?.pointsEarned || 0} COINS</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-black text-brand-muted uppercase tracking-widest">Pending Balance</p>
@@ -168,7 +168,7 @@ const AdRevenueSharing: React.FC<AdRevenueSharingProps> = ({ user }) => {
                     {isMonetized ? <CheckCircle2 className="w-4 h-4 text-brand-proph" /> : <Lock className="w-4 h-4 text-brand-muted" />}
                   </div>
                   <p className="text-[9px] text-brand-muted italic leading-relaxed">
-                    Once eligible for points, you earn 1 <span className="text-brand-proph font-black">Prophy Point</span> for every ₦100 of calculated ad revenue. Full monetization enables direct Naira payouts.
+                    Once eligible for coins, you earn 1 <span className="text-brand-proph font-black">Prophy Coin</span> for every ₦100 of calculated ad revenue. Full monetization enables direct Naira payouts.
                   </p>
                 </div>
               </div>

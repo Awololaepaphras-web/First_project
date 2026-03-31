@@ -73,22 +73,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, allUsers }) => {
       if (foundUser && (foundUser as any).password === password) {
         onLogin(foundUser);
         navigate('/');
-      } else if (identifier === 'admin@proph.edu.ng' && password === '197005') {
-         const adminUser: User = {
-          id: 'admin-1',
-          name: 'System Administrator',
-          nickname: 'admin',
-          email: 'admin@proph.edu.ng',
-          university: 'Federal Network',
-          level: 'N/A',
-          role: 'admin',
-          isVerified: true,
-          referralCode: 'SYSTEM_ADMIN',
-          referralStats: { clicks: 0, signups: 0, withdrawals: 0, loginStreaks: 0 },
-          status: 'active'
-        };
-        onLogin(adminUser);
-        navigate('/Epaphrastheadminofprophandloveforx');
       } else {
         setError('Invalid identity or account does not exist.');
       }

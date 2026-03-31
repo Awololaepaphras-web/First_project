@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { User, EarnTask } from '../types';
-import { Wallet, TrendingUp, Trophy, Zap, ExternalLink, ChevronRight } from 'lucide-react';
+import { Wallet, TrendingUp, Trophy, Zap, ExternalLink, ChevronRight, Coins } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TasksProps {
@@ -23,7 +23,7 @@ const Tasks: React.FC<TasksProps> = ({ user, tasks, onCompleteTask }) => {
             <p className="text-brand-muted font-medium italic">Complete institutional actions to build your war chest.</p>
           </div>
           <div className="bg-brand-proph p-8 rounded-[3rem] text-black flex items-center gap-6 shadow-2xl shadow-brand-proph/20">
-             <div className="w-14 h-14 bg-black/10 rounded-2xl flex items-center justify-center"><Wallet className="w-8 h-8" /></div>
+             <div className="w-14 h-14 bg-black/10 rounded-2xl flex items-center justify-center"><Coins className="w-8 h-8" /></div>
              <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Node Wallet</p>
                 <p className="text-4xl font-black">{user.points || 0}</p>
@@ -37,7 +37,7 @@ const Tasks: React.FC<TasksProps> = ({ user, tasks, onCompleteTask }) => {
                 <div>
                    <div className="flex justify-between items-start mb-8">
                       <div className="w-12 h-12 bg-brand-proph/10 text-brand-proph rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><TrendingUp className="w-6 h-6" /></div>
-                      <span className="text-xl font-black dark:text-white">+{task.points} <span className="text-[10px] text-brand-muted uppercase">pts</span></span>
+                      <span className="text-xl font-black dark:text-white">+{task.points} <span className="text-[10px] text-brand-muted uppercase">coins</span></span>
                    </div>
                    <h3 className="text-2xl font-black italic dark:text-white mb-2 leading-tight uppercase">{task.title}</h3>
                    <p className="text-brand-muted font-medium text-sm italic">Perform the required action and verify for instant bounty payout.</p>

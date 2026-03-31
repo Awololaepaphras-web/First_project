@@ -28,7 +28,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
       try {
         await navigator.share({
           title: 'Join Proph - Federal University Past Questions',
-          text: 'Get access to thousands of Nigerian Federal University past questions and earn Prophy Points!',
+          text: 'Get access to thousands of Nigerian Federal University past questions and earn Prophy Coins!',
           url: referralLink,
         });
       } catch (err) {
@@ -53,7 +53,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
             Recruit <span className="text-brand-proph">Peers</span>
           </h1>
           <p className="max-w-2xl mx-auto text-gray-500 dark:text-brand-muted font-medium text-lg italic">
-            Expand the federal network and build your wealth. Multi-stage Prophy Point rewards for every node you bring online.
+            Expand the federal network and build your wealth. Multi-stage Prophy Coin rewards for every node you bring online.
           </p>
         </div>
 
@@ -63,7 +63,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
               <div className="w-16 h-16 bg-brand-proph/10 text-brand-proph rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <UserPlus className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 Prophy Points</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 Prophy Coins</p>
               <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Signup Reward</p>
               <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Awarded upon successful account verification.</p>
            </div>
@@ -72,7 +72,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
               <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <Clock className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 Prophy Points/day</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 Prophy Coins/day</p>
               <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Active Node Bonus</p>
               <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Earn when referee logins daily for 4 days.</p>
            </div>
@@ -81,7 +81,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
               <div className="w-16 h-16 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <Zap className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+60 Prophy Points</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+60 Prophy Coins</p>
               <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Conversion Bounty</p>
               <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Earned when referee makes first withdrawal.</p>
            </div>
@@ -149,7 +149,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
               <div className="space-y-6">
                  <h3 className="text-2xl font-black italic uppercase text-brand-proph">Growth Protocol</h3>
                  <p className="text-gray-400 text-sm font-medium leading-relaxed italic">
-                    Prophy Points are automatically synchronized once verification checkpoints are met. Ensure your recruits complete their institutional node verification for rewards to activate.
+                    Prophy Coins are automatically synchronized once verification checkpoints are met. Ensure your recruits complete their institutional node verification for rewards to activate.
                  </p>
                  <div className="p-6 bg-white/5 rounded-3xl border border-white/10 flex items-start gap-4">
                     <ShieldCheck className="w-6 h-6 text-brand-proph flex-shrink-0" />

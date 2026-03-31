@@ -30,7 +30,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
     setIsTippingInProgress(true);
     const result = await SupabaseService.transferPoints(currentUser.id, user.id, tipAmount);
     if (result.success) {
-      alert(`Successfully tipped ${tipAmount} points to ${user.name}!`);
+      alert(`Successfully tipped ${tipAmount} coins to ${user.name}!`);
       setShowTipModal(false);
     } else {
       alert(result.error);
@@ -42,8 +42,18 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
     const targetUser = allUsers.find(u => u.id === id);
     if (targetUser) {
       setUser(targetUser);
+      
+      // Send notification if viewing someone else's profile
+      if (currentUser.id !== targetUser.id) {
+        SupabaseService.sendNotification(targetUser.id, {
+          title: 'Profile View',
+          message: `${currentUser.name} viewed your profile.`,
+          type: 'info',
+          data: { viewerId: currentUser.id }
+        });
+      }
     }
-  }, [id, allUsers]);
+  }, [id, allUsers, currentUser.id, currentUser.name]);
 
   if (!user) {
     return (
@@ -165,6 +175,10 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
             <span className="font-black dark:text-white">{(user.followers || []).length}</span>
             <span className="text-brand-muted ml-1 text-sm font-bold uppercase tracking-widest">Followers</span>
           </button>
+          <div className="flex items-center gap-1">
+            <span className="font-black dark:text-white">{userPosts.reduce((acc, p) => acc + (p.likes?.length || 0), 0)}</span>
+            <span className="text-brand-muted ml-1 text-sm font-bold uppercase tracking-widest">Likes</span>
+          </div>
         </div>
 
         {currentUser.id === user.id && !user.isSugVerified && (
@@ -319,7 +333,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
                 <Coins className="w-10 h-10 text-yellow-500" />
               </div>
               <h3 className="text-xl font-black uppercase italic mb-2">Tip {user.name}</h3>
-              <p className="text-gray-500 text-sm mb-6">Support this student with some points!</p>
+              <p className="text-gray-500 text-sm mb-6">Support this student with some coins!</p>
               
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {[10, 50, 100, 500, 1000, 5000].map(amount => (

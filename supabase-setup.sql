@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS public.users (
     engagement_stats JSONB DEFAULT '{"totalLikesGiven": 0, "totalRepliesGiven": 0, "totalRepostsGiven": 0, "totalLinkClicks": 0, "totalProfileClicks": 0, "totalMediaViews": 0}',
     gladiator_earnings JSONB DEFAULT '{"total": 0, "arena": 0, "vault": 0, "referrals": 0}',
     staff_permissions TEXT[] DEFAULT '{}',
+    blocked_users UUID[] DEFAULT '{}',
+    has_seen_onboarding BOOLEAN DEFAULT false,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -123,19 +126,23 @@ CREATE TABLE IF NOT EXISTS public.messages (
 CREATE TABLE IF NOT EXISTS public.advertisements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.users(id),
+    title TEXT,
     media_url TEXT,
     media_type TEXT,
-    ad_type TEXT,
-    placement TEXT,
+    ad_type TEXT[],
+    placement TEXT[],
     link TEXT,
     duration INTEGER,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'expired', 'rejected')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'paused', 'completed', 'payment_pending', 'pending_review', 'rejected')),
     target_location TEXT,
     campaign_duration INTEGER,
     campaign_unit TEXT,
     times_per_day INTEGER,
     target_reach TEXT,
     time_frames TEXT[] DEFAULT '{}',
+    expiry_date BIGINT,
+    is_sponsored BOOLEAN DEFAULT false,
+    analytics JSONB DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -217,6 +224,18 @@ CREATE TABLE IF NOT EXISTS public.gladiator_vault (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Reports Table
+CREATE TABLE IF NOT EXISTS public.reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reporter_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    target_id UUID NOT NULL,
+    target_type TEXT NOT NULL CHECK (target_type IN ('post', 'user', 'comment')),
+    reason TEXT NOT NULL,
+    details TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'resolved', 'dismissed')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- 4. SECURITY FUNCTIONS
 
 -- Function to check if the current user is an admin
@@ -250,6 +269,9 @@ ALTER TABLE public.payment_verifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gladiator_vault ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_logs ENABLE ROW LEVEL SECURITY;
 
 -- Users Policies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.users FOR SELECT USING (true);
@@ -423,6 +445,20 @@ CREATE POLICY "Admins can manage universities" ON public.universities FOR ALL US
 CREATE POLICY "System config is viewable by everyone" ON public.system_config FOR SELECT USING (true);
 CREATE POLICY "Only admins can update system config" ON public.system_config FOR ALL USING (is_admin());
 
+-- Reports Policies
+CREATE POLICY "Admins can view all reports" ON public.reports FOR SELECT USING (is_admin());
+CREATE POLICY "Users can create reports" ON public.reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+CREATE POLICY "Admins can update reports" ON public.reports FOR UPDATE USING (is_admin());
+
+-- Conversations Policies
+CREATE POLICY "Users can view their own conversations" ON public.conversations FOR SELECT USING (auth.uid() = user1_id OR auth.uid() = user2_id);
+CREATE POLICY "Users can create conversations" ON public.conversations FOR INSERT WITH CHECK (auth.uid() = user1_id OR auth.uid() = user2_id);
+CREATE POLICY "Users can update their own conversations" ON public.conversations FOR UPDATE USING (auth.uid() = user1_id OR auth.uid() = user2_id);
+
+-- Admin Logs Policies
+CREATE POLICY "Admins can view all admin logs" ON public.admin_logs FOR SELECT USING (is_admin());
+CREATE POLICY "Admins can create admin logs" ON public.admin_logs FOR INSERT WITH CHECK (is_admin());
+
 -- 7. INITIAL DATA (SEEDING)
 
 -- Initial Universities
@@ -454,6 +490,7 @@ VALUES ('default', '{
   "isCommunityEnabled": true,
   "isAdsEnabled": true,
   "isUserAdsEnabled": true,
+  "isPastQuestionContributionEnabled": true,
   "isSplashScreenEnabled": true,
   "splashScreenUrl": "",
   "feedWeights": { "engagement": 0.4, "recency": 0.3, "relationship": 0.1, "quality": 0.1, "eduRelevance": 0.1 },
@@ -529,7 +566,7 @@ BEGIN
   u1 := LEAST(NEW.sender_id, NEW.receiver_id);
   u2 := GREATEST(NEW.sender_id, NEW.receiver_id);
 
-  -- B. Update Last Message in Conversations
+-- B. Update Last Message in Conversations
   INSERT INTO public.conversations (user1_id, user2_id, last_message, last_message_time)
   VALUES (u1, u2, NEW.content, NEW.created_at)
   ON CONFLICT (user1_id, user2_id) DO UPDATE
@@ -553,6 +590,59 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER on_message_after_insert
   AFTER INSERT ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.handle_message_after_insert();
+
+-- Notification Trigger for Posts (Likes, Reposts, Comments)
+CREATE OR REPLACE FUNCTION public.handle_post_notification()
+RETURNS TRIGGER AS $$
+DECLARE
+    new_like_count INTEGER;
+    old_like_count INTEGER;
+    new_repost_count INTEGER;
+    old_repost_count INTEGER;
+    new_comment_count INTEGER;
+    old_comment_count INTEGER;
+    actor_id UUID;
+BEGIN
+    -- Detect Likes
+    new_like_count := array_length(NEW.likes, 1);
+    old_like_count := array_length(OLD.likes, 1);
+    IF COALESCE(new_like_count, 0) > COALESCE(old_like_count, 0) THEN
+        actor_id := NEW.likes[new_like_count];
+        IF actor_id != NEW.user_id THEN
+            INSERT INTO public.notifications (user_id, title, message, type, data)
+            VALUES (NEW.user_id, 'New Like', 'Someone liked your post!', 'info', jsonb_build_object('postId', NEW.id, 'actorId', actor_id, 'type', 'like'));
+        END IF;
+    END IF;
+
+    -- Detect Reposts
+    new_repost_count := array_length(NEW.reposts, 1);
+    old_repost_count := array_length(OLD.reposts, 1);
+    IF COALESCE(new_repost_count, 0) > COALESCE(old_repost_count, 0) THEN
+        actor_id := NEW.reposts[new_repost_count];
+        IF actor_id != NEW.user_id THEN
+            INSERT INTO public.notifications (user_id, title, message, type, data)
+            VALUES (NEW.user_id, 'New Repost', 'Someone reposted your scholarly thought!', 'info', jsonb_build_object('postId', NEW.id, 'actorId', actor_id, 'type', 'repost'));
+        END IF;
+    END IF;
+
+    -- Detect Comments
+    new_comment_count := jsonb_array_length(NEW.comments);
+    old_comment_count := jsonb_array_length(OLD.comments);
+    IF COALESCE(new_comment_count, 0) > COALESCE(old_comment_count, 0) THEN
+        actor_id := (NEW.comments->(new_comment_count - 1)->>'userId')::UUID;
+        IF actor_id != NEW.user_id THEN
+            INSERT INTO public.notifications (user_id, title, message, type, data)
+            VALUES (NEW.user_id, 'New Reply', 'Someone replied to your post!', 'info', jsonb_build_object('postId', NEW.id, 'actorId', actor_id, 'type', 'comment'));
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_post_update_notification
+  AFTER UPDATE ON public.posts
+  FOR EACH ROW EXECUTE FUNCTION public.handle_post_notification();
 
 -- Function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -611,7 +701,7 @@ CREATE TABLE IF NOT EXISTS public.admin_logs (
 -- Ensure real-time is enabled for all tables
 DO $$
 DECLARE
-    tables TEXT[] := ARRAY['posts', 'users', 'documents', 'messages', 'advertisements', 'tasks', 'withdrawal_requests', 'system_config', 'payment_verifications', 'universities', 'notifications', 'gladiator_vault', 'conversations', 'admin_logs'];
+    tables TEXT[] := ARRAY['posts', 'users', 'documents', 'messages', 'advertisements', 'tasks', 'withdrawal_requests', 'system_config', 'payment_verifications', 'universities', 'notifications', 'gladiator_vault', 'conversations', 'admin_logs', 'reports'];
     t TEXT;
 BEGIN
     -- Ensure publication exists

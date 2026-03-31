@@ -105,10 +105,20 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
 
   return (
     <div className="min-h-screen bg-white text-black py-16 px-4 sm:px-6 lg:px-8 relative">
-      <div className="max-w-4xl mx-auto space-y-12">
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-3 text-brand-muted hover:text-brand-proph font-black text-[11px] uppercase tracking-[0.2em] transition-all" title="Return to Terminal">
-          <ArrowLeft className="w-4 h-4" /> Core Mainframe
-        </button>
+      {!isEnabled && user.role !== 'admin' ? (
+        <div className="max-w-md mx-auto flex flex-col items-center justify-center h-[60vh] space-y-6 text-center">
+          <div className="p-6 bg-red-100 rounded-full text-red-600">
+            <Lock className="w-12 h-12" />
+          </div>
+          <h2 className="text-3xl font-black uppercase italic">Portal Locked</h2>
+          <p className="text-gray-500 font-medium italic">The archive submission portal is currently closed for maintenance or administrative reasons. Please check back later.</p>
+          <button onClick={() => navigate('/dashboard')} className="px-8 py-3 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-xs">Go Back</button>
+        </div>
+      ) : (
+        <div className="max-w-4xl mx-auto space-y-12">
+          <button onClick={() => navigate('/dashboard')} className="flex items-center gap-3 text-brand-muted hover:text-brand-proph font-black text-[11px] uppercase tracking-[0.2em] transition-all" title="Return to Terminal">
+            <ArrowLeft className="w-4 h-4" /> Core Mainframe
+          </button>
 
         <div className="bg-white rounded-[4rem] shadow-2xl overflow-hidden border border-gray-200">
           <div className="bg-brand-proph p-12 text-black relative">
@@ -236,7 +246,8 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
             )}
           </div>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

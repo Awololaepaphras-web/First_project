@@ -28,7 +28,7 @@ const GladiatorLanding: React.FC<GladiatorLandingProps> = ({ user }) => {
           </h1>
 
           <p className="max-w-2xl mx-auto text-xl text-brand-muted font-medium italic">
-            "Train Your Mind. Conquer the Arena. Claim the 1000-Point Bounty."
+            "Train Your Mind. Conquer the Arena. Claim the 1000-Coin Bounty."
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-10">
@@ -74,7 +74,7 @@ const GladiatorLanding: React.FC<GladiatorLandingProps> = ({ user }) => {
                  </div>
                  <h3 className="text-2xl font-black uppercase italic">3. Claim Rewards</h3>
                  <p className="text-brand-muted leading-relaxed font-medium italic">
-                   Earn <span className="text-green-500 font-black">Prophy Points</span> based on your performance. These points are your ticket to the global ad revenue pool, where you get paid based on ads deployed across the network.
+                   Earn <span className="text-green-500 font-black">Prophy Coins</span> based on your performance. These coins are your ticket to the global ad revenue pool, where you get paid based on ads deployed across the network.
                  </p>
               </div>
            </div>

@@ -207,7 +207,10 @@ export interface Message {
   id: string;
   senderId: string;
   receiverId: string | null;
-  text: string;
+  text?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'audio';
+  expiresAt?: number;
   createdAt: number;
 }
 
@@ -335,6 +338,7 @@ export interface SystemConfig {
     accountName: string;
   };
   isCardPaymentEnabled: boolean;
+  replyCost: number;
   appLogo?: string;
   appIcon?: string;
   splashScreenUrl?: string;

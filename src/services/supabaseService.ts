@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, EarnTask as Task, StudyDocument as Document } from '../../types';
+import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -773,7 +773,7 @@ export const SupabaseService = {
     }));
   },
 
-  async getMessages(userId: string): Promise<any[]> {
+  async getMessages(userId: string): Promise<Message[]> {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -787,9 +787,43 @@ export const SupabaseService = {
       id: msg.id,
       senderId: msg.sender_id,
       receiverId: msg.receiver_id,
-      content: msg.content,
-      createdAt: msg.created_at
+      text: msg.content,
+      mediaUrl: msg.media_url,
+      mediaType: msg.media_type,
+      expiresAt: msg.expires_at ? new Date(msg.expires_at).getTime() : undefined,
+      createdAt: new Date(msg.created_at).getTime()
     }));
+  },
+
+  async sendMessage(message: Partial<Message>) {
+    const dbMsg = {
+      sender_id: message.senderId,
+      receiver_id: message.receiverId,
+      content: message.text,
+      media_url: message.mediaUrl,
+      media_type: message.mediaType,
+      expires_at: message.expiresAt ? new Date(message.expiresAt).toISOString() : null,
+      created_at: new Date().toISOString()
+    };
+    const { data, error } = await supabase.from('messages').insert(dbMsg).select().single();
+    if (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  async searchUsersByNickname(query: string): Promise<User[]> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('nickname', `%${query}%`)
+      .limit(10);
+    if (error) {
+      console.error('Error searching users:', error);
+      return [];
+    }
+    return (data || []).map(u => this.mapUser(u));
   },
 
   subscribeToMessages(userId: string, callback: (payload: any) => void) {
@@ -812,15 +846,6 @@ export const SupabaseService = {
         }
       })
       .subscribe();
-  },
-
-  async sendMessage(message: any) {
-    const { error } = await supabase.from('messages').insert({
-      sender_id: message.senderId,
-      receiver_id: message.receiverId,
-      content: message.content
-    });
-    if (error) console.error('Error sending message:', error);
   },
 
   // Blocking & Reporting

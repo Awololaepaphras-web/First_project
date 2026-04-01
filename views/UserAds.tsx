@@ -17,7 +17,7 @@ interface UserAdsProps {
 const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVerifyPayment }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'transfer' | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'transfer' | null>(null);
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [paymentRef, setPaymentRef] = useState('');
   const [cardDetails, setCardDetails] = useState({
@@ -102,7 +102,7 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
     setStep(3);
   };
 
-  const handlePaymentMethodSelect = (method: 'card' | 'transfer') => {
+  const handlePaymentMethodSelect = (method: 'transfer') => {
     setPaymentMethod(method);
     setStep(4);
   };
@@ -308,19 +308,6 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
                         <p className="text-xs text-brand-muted font-medium italic">Manual verification via reference ID</p>
                       </div>
                     </button>
-
-                    <button 
-                      onClick={() => handlePaymentMethodSelect('card')}
-                      className="flex items-center gap-6 p-8 bg-gray-50 dark:bg-gray-900 border border-brand-border rounded-[2.5rem] hover:border-brand-proph transition-all group text-left"
-                    >
-                      <div className="p-4 bg-brand-proph/10 rounded-2xl text-brand-proph group-hover:scale-110 transition-transform">
-                        <CreditCard className="w-8 h-8" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-black dark:text-white uppercase italic">Card Payment</p>
-                        <p className="text-xs text-brand-muted font-medium italic">Secure instant processing</p>
-                      </div>
-                    </button>
                   </div>
 
                   <button onClick={() => setStep(2)} className="px-10 py-5 bg-gray-100 dark:bg-gray-800 text-brand-muted rounded-2xl font-black text-xs uppercase">Back</button>
@@ -331,70 +318,51 @@ const UserAds: React.FC<UserAdsProps> = ({ user, pricing, config, onDeploy, onVe
                <div className="space-y-10 animate-fade-in">
                   <div className="space-y-2">
                      <h3 className="text-3xl font-black dark:text-white uppercase italic">
-                       {paymentMethod === 'transfer' ? '4. Bank Transfer' : '4. Card Payment'}
+                       4. Bank Transfer
                      </h3>
                      <p className="text-brand-muted font-medium italic text-sm">Complete your settlement for node deployment.</p>
                   </div>
 
-                  {paymentMethod === 'transfer' ? (
-                    <div className="p-8 bg-gray-950 rounded-[2.5rem] border border-brand-border space-y-6">
-                      <div className="p-6 bg-brand-proph/5 border border-brand-proph/20 rounded-3xl space-y-4">
-                        <h4 className="text-brand-proph font-black text-xs uppercase tracking-widest">Bank Transfer Details</h4>
-                        <div className="grid grid-cols-1 gap-4 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500 font-bold italic">Bank Name:</span>
-                            <span className="text-white font-black">{config.paymentAccount.bankName}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500 font-bold italic">Account Number:</span>
-                            <span className="text-white font-black tracking-widest">{config.paymentAccount.accountNumber}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500 font-bold italic">Account Name:</span>
-                            <span className="text-white font-black">{config.paymentAccount.accountName}</span>
-                          </div>
+                  <div className="p-8 bg-gray-950 rounded-[2.5rem] border border-brand-border space-y-6">
+                    <div className="p-6 bg-brand-proph/5 border border-brand-proph/20 rounded-3xl space-y-4">
+                      <h4 className="text-brand-proph font-black text-xs uppercase tracking-widest">Bank Transfer Details</h4>
+                      <div className="grid grid-cols-1 gap-4 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-bold italic">Bank Name:</span>
+                          <span className="text-white font-black">{config.paymentAccount.bankName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-bold italic">Account Number:</span>
+                          <span className="text-white font-black tracking-widest">{config.paymentAccount.accountNumber}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-bold italic">Account Name:</span>
+                          <span className="text-white font-black">{config.paymentAccount.accountName}</span>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="space-y-3">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Payment Reference / Transaction ID</p>
-                        <input 
-                          type="text" 
-                          placeholder="Enter Reference Number"
-                          value={paymentRef}
-                          onChange={e => setPaymentRef(e.target.value)}
-                          className="w-full bg-black/40 border border-white/5 p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-white"
-                        />
-                      </div>
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Payment Reference / Transaction ID</p>
+                      <input 
+                        type="text" 
+                        placeholder="Enter Reference Number"
+                        value={paymentRef}
+                        onChange={e => setPaymentRef(e.target.value)}
+                        className="w-full bg-black/40 border border-white/5 p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-white"
+                      />
                     </div>
-                  ) : (
-                    <div className="space-y-8">
-                      <div className="p-8 bg-gray-950 rounded-[2.5rem] border border-brand-border space-y-6">
-                        <div className="flex flex-col items-center gap-4">
-                          <p className="text-brand-muted font-medium italic text-center">Card payment is currently being processed manually. Please use the Bank Transfer option for instant verification or contact support.</p>
-                          <button 
-                            onClick={handleSubmitPayment}
-                            disabled={isSubmittingRef}
-                            className="w-full bg-brand-proph text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all disabled:opacity-50"
-                          >
-                            {isSubmittingRef ? 'Processing...' : 'Simulate Card Settlement'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
 
                   <div className="flex gap-4">
                     <button onClick={() => setStep(3)} className="px-10 py-5 bg-gray-800 text-brand-muted rounded-2xl font-black text-xs uppercase">Back</button>
-                    {paymentMethod === 'transfer' && (
-                      <button 
-                        onClick={handleSubmitPayment}
-                        disabled={isSubmittingRef}
-                        className="flex-grow bg-brand-proph text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all disabled:opacity-50"
-                      >
-                        {isSubmittingRef ? 'Processing...' : 'Confirm Settlement'}
-                      </button>
-                    )}
+                    <button 
+                      onClick={handleSubmitPayment}
+                      disabled={isSubmittingRef}
+                      className="flex-grow bg-brand-proph text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:brightness-110 transition-all disabled:opacity-50"
+                    >
+                      {isSubmittingRef ? 'Processing...' : 'Confirm Settlement'}
+                    </button>
                   </div>
                </div>
             )}

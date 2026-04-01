@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Shield } from 'lucide-react';
+import { motion } from 'motion/react';
 import Layout from './components/Layout';
 import Home from './views/Home';
 import Login from './views/Login';
@@ -23,6 +24,7 @@ import Premium from './views/Premium';
 import UserAds from './views/UserAds';
 import Tasks from './views/Tasks';
 import Messages from './views/Messages';
+import Chat from './views/Chat';
 import Settings from './views/Settings';
 import IncomeAnalysis from './views/IncomeAnalysis';
 import AnonymousUpload from './views/AnonymousUpload';
@@ -91,7 +93,8 @@ const DEFAULT_CONFIG: SystemConfig = {
     accountNumber: '1020304050',
     accountName: 'PROPH ACADEMIC SERVICES'
   },
-  isCardPaymentEnabled: true,
+  isCardPaymentEnabled: false,
+  replyCost: 20,
   splashScreenUrl: '',
   globalAnnouncement: {
     text: 'Welcome to PROPH! The ultimate Federal Universities Past Questions Hub.',
@@ -712,6 +715,12 @@ const App: React.FC = () => {
       return;
     }
 
+    // Check wallet if it's a reply
+    if (parentId && wallet && wallet.prophy_points < 20) {
+      alert('Insufficient Prophy Points! Each reply costs 20 points.');
+      return;
+    }
+
     const newPost: Post = {
       id: crypto.randomUUID(),
       userId: poster.id,
@@ -732,8 +741,9 @@ const App: React.FC = () => {
     try {
       await SupabaseService.savePost(newPost);
       // Update local wallet state
-      if (!parentId && wallet) {
-        setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - 50 } : null);
+      if (wallet) {
+        const cost = parentId ? 20 : 50;
+        setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - cost } : null);
       }
       // Note: Realtime hook will handle adding the post to the list
     } catch (error: any) {
@@ -895,6 +905,43 @@ const App: React.FC = () => {
     await DB.updatePost(postId, content);
   };
 
+  const isReleased = new Date().getTime() >= new Date('2027-04-01T00:00:00Z').getTime();
+  const canAccess = !user || user.role === 'admin' || isReleased;
+
+  if (user && !canAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center p-4 text-white text-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md space-y-6"
+        >
+          <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto backdrop-blur-xl border border-white/20">
+            <Shield className="w-12 h-12 text-blue-300" />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight">Coming Soon</h1>
+          <p className="text-lg text-blue-100/80 leading-relaxed">
+            PROPH is currently in private beta for administrators. 
+            The platform will be available to all students on 
+            <span className="block font-bold text-white mt-2">April 1st, 2027</span>
+          </p>
+          <div className="pt-8">
+            <button 
+              onClick={() => {
+                setUser(null);
+                localStorage.removeItem('proph_session_user');
+                SupabaseService.signOut();
+              }}
+              className="px-8 py-3 bg-white text-blue-600 rounded-2xl font-bold hover:bg-blue-50 transition-all shadow-xl"
+            >
+              Sign Out
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <>
       {showSplashScreen && (
@@ -953,6 +1000,7 @@ const App: React.FC = () => {
             }]);
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
+          <Route path="/chat" element={user ? <Chat currentUser={user} /> : <Navigate to="/login" />} />
           <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
           <Route path="/memory-bank" element={user ? <MemoryBank user={user} questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
           <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={()=>{}} /> : <Navigate to="/login" />} />

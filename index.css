@@ -2,22 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes water-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-water {
+  background-size: 200% 200%;
+  animation: water-flow 15s ease infinite;
+}
+
 @layer base {
   * {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, shadow 0.3s ease;
   }
 
   body {
-    font-family: 'Inter', sans-serif;
-    background-color: white;
-    color: black;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f5f7fa;
+    color: #1d1d1f;
+    background-image: 
+      radial-gradient(circle at 50% -20%, #e6f3ff 0%, transparent 50%),
+      radial-gradient(circle at 0% 100%, #f0f7ff 0%, transparent 50%);
+    background-attachment: fixed;
+    background-size: 200% 200%;
+    animation: water-flow 20s ease infinite;
+    -webkit-font-smoothing: antialiased;
     transition: background-color 0.3s, color 0.3s;
     -webkit-tap-highlight-color: transparent;
   }
 
   .dark body {
-    background-color: #000000;
+    background-color: #00050a;
     color: #e7e9ea;
+    background-image: 
+      radial-gradient(circle at 50% -20%, #003366 0%, transparent 50%),
+      radial-gradient(circle at 0% 100%, #001a33 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, #002b4d 0%, transparent 50%);
+    background-attachment: fixed;
+    background-size: 200% 200%;
+    animation: water-flow 25s ease infinite;
   }
 
   button, .btn {
@@ -43,6 +68,14 @@
   .custom-scrollbar::-webkit-scrollbar { width: 8px; }
   .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: #2f3336; border-radius: 10px; }
+
+  .glass {
+    @apply bg-white/70 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10;
+  }
+
+  .glass-heavy {
+    @apply bg-white/90 dark:bg-black/60 backdrop-blur-2xl border border-white/30 dark:border-white/20;
+  }
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

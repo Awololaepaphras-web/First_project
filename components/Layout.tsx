@@ -85,6 +85,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     { name: 'Wallet', path: '/withdraw', icon: <Wallet className="w-6 h-6" /> },
     { name: 'Transfer', path: '/transfer', icon: <Send className="w-6 h-6" /> },
     { name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
+    { name: 'Chat', path: '/chat', icon: <AtSign className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
     ...(isEligibleForMonetization ? [{ name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> }] : []),
   ];
@@ -109,7 +110,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
   if (isLandingPage) {
     return (
       <div className={`min-h-screen ${isDark ? 'bg-brand-black text-white' : 'bg-white text-black'} selection:bg-brand-proph/30 transition-colors`}>
-        <header className={`fixed top-0 left-0 right-0 ${isDark ? 'bg-brand-black/90' : 'bg-white/90'} backdrop-blur-xl z-[100] border-b ${isDark ? 'border-white/5' : 'border-black/5'} transition-colors`}>
+        <header className={`fixed top-0 left-0 right-0 glass z-[100] border-b ${isDark ? 'border-white/5' : 'border-black/5'} transition-colors`}>
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 sm:gap-3 group" title="Return Home">
               <div className="group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
@@ -183,7 +184,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
       </AnimatePresence>
       <div className="flex flex-col lg:flex-row flex-grow">
         {user && (
-        <aside className="hidden lg:flex sticky top-0 h-screen w-[88px] xl:w-[300px] flex-col items-center xl:items-start px-4 py-6 border-r border-brand-border dark:border-brand-border z-50 bg-white dark:bg-brand-black transition-all">
+        <aside className="hidden lg:flex sticky top-0 h-screen w-[88px] xl:w-[300px] flex-col items-center xl:items-start px-4 py-6 border-r border-brand-border dark:border-brand-border z-50 glass transition-all">
             <Link to="/" className="p-4 mb-6 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-all group" title="Return Home">
               <div className="group-hover:rotate-6 transition-transform flex items-center justify-center overflow-hidden">
                 {appLogo ? (
@@ -257,7 +258,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
         </aside>
       )}
       <div className="flex-grow flex flex-col min-w-0">
-        <header className="h-16 lg:h-20 sticky top-0 bg-white/80 dark:bg-brand-black/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-40 border-b border-brand-border">
+        <header className="h-16 lg:h-20 sticky top-0 glass flex items-center justify-between px-4 sm:px-8 z-40 border-b border-brand-border">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {user && (
               <div className="lg:hidden relative flex-shrink-0">
@@ -367,7 +368,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
         <main className="flex-grow pb-24 lg:pb-0 overflow-y-auto custom-scrollbar min-h-[100dvh]">{children}</main>
       </div>
       {user && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-brand-black/95 backdrop-blur-xl border-t border-brand-border z-50 flex items-center h-16 sm:h-20 px-4 overflow-x-auto no-scrollbar gap-2 pb-[env(safe-area-inset-bottom,0px)]">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-brand-border z-50 flex items-center h-16 sm:h-20 px-4 overflow-x-auto no-scrollbar gap-2 pb-[env(safe-area-inset-bottom,0px)]">
           {navItems.slice(0, 4).map((item) => (
             <Link key={item.path} to={item.path} className={`p-3 rounded-2xl transition-all flex-shrink-0 flex items-center gap-2 ${location.pathname === item.path ? 'text-brand-proph bg-brand-proph/10' : 'text-brand-muted hover:text-gray-900'}`} title={item.name}>
               {React.cloneElement(item.icon as React.ReactElement, { className: 'w-6 h-6' })}

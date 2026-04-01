@@ -193,6 +193,34 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   };
 
   const allKeywords = posts.flatMap(p => extractKeywords(p.content));
+  
+  const renderContentWithTags = (content: string) => {
+    const parts = content.split(/(@\w+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('@')) {
+        const nickname = part.substring(1);
+        const taggedUser = allUsers.find(u => u.nickname === nickname || u.name === nickname);
+        return (
+          <span 
+            key={i} 
+            className="text-brand-proph font-black cursor-pointer hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (taggedUser) {
+                // Navigate to user profile or show info
+                setSelectedTrend(taggedUser.id);
+                setActiveTab('all');
+              }
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   const keywordCounts = allKeywords.reduce((acc, word) => {
     // Preserve $ at start or end
     const cleanWord = word.replace(/[^a-zA-Z$]/g, '');
@@ -700,7 +728,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all">{post.content}</div>
+                        <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all">
+                          {renderContentWithTags(post.content)}
+                        </div>
                       )}
                       {post.mediaUrl && (
                         <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner" title="Media Preview">
@@ -761,7 +791,10 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                           {post.comments.map(c => (
                             <div key={c.id} className="flex gap-3">
                               <div className="w-8 h-8 rounded-full bg-brand-border flex-shrink-0 flex items-center justify-center text-[10px] font-black">{c.userName.charAt(0)}</div>
-                              <div className="flex-grow"><p className="text-sm font-black dark:text-white">{c.userName} <span className="font-normal text-brand-muted">@node</span></p><p className="text-sm dark:text-gray-200 mt-0.5">{c.text}</p></div>
+                              <div className="flex-grow">
+                                <p className="text-sm font-black dark:text-white">{c.userName} <span className="font-normal text-brand-muted">@node</span></p>
+                                <p className="text-sm dark:text-gray-200 mt-0.5">{renderContentWithTags(c.text)}</p>
+                              </div>
                             </div>
                           ))}
                           <div className="flex gap-2 items-center">

@@ -118,7 +118,10 @@ CREATE TABLE IF NOT EXISTS public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     receiver_id UUID REFERENCES public.users(id) ON DELETE CASCADE, -- Nullable for global chat
-    content TEXT NOT NULL,
+    content TEXT,
+    media_url TEXT,
+    media_type TEXT CHECK (media_type IN ('image', 'video', 'audio')),
+    expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -501,10 +504,47 @@ VALUES ('default', '{
   "engagementWeights": { "replies": 5.0, "likes": 1.0, "reposts": 2.5 },
   "premiumTiers": { "weekly": 1000, "monthly": 2500, "yearly": 20000 },
   "paymentAccount": { "bankName": "Proph Institutional Bank", "accountNumber": "1020304050", "accountName": "PROPH ACADEMIC SERVICES" },
-  "isCardPaymentEnabled": true,
-  "paystackPublicKey": "pk_test_proph_academic_node_key"
+  "isCardPaymentEnabled": false,
+  "replyCost": 20
 }')
 ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config;
+
+-- Function to deduct points for replies
+CREATE OR REPLACE FUNCTION public.handle_reply_cost()
+RETURNS TRIGGER AS $$
+DECLARE
+  user_points INTEGER;
+  cost INTEGER := 20; -- Default cost for reply
+BEGIN
+  -- Only apply to replies (posts with a parent_id)
+  IF NEW.parent_id IS NOT NULL THEN
+    -- Get current user points
+    SELECT points INTO user_points FROM public.users WHERE id = NEW.user_id;
+    
+    -- Check if user has enough points
+    IF user_points < cost THEN
+      RAISE EXCEPTION 'Insufficient Prophy Coins to reply. Each reply costs 20 coins.';
+    END IF;
+    
+    -- Deduct points
+    UPDATE public.users 
+    SET points = points - cost 
+    WHERE id = NEW.user_id;
+    
+    -- Log the event (optional)
+    INSERT INTO public.notifications (user_id, title, message, type)
+    VALUES (NEW.user_id, 'Points Deducted', '20 Prophy Coins deducted for your reply.', 'info');
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for reply cost
+DROP TRIGGER IF EXISTS on_reply_created ON public.posts;
+CREATE TRIGGER on_reply_created
+  BEFORE INSERT ON public.posts
+  FOR EACH ROW EXECUTE FUNCTION public.handle_reply_cost();
 
 -- Initial Tasks
 INSERT INTO public.tasks (title, description, points, type, link)

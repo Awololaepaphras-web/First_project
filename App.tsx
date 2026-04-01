@@ -95,7 +95,7 @@ const DEFAULT_CONFIG: SystemConfig = {
     accountName: 'PROPH ACADEMIC SERVICES'
   },
   isCardPaymentEnabled: false,
-  replyCost: 20,
+  replyCost: 30,
   splashScreenUrl: '',
   globalAnnouncement: {
     text: 'Welcome to PROPH! The ultimate Federal Universities Past Questions Hub.',
@@ -717,8 +717,8 @@ const App: React.FC = () => {
     }
 
     // Check wallet if it's a reply
-    if (parentId && wallet && wallet.prophy_points < 20) {
-      alert('Insufficient Prophy Points! Each reply costs 20 points.');
+    if (parentId && wallet && wallet.prophy_points < 30) {
+      alert('Insufficient Prophy Points! Each reply costs 30 points.');
       return;
     }
 
@@ -743,7 +743,7 @@ const App: React.FC = () => {
       await SupabaseService.savePost(newPost);
       // Update local wallet state
       if (wallet) {
-        const cost = parentId ? 20 : 50;
+        const cost = parentId ? 30 : 50;
         setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - cost } : null);
       }
       // Note: Realtime hook will handle adding the post to the list

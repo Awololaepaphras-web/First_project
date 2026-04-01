@@ -577,16 +577,20 @@ VALUES ('default', '{
   "premiumTiers": { "weekly": 1000, "monthly": 2500, "yearly": 20000 },
   "paymentAccount": { "bankName": "Proph Institutional Bank", "accountNumber": "1020304050", "accountName": "PROPH ACADEMIC SERVICES" },
   "isCardPaymentEnabled": false,
-  "replyCost": 20
+  "replyCost": 30
 }')
 ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config;
 
--- Function to deduct points for replies
+-- Function to deduct points for replies and distribute rewards
 CREATE OR REPLACE FUNCTION public.handle_reply_cost()
 RETURNS TRIGGER AS $$
 DECLARE
   user_points INTEGER;
-  cost INTEGER := 20; -- Default cost for reply
+  cost INTEGER := 30; -- Cost for reply
+  reward_poster INTEGER := 20; -- Reward for original poster
+  reward_admin INTEGER := 10; -- Reward for super admin
+  parent_poster_id UUID;
+  admin_id UUID;
 BEGIN
   -- Only apply to replies (posts with a parent_id)
   IF NEW.parent_id IS NOT NULL THEN
@@ -595,17 +599,41 @@ BEGIN
     
     -- Check if user has enough points
     IF user_points < cost THEN
-      RAISE EXCEPTION 'Insufficient Prophy Coins to reply. Each reply costs 20 coins.';
+      RAISE EXCEPTION 'Insufficient Prophy Coins to reply. Each reply costs 30 coins.';
     END IF;
     
-    -- Deduct points
+    -- Get original poster ID
+    SELECT user_id INTO parent_poster_id FROM public.posts WHERE id = NEW.parent_id;
+    
+    -- Get super admin ID
+    SELECT id INTO admin_id FROM public.users WHERE email = 'awololaeo.22@student.funaab.edu.ng' LIMIT 1;
+    
+    -- 1. Deduct points from replier
     UPDATE public.users 
     SET points = points - cost 
     WHERE id = NEW.user_id;
     
-    -- Log the event (optional)
+    -- 2. Reward original poster (if exists and not the same person)
+    IF parent_poster_id IS NOT NULL AND parent_poster_id != NEW.user_id THEN
+      UPDATE public.users 
+      SET points = points + reward_poster 
+      WHERE id = parent_poster_id;
+      
+      -- Notify original poster
+      INSERT INTO public.notifications (user_id, title, message, type)
+      VALUES (parent_poster_id, 'Intel Reward', 'You received ' || reward_poster || ' Prophy Coins for a reply to your node.', 'success');
+    END IF;
+    
+    -- 3. Reward super admin
+    IF admin_id IS NOT NULL THEN
+      UPDATE public.users 
+      SET points = points + reward_admin 
+      WHERE id = admin_id;
+    END IF;
+    
+    -- Log the event for the replier
     INSERT INTO public.notifications (user_id, title, message, type)
-    VALUES (NEW.user_id, 'Points Deducted', '20 Prophy Coins deducted for your reply.', 'info');
+    VALUES (NEW.user_id, 'Points Deducted', '30 Prophy Coins deducted for your reply.', 'info');
   END IF;
   
   RETURN NEW;

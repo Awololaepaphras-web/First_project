@@ -146,7 +146,19 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ user, questions, onAction }) =>
                 <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-brand-black/90 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-300 backdrop-blur-sm">{!!doc.fileUrl ? 'Remote' : 'Local'}</div>
                 <button onClick={(e) => { e.stopPropagation(); if(confirm('Purge material?')) DB.deleteDocument(doc.id); }} className="absolute top-4 right-4 p-2 bg-red-600/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Purge Intel"><Trash2 className="w-4 h-4" /></button>
              </div>
-             <div className="p-6"><h4 className="font-black text-gray-900 dark:text-white truncate group-hover:text-brand-proph transition-colors uppercase italic text-sm">{doc.courseTitle || doc.courseCode}</h4><div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none"><Clock className="w-3 h-3" /> ARCHIVED {new Date(doc.createdAt).toLocaleDateString()}</div></div>
+              <div className="p-6">
+                <h4 className="font-black text-gray-900 dark:text-white truncate group-hover:text-brand-proph transition-colors uppercase italic text-sm">
+                  {doc.courseCode}: {doc.courseTitle}
+                </h4>
+                {doc.semester && (
+                  <div className="mt-2 text-[10px] font-black text-brand-proph uppercase tracking-widest">
+                    {doc.semester} Semester
+                  </div>
+                )}
+                <div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                  <Clock className="w-3 h-3" /> ARCHIVED {new Date(doc.createdAt).toLocaleDateString()}
+                </div>
+              </div>
            </div>
         )) : <div className="col-span-full py-40 text-center opacity-40"><Database className="w-20 h-20 mx-auto mb-6" /><h3 className="text-2xl font-black uppercase italic">Vault Depleted</h3></div>}
       </div>

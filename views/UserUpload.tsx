@@ -201,10 +201,31 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
                   </div>
 
                   <div className="space-y-3">
+                    <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Course Title</label>
+                    <input required placeholder="e.g. Introduction to Programming" className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black uppercase text-sm tracking-[0.2em] text-black dark:text-white" value={formData.courseTitle} onChange={e => setFormData({...formData, courseTitle: e.target.value})} />
+                  </div>
+
+                  <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Academic Session</label>
                     <select className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-xs text-black dark:text-white" value={formData.year} onChange={e => setFormData({...formData, year: parseInt(e.target.value)})}>
                       {years.map(y => <option key={y} value={y}>{y} / {y+1} Session</option>)}
                     </select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Semester</label>
+                    <select className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-xs text-black dark:text-white" value={formData.semester} onChange={e => setFormData({...formData, semester: e.target.value as 'First' | 'Second'})}>
+                      <option value="First">First Semester</option>
+                      <option value="Second">Second Semester</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-6 rounded-3xl flex items-start gap-4">
+                  <ShieldAlert className="w-6 h-6 text-amber-600 dark:text-amber-500 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-black text-amber-900 dark:text-amber-100 uppercase tracking-wider">Submission Protocol Warning</p>
+                    <p className="text-[11px] font-medium text-amber-800 dark:text-amber-200 italic">You are only meant to put your past question on the page and not your handout. Handouts will be purged from the neural grid.</p>
                   </div>
                 </div>
 

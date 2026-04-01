@@ -341,7 +341,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   return (
     <div className="w-full max-w-full mx-auto border-x border-brand-border min-h-screen bg-white dark:bg-brand-black pb-32">
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md border-b border-brand-border p-4 flex items-center justify-between gap-4">
-         <h2 className="text-xl font-black italic tracking-tighter uppercase whitespace-nowrap">Social Hub</h2>
+         <h2 className="text-xl font-black italic tracking-tighter uppercase whitespace-nowrap text-gray-900 dark:text-white">Social Hub</h2>
          <div className="relative flex-grow max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
             <input 
@@ -368,28 +368,28 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
       <div className="flex border-b border-brand-border sticky top-[73px] lg:top-[81px] z-30 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md">
         <button 
           onClick={() => setActiveTab('all')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'all' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'all' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           All Feeds
           {activeTab === 'all' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
           onClick={() => setActiveTab('following')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'following' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'following' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           Following
           {activeTab === 'following' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
           onClick={() => setActiveTab('node')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'node' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'node' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           My Node
           {activeTab === 'node' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
           onClick={() => setActiveTab('trends')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'trends' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'trends' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           Trends
           {activeTab === 'trends' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
@@ -482,7 +482,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
           <div className="p-4 bg-brand-proph/10 border-b border-brand-border flex items-center justify-between">
             <div className="flex items-center gap-3">
               <TrendingUp className="w-5 h-5 text-brand-proph" />
-              <span className="font-black uppercase tracking-widest text-xs">Filtering by: {selectedTrend}</span>
+              <span className="font-black uppercase tracking-widest text-xs text-gray-900 dark:text-white">Filtering by: {selectedTrend}</span>
             </div>
             <button 
               onClick={() => setSelectedTrend(null)}
@@ -500,7 +500,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                   <TrendingUp className="w-6 h-6 text-brand-proph" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black uppercase tracking-tighter italic">Trending Topics</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tighter italic text-gray-900 dark:text-white">Trending Topics</h3>
                   <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Real-time intellectual momentum</p>
                 </div>
               </div>
@@ -534,7 +534,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                   <MessageCircle className="w-6 h-6 text-brand-proph" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black uppercase tracking-tighter italic">Viral Synchronizations</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tighter italic text-gray-900 dark:text-white">Viral Synchronizations</h3>
                   <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">High-impact scholarly discourse</p>
                 </div>
               </div>
@@ -777,11 +777,11 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                           <button onClick={(e) => { e.stopPropagation(); setShowShareMenu(showShareMenu === post.id ? null : post.id); }} className="p-2 hover:text-brand-primary rounded-full transition-colors" title="Share"><Share2 className="w-4 h-4" /></button>
                           {showShareMenu === post.id && (
                             <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-brand-card border border-brand-border rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2">
-                              <button onClick={(e) => { e.stopPropagation(); handleShare('whatsapp', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest"><MessageSquare className="w-4 h-4 text-green-500" /> WhatsApp</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleShare('twitter', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest"><Twitter className="w-4 h-4 text-blue-400" /> Twitter</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleShare('facebook', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest"><Facebook className="w-4 h-4 text-blue-600" /> Facebook</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleShare('instagram', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest"><Instagram className="w-4 h-4 text-pink-500" /> Instagram</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleShare('snapchat', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest"><Ghost className="w-4 h-4 text-yellow-400" /> Snapchat</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleShare('whatsapp', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white"><MessageSquare className="w-4 h-4 text-green-500" /> WhatsApp</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleShare('twitter', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white"><Twitter className="w-4 h-4 text-blue-400" /> Twitter</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleShare('facebook', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white"><Facebook className="w-4 h-4 text-blue-600" /> Facebook</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleShare('instagram', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white"><Instagram className="w-4 h-4 text-pink-500" /> Instagram</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleShare('snapchat', post); }} className="w-full flex items-center gap-3 p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white"><Ghost className="w-4 h-4 text-yellow-400" /> Snapchat</button>
                             </div>
                           )}
                         </div>

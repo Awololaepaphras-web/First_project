@@ -58,7 +58,7 @@
   }
 
   input, textarea, select {
-    color: black;
+    @apply text-black dark:text-white bg-transparent;
   }
 }
 

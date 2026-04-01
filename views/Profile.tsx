@@ -77,7 +77,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h2 className="text-xl font-black italic tracking-tighter uppercase">{user.name}</h2>
+          <h2 className="text-xl font-black italic tracking-tighter uppercase text-gray-900 dark:text-white">{user.name}</h2>
           <p className="text-xs text-brand-muted font-bold">{userPosts.length} Archive Entries</p>
         </div>
       </div>
@@ -137,7 +137,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
       <div className="mt-20 px-6 space-y-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black italic tracking-tighter uppercase">{user.name}</h1>
+            <h1 className="text-2xl font-black italic tracking-tighter uppercase text-gray-900 dark:text-white">{user.name}</h1>
             <ShieldCheck className="w-6 h-6 text-brand-proph" />
           </div>
           <div className="flex items-center gap-3">
@@ -201,21 +201,21 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
       <div className="flex border-b border-brand-border mt-6 sticky top-[61px] z-30 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md">
         <button 
           onClick={() => setActiveTab('posts')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'posts' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'posts' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           Archive
           {activeTab === 'posts' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
           onClick={() => setActiveTab('followers')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'followers' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'followers' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           Followers
           {activeTab === 'followers' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
           onClick={() => setActiveTab('following')}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'following' ? 'text-brand-proph' : 'text-brand-muted hover:text-white'}`}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'following' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
           Following
           {activeTab === 'following' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
@@ -332,8 +332,8 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
               <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Coins className="w-10 h-10 text-yellow-500" />
               </div>
-              <h3 className="text-xl font-black uppercase italic mb-2">Tip {user.name}</h3>
-              <p className="text-gray-500 text-sm mb-6">Support this student with some coins!</p>
+              <h3 className="text-xl font-black uppercase italic mb-2 text-gray-900 dark:text-white">Tip {user.name}</h3>
+              <p className="text-gray-500 dark:text-brand-muted text-sm mb-6">Support this student with some coins!</p>
               
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {[10, 50, 100, 500, 1000, 5000].map(amount => (

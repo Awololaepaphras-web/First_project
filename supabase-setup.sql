@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS public.users (
     blocked_users UUID[] DEFAULT '{}',
     has_seen_onboarding BOOLEAN DEFAULT false,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
+    referral_count INTEGER DEFAULT 0,
+    ai_app_unlocked_until TIMESTAMP WITH TIME ZONE,
+    engagement_score INTEGER DEFAULT 0,
+    registration_ip TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -495,6 +499,7 @@ VALUES ('default', '{
   "isUserAdsEnabled": true,
   "isPastQuestionContributionEnabled": true,
   "isSplashScreenEnabled": true,
+  "isMessagingEnabled": true,
   "splashScreenUrl": "",
   "feedWeights": { "engagement": 0.4, "recency": 0.3, "relationship": 0.1, "quality": 0.1, "eduRelevance": 0.1 },
   "adWeights": { "budget": 0.5, "relevance": 0.2, "performance": 0.2, "targetMatch": 0.1 },
@@ -696,7 +701,7 @@ BEGIN
     EXIT WHEN NOT EXISTS (SELECT 1 FROM public.users WHERE referral_code = new_proph_id);
   END LOOP;
 
-  INSERT INTO public.users (id, email, name, nickname, university, level, referred_by, referral_code, role)
+  INSERT INTO public.users (id, email, name, nickname, university, level, referred_by, referral_code, role, registration_ip)
   VALUES (
     NEW.id,
     NEW.email,
@@ -709,7 +714,8 @@ BEGIN
     CASE 
       WHEN NEW.email = 'awololaeo.22@student.funaab.edu.ng' THEN 'admin'
       ELSE 'user'
-    END
+    END,
+    NEW.raw_user_meta_data->>'registrationIp'
   )
   ON CONFLICT (id) DO NOTHING;
 
@@ -721,6 +727,69 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Function to handle referral logic
+CREATE OR REPLACE FUNCTION public.handle_referral()
+RETURNS TRIGGER AS $$
+DECLARE
+  referrer_ip TEXT;
+BEGIN
+  IF NEW.referred_by IS NOT NULL THEN
+    -- Get referrer's IP
+    SELECT registration_ip INTO referrer_ip FROM public.users WHERE id = NEW.referred_by;
+
+    -- Only count if IPs are different (or if one is missing, to be safe in dev)
+    IF NEW.registration_ip IS DISTINCT FROM referrer_ip THEN
+      -- Increment referral count for the referrer
+      UPDATE public.users 
+      SET referral_count = referral_count + 1 
+      WHERE id = NEW.referred_by;
+
+      -- Unlock AI App for 2 weeks if they have 3 referrals
+      -- We check if they just reached 3 or a multiple of 3
+      IF (SELECT referral_count FROM public.users WHERE id = NEW.referred_by) >= 3 THEN
+        UPDATE public.users 
+        SET ai_app_unlocked_until = timezone('utc'::text, now()) + interval '2 weeks'
+        WHERE id = NEW.referred_by;
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for referral
+DROP TRIGGER IF EXISTS on_user_created_referral ON public.users;
+CREATE TRIGGER on_user_created_referral
+  AFTER INSERT ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_referral();
+
+-- Function to update engagement score
+CREATE OR REPLACE FUNCTION public.update_engagement_score()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.users
+  SET engagement_score = (
+    COALESCE((engagement_stats->>'totalLikesGiven')::int, 0) + 
+    COALESCE((engagement_stats->>'totalRepliesGiven')::int, 0) * 2 + 
+    COALESCE((engagement_stats->>'totalRepostsGiven')::int, 0) * 3 +
+    COALESCE((engagement_stats->>'totalLinkClicks')::int, 0) +
+    COALESCE((engagement_stats->>'totalProfileClicks')::int, 0) +
+    COALESCE((engagement_stats->>'totalMediaViews')::int, 0)
+  )
+  WHERE id = NEW.id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for engagement score
+DROP TRIGGER IF EXISTS on_user_stats_update ON public.users;
+CREATE TRIGGER on_user_stats_update
+  AFTER UPDATE OF engagement_stats ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.update_engagement_score();
+
+-- Ensure ads are sponsored by default
+ALTER TABLE public.advertisements ALTER COLUMN is_sponsored SET DEFAULT true;
 
 -- Re-create trigger
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;

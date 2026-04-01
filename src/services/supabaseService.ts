@@ -115,6 +115,10 @@ export const SupabaseService = {
       premiumExpiry: u.premium_until,
       referralCode: u.referral_code,
       referralStats: u.referral_stats,
+      referralCount: u.referral_count,
+      aiAppUnlockedUntil: u.ai_app_unlocked_until ? new Date(u.ai_app_unlocked_until).getTime() : undefined,
+      engagementScore: u.engagement_score,
+      registrationIp: u.registration_ip,
       bankDetails: u.bank_details,
       gladiatorEarnings: u.gladiator_earnings,
       isVerified: u.is_verified,
@@ -131,7 +135,8 @@ export const SupabaseService = {
   toDbUser(user: User): any {
     const { 
       themePreference, isSugVerified, staffPermissions, isPremium, 
-      premiumExpiry, referralCode, referralStats, bankDetails, 
+      premiumExpiry, referralCode, referralStats, referralCount,
+      aiAppUnlockedUntil, engagementScore, registrationIp, bankDetails, 
       gladiatorEarnings, isVerified, verificationCode, referredBy,
       engagementStats, blockedUsers, hasSeenOnboarding, createdAt, ...rest 
     } = user;
@@ -145,6 +150,10 @@ export const SupabaseService = {
       premium_until: premiumExpiry,
       referral_code: referralCode,
       referral_stats: referralStats,
+      referral_count: referralCount,
+      ai_app_unlocked_until: aiAppUnlockedUntil ? new Date(aiAppUnlockedUntil).toISOString() : null,
+      engagement_score: engagementScore,
+      registration_ip: registrationIp,
       bank_details: bankDetails,
       gladiator_earnings: gladiatorEarnings,
       is_verified: isVerified,
@@ -153,7 +162,6 @@ export const SupabaseService = {
       engagement_stats: engagementStats,
       blocked_users: blockedUsers || [],
       has_seen_onboarding: hasSeenOnboarding || false,
-      status: status || 'active',
       created_at: createdAt ? new Date(createdAt).toISOString() : undefined
     };
   },
@@ -602,7 +610,7 @@ export const SupabaseService = {
       targetReach: a.target_reach,
       timeFrames: a.time_frames,
       expiryDate: a.expiry_date,
-      isSponsored: a.is_sponsored || false,
+      isSponsored: a.is_sponsored ?? true,
       analytics: a.analytics || []
     };
   },
@@ -635,7 +643,7 @@ export const SupabaseService = {
       target_reach: targetReach,
       time_frames: timeFrames,
       expiry_date: expiryDate,
-      is_sponsored: isSponsored || false,
+      is_sponsored: isSponsored !== undefined ? isSponsored : true,
       analytics: analytics || []
     };
     const { error } = await supabase.from('advertisements').upsert(dbAd);
@@ -1113,6 +1121,19 @@ export const SupabaseService = {
   async deleteUniversity(uniId: string) {
     const { error } = await supabase.from('universities').delete().eq('id', uniId);
     if (error) console.error('Error deleting university:', error);
+  },
+
+  async getTopEngagedUsers(): Promise<User[]> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('engagement_score', { ascending: false })
+      .limit(10);
+    if (error) {
+      console.error('Error fetching top engaged users:', error);
+      return [];
+    }
+    return (data || []).map(u => this.mapUser(u));
   },
 
   subscribeToTable(table: string, callback: (payload: any) => void) {

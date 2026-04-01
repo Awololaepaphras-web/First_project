@@ -5,22 +5,41 @@ import {
   Smile, Paperclip, Phone, Video,
   Info, ShieldCheck, CheckCircle2, User as UserIcon
 } from 'lucide-react';
-import { User, Message } from '../types';
+import { User, Message, SystemConfig } from '../types';
 
 interface MessagesProps {
   user: User;
   allUsers: User[];
   messages: Message[];
+  config: SystemConfig;
   onSendMessage: (text: string, receiverId: string) => void;
 }
 
-const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, onSendMessage }) => {
+const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, config, onSendMessage }) => {
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  if (!config.isMessagingEnabled && user.role !== 'admin') {
+    return (
+      <div className="h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-white dark:bg-brand-black p-8 text-center">
+        <div className="w-20 h-20 bg-brand-proph/10 rounded-3xl flex items-center justify-center mb-6 border border-brand-proph/20">
+          <ShieldCheck className="w-10 h-10 text-brand-proph" />
+        </div>
+        <h2 className="text-3xl font-black uppercase italic text-gray-900 dark:text-white mb-4 tracking-tight">Portal Restricted</h2>
+        <p className="text-brand-muted max-w-md font-medium leading-relaxed">
+          The Global Academic Link is currently restricted by the administration. 
+          Direct communication nodes are offline for maintenance or security protocols.
+        </p>
+        <div className="mt-8 p-4 bg-brand-proph/5 rounded-2xl border border-brand-proph/10">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-proph">System Status: Locked</p>
+        </div>
+      </div>
+    );
+  }
 
   // Global messages are those with no receiverId (or a specific global ID)
   // For now, let's assume all messages in the 'messages' array that are not private are global

@@ -1,13 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, Sparkles, Trash2, Paperclip, FileText, X, Wand2, Loader2 } from 'lucide-react';
+import { Send, User as UserIcon, Bot, Sparkles, Trash2, Paperclip, FileText, X, Wand2, Loader2, Lock, Users } from 'lucide-react';
 import { getAIResponse, FileData } from '../src/services/geminiService';
-import { AIMessage } from '../types';
+import { AIMessage, User } from '../types';
+import { Link } from 'react-router-dom';
 
-const AIAssistant: React.FC = () => {
-  /**
-   * Changed state type to AIMessage to resolve Role property access errors.
-   */
+interface AIAssistantProps {
+  user: User;
+}
+
+const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
   const [messages, setMessages] = useState<AIMessage[]>([
     { role: 'model', text: "Hello! I'm Proph AI. Upload your study handouts, notes, or past questions, and I can explain them or generate potential exam questions for you! What are we studying today?" }
   ]);
@@ -18,11 +20,52 @@ const AIAssistant: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isUnlocked = user.role === 'admin' || 
+                    (user.aiAppUnlockedUntil && user.aiAppUnlockedUntil > Date.now()) ||
+                    (user.referralCount && user.referralCount >= 3);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  if (!isUnlocked) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-8 animate-fade-in">
+        <div className="w-24 h-24 bg-brand-proph/10 text-brand-proph rounded-[2rem] flex items-center justify-center mx-auto shadow-xl shadow-brand-proph/5">
+          <Lock className="w-12 h-12" />
+        </div>
+        <div className="space-y-4">
+          <h2 className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter italic uppercase">
+            Access <span className="text-brand-proph">Restricted</span>
+          </h2>
+          <p className="text-gray-500 dark:text-brand-muted font-medium text-lg italic max-w-lg mx-auto">
+            The AI Study App is a premium node. Recruit 3 unique scholars to your network to unlock 2 weeks of full access.
+          </p>
+        </div>
+        
+        <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-2xl max-w-md mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recruitment Progress</span>
+            <span className="text-sm font-black text-brand-proph italic">{user.referralCount || 0} / 3</span>
+          </div>
+          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
+            <div 
+              className="bg-brand-proph h-full transition-all duration-1000" 
+              style={{ width: `${Math.min((user.referralCount || 0) / 3 * 100, 100)}%` }}
+            />
+          </div>
+          <Link 
+            to="/referrals"
+            className="mt-8 w-full bg-gray-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all hover:scale-105 flex items-center justify-center gap-3"
+          >
+            Go to Recruitment Hub <Users className="w-5 h-5" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,7 +169,7 @@ const AIAssistant: React.FC = () => {
                 <div className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm ${
                   msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'
                 }`}>
-                  {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                  {msg.role === 'user' ? <UserIcon className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
                 </div>
                 <div className={`p-5 rounded-3xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
                   msg.role === 'user' 

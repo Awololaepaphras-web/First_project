@@ -70,11 +70,20 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
            
            <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-xl flex flex-col items-center text-center group hover:border-blue-500 transition-all">
               <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                 <Clock className="w-8 h-8" />
+                 <Sparkles className="w-8 h-8" />
               </div>
-              <p className="text-3xl font-black italic text-gray-900 dark:text-white">+10 Prophy Coins/day</p>
-              <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Active Node Bonus</p>
-              <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Earn when referee logins daily for 4 days.</p>
+              <p className="text-3xl font-black italic text-gray-900 dark:text-white">AI Study App</p>
+              <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Unlock Protocol</p>
+              <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Refer 3 unique users to unlock AI Study App for 2 weeks.</p>
+              <div className="mt-4 w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-brand-proph h-full transition-all duration-1000" 
+                  style={{ width: `${Math.min((user.referralCount || 0) / 3 * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] font-bold text-brand-proph mt-2 uppercase tracking-widest">
+                {user.referralCount || 0} / 3 RECRUITS
+              </p>
            </div>
 
            <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-gray-100 dark:border-brand-border shadow-xl flex flex-col items-center text-center group hover:border-purple-500 transition-all">

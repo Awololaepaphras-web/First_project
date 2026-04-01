@@ -65,6 +65,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   isUserAdsEnabled: true,
   isPastQuestionContributionEnabled: true,
   isSplashScreenEnabled: true,
+  isMessagingEnabled: true,
   feedWeights: { engagement: 0.4, recency: 0.3, relationship: 0.1, quality: 0.1, eduRelevance: 0.1 },
   adWeights: { budget: 0.5, relevance: 0.2, performance: 0.2, targetMatch: 0.1 },
   earnRates: {
@@ -905,43 +906,6 @@ const App: React.FC = () => {
     await DB.updatePost(postId, content);
   };
 
-  const isReleased = new Date().getTime() >= new Date('2027-04-01T00:00:00Z').getTime();
-  const canAccess = !user || user.role === 'admin' || isReleased;
-
-  if (user && !canAccess) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center p-4 text-white text-center">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md space-y-6"
-        >
-          <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto backdrop-blur-xl border border-white/20">
-            <Shield className="w-12 h-12 text-blue-300" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight">Coming Soon</h1>
-          <p className="text-lg text-blue-100/80 leading-relaxed">
-            PROPH is currently in private beta for administrators. 
-            The platform will be available to all students on 
-            <span className="block font-bold text-white mt-2">April 1st, 2027</span>
-          </p>
-          <div className="pt-8">
-            <button 
-              onClick={() => {
-                setUser(null);
-                localStorage.removeItem('proph_session_user');
-                SupabaseService.signOut();
-              }}
-              className="px-8 py-3 bg-white text-blue-600 rounded-2xl font-bold hover:bg-blue-50 transition-all shadow-xl"
-            >
-              Sign Out
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <>
       {showSplashScreen && (
@@ -981,7 +945,7 @@ const App: React.FC = () => {
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} /> : <Navigate to="/login" />} />
           <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={globalAds} /> : <Navigate to="/login" />} />
-          <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} onSendMessage={async (t, r) => {
+          <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} config={config} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
             const newMsg = {
               id: crypto.randomUUID(),
@@ -1000,8 +964,8 @@ const App: React.FC = () => {
             }]);
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
-          <Route path="/chat" element={user ? <Chat currentUser={user} /> : <Navigate to="/login" />} />
-          <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
+          <Route path="/chat" element={user ? <Chat currentUser={user} config={config} /> : <Navigate to="/login" />} />
+          <Route path="/ai-assistant" element={user ? <AIAssistant user={user} /> : <Navigate to="/login" />} />
           <Route path="/memory-bank" element={user ? <MemoryBank user={user} questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
           <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={()=>{}} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub" element={user ? <GladiatorLanding user={user} /> : <Navigate to="/login" />} />

@@ -109,6 +109,10 @@ export interface User {
     withdrawals: number;
     loginStreaks: number;
   };
+  referralCount?: number;
+  aiAppUnlockedUntil?: number;
+  engagementScore?: number;
+  registrationIp?: string;
   phone?: string;
   createdAt?: number;
   themePreference?: 'light' | 'dark';
@@ -309,6 +313,7 @@ export interface SystemConfig {
   isUserAdsEnabled: boolean;
   isPastQuestionContributionEnabled: boolean;
   isSplashScreenEnabled: boolean;
+  isMessagingEnabled: boolean;
   feedWeights: { engagement: number; recency: number; relationship: number; quality: number; eduRelevance: number };
   adWeights: { budget: number; relevance: number; performance: number; targetMatch: number };
   earnRates: {

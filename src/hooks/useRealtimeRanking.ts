@@ -67,6 +67,64 @@ export const useRealtimeLeaderboard = () => {
   return { leaderboard, loading, error, refresh: fetchLeaderboard };
 };
 
+export const useTopEngagedUsers = () => {
+  const [users, setUsers] = useState<UserRank[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTopUsers = async () => {
+    setLoading(true);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('id, name, nickname, engagement_score')
+        .order('engagement_score', { ascending: false })
+        .limit(10);
+
+      if (fetchError) throw fetchError;
+      setUsers(data?.map(u => ({
+        id: u.id,
+        name: u.name,
+        nickname: u.nickname,
+        post_count: 0, // Not needed for this view
+        total_engagement: u.engagement_score || 0
+      })) || []);
+    } catch (err: any) {
+      console.error('Error fetching top engaged users:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTopUsers();
+
+    const channel = supabase
+      .channel('users-engagement-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+        },
+        (payload) => {
+          if (payload.new.engagement_score !== payload.old.engagement_score) {
+            fetchTopUsers();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { users, loading, error, refresh: fetchTopUsers };
+};
+
 export const useAlgorithmSettings = (settingId: string) => {
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);

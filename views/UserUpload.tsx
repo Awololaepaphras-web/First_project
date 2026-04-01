@@ -104,7 +104,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
   };
 
   return (
-    <div className="min-h-screen bg-white text-black py-16 px-4 sm:px-6 lg:px-8 relative">
+    <div className="min-h-screen bg-white dark:bg-brand-black text-black dark:text-white py-16 px-4 sm:px-6 lg:px-8 relative">
       {!isEnabled && user.role !== 'admin' ? (
         <div className="max-w-md mx-auto flex flex-col items-center justify-center h-[60vh] space-y-6 text-center">
           <div className="p-6 bg-red-100 rounded-full text-red-600">
@@ -120,7 +120,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
             <ArrowLeft className="w-4 h-4" /> Core Mainframe
           </button>
 
-        <div className="bg-white rounded-[4rem] shadow-2xl overflow-hidden border border-gray-200">
+        <div className="bg-white dark:bg-brand-card rounded-[4rem] shadow-2xl overflow-hidden border border-brand-border">
           <div className="bg-brand-proph p-12 text-black relative">
             <div className="absolute top-0 right-0 w-48 h-48 bg-black/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
             <div className="flex items-center gap-6 mb-6">
@@ -144,7 +144,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
                 <div className="w-32 h-32 bg-brand-proph/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-brand-proph/20 shadow-inner">
                   <Loader2 className="w-16 h-16 text-brand-proph animate-spin" />
                 </div>
-                <h2 className="text-4xl font-black text-black mb-4 tracking-tighter uppercase italic">Uploading Intel</h2>
+                <h2 className="text-4xl font-black text-black dark:text-white mb-4 tracking-tighter uppercase italic">Uploading Intel</h2>
                 <p className="text-brand-muted font-medium text-lg max-w-sm mx-auto italic">Synchronizing with Cloudinary nodes. Please wait...</p>
               </div>
             ) : status === 'success' ? (
@@ -152,7 +152,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
                 <div className="w-32 h-32 bg-brand-proph/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-brand-proph/20 shadow-inner">
                   <CheckCircle2 className="w-16 h-16 text-brand-proph animate-bounce" />
                 </div>
-                <h2 className="text-4xl font-black text-black mb-4 tracking-tighter uppercase italic">Asset Synchronized</h2>
+                <h2 className="text-4xl font-black text-black dark:text-white mb-4 tracking-tighter uppercase italic">Asset Synchronized</h2>
                 <p className="text-brand-muted font-medium text-lg max-w-sm mx-auto italic">Intel pending board verification. Rewards will sync upon approval.</p>
               </div>
             ) : (
@@ -160,7 +160,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Target Institution</label>
-                    <select className="w-full bg-gray-50 border border-gray-200 p-5 rounded-2xl font-black uppercase text-xs text-black outline-none focus:ring-1 focus:ring-brand-proph transition-all" value={formData.universityId} onChange={e => setFormData({...formData, universityId: e.target.value, faculty: '', department: ''})}>
+                    <select className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl font-black uppercase text-xs text-black dark:text-white outline-none focus:ring-1 focus:ring-brand-proph transition-all" value={formData.universityId} onChange={e => setFormData({...formData, universityId: e.target.value, faculty: '', department: ''})}>
                       {UNIVERSITIES.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
                   </div>
@@ -168,11 +168,11 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Format Node</label>
                     <div className="grid grid-cols-2 gap-3">
-                       <button type="button" onClick={() => setFormData({...formData, type: 'document'})} className={`p-5 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${formData.type === 'document' ? 'bg-brand-proph text-black border-brand-proph shadow-xl shadow-brand-proph/20' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-brand-proph/30'}`} title="PDF Submission">
+                       <button type="button" onClick={() => setFormData({...formData, type: 'document'})} className={`p-5 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${formData.type === 'document' ? 'bg-brand-proph text-black border-brand-proph shadow-xl shadow-brand-proph/20' : 'bg-brand-border/30 dark:bg-brand-black text-gray-500 dark:text-brand-muted border-brand-border hover:border-brand-proph/30'}`} title="PDF Submission">
                           <FileText className="w-7 h-7" />
                           <span className="text-[10px] font-black uppercase tracking-widest">Handout PDF</span>
                        </button>
-                       <button type="button" onClick={() => setFormData({...formData, type: 'image'})} className={`p-5 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${formData.type === 'image' ? 'bg-brand-proph text-black border-brand-proph shadow-xl shadow-brand-proph/20' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-brand-proph/30'}`} title="Image Capture">
+                       <button type="button" onClick={() => setFormData({...formData, type: 'image'})} className={`p-5 rounded-2xl flex flex-col items-center gap-2 transition-all border-2 ${formData.type === 'image' ? 'bg-brand-proph text-black border-brand-proph shadow-xl shadow-brand-proph/20' : 'bg-brand-border/30 dark:bg-brand-black text-gray-500 dark:text-brand-muted border-brand-border hover:border-brand-proph/30'}`} title="Image Capture">
                           <ImageIcon className="w-7 h-7" />
                           <span className="text-[10px] font-black uppercase tracking-widest">Snap Capture</span>
                        </button>
@@ -181,7 +181,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">{unitLabel}</label>
-                    <select required className="w-full bg-gray-50 border border-gray-200 p-5 rounded-2xl font-black uppercase text-xs text-black outline-none focus:ring-1 focus:ring-brand-proph" value={formData.faculty} onChange={e => handleFacultyChange(e.target.value)}>
+                    <select required className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl font-black uppercase text-xs text-black dark:text-white outline-none focus:ring-1 focus:ring-brand-proph" value={formData.faculty} onChange={e => handleFacultyChange(e.target.value)}>
                       <option value="">Select {unitLabel}</option>
                       {facultyOptions.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
@@ -189,7 +189,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Specialized Unit</label>
-                    <select required disabled={!formData.faculty} className="w-full bg-gray-50 border border-gray-200 p-5 rounded-2xl font-black uppercase text-xs text-black outline-none focus:ring-1 focus:ring-brand-proph disabled:opacity-30" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}>
+                    <select required disabled={!formData.faculty} className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl font-black uppercase text-xs text-black dark:text-white outline-none focus:ring-1 focus:ring-brand-proph disabled:opacity-30" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})}>
                       <option value="">Select Department</option>
                       {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
@@ -197,12 +197,12 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Intel Signature (Course Code)</label>
-                    <input required placeholder="e.g. CSC 201" className="w-full bg-gray-50 border border-gray-200 p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black uppercase text-sm tracking-[0.2em] text-black" value={formData.courseCode} onChange={e => setFormData({...formData, courseCode: e.target.value.toUpperCase()})} />
+                    <input required placeholder="e.g. CSC 201" className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black uppercase text-sm tracking-[0.2em] text-black dark:text-white" value={formData.courseCode} onChange={e => setFormData({...formData, courseCode: e.target.value.toUpperCase()})} />
                   </div>
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-brand-muted uppercase tracking-widest px-1">Academic Session</label>
-                    <select className="w-full bg-gray-50 border border-gray-200 p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-xs text-black" value={formData.year} onChange={e => setFormData({...formData, year: parseInt(e.target.value)})}>
+                    <select className="w-full bg-brand-border/30 dark:bg-brand-black border border-brand-border p-5 rounded-2xl outline-none focus:ring-1 focus:ring-brand-proph font-black text-xs text-black dark:text-white" value={formData.year} onChange={e => setFormData({...formData, year: parseInt(e.target.value)})}>
                       {years.map(y => <option key={y} value={y}>{y} / {y+1} Session</option>)}
                     </select>
                   </div>
@@ -210,7 +210,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
 
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-grow flex items-center justify-center gap-3 p-6 bg-white text-black rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-brand-proph transition-all shadow-2xl" title="Open Local Storage">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-grow flex items-center justify-center gap-3 p-6 bg-white dark:bg-brand-card text-black dark:text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-brand-proph dark:hover:text-black transition-all shadow-2xl" title="Open Local Storage">
                       <Upload className="w-5 h-5" /> Browse Neural Files
                     </button>
                     {formData.type === 'image' && (
@@ -223,7 +223,7 @@ const UserUpload: React.FC<UserUploadProps> = ({ user, isEnabled, onUpload, onTo
                   <input type="file" ref={cameraInputRef} hidden capture="environment" accept="image/*" onChange={handleFileChange} />
 
                   {selectedFiles.length > 0 && (
-                    <div className="bg-gray-50 p-8 rounded-[3rem] border border-gray-200 space-y-6">
+                    <div className="bg-brand-border/30 dark:bg-brand-black p-8 rounded-[3rem] border border-brand-border space-y-6">
                       <p className="text-[10px] font-black text-brand-muted uppercase tracking-[0.3em] px-2 flex items-center justify-between">Verification Buffer <span>({selectedFiles.length} ASSETS READY)</span></p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {selectedFiles.map((file, idx) => (

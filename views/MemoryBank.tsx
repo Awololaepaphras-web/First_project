@@ -116,14 +116,14 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ user, questions, onAction }) =>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-blue-600 rounded-2xl shadow-xl shadow-blue-100"><Database className="w-6 h-6 text-white" /></div>
+            <div className="p-3 bg-brand-proph rounded-2xl shadow-xl shadow-brand-proph/20"><Database className="w-6 h-6 text-black" /></div>
             <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight italic uppercase">Memory Bank</h1>
           </div>
           <p className="text-gray-500 font-medium">Your personalized repository for federal study assets.</p>
         </div>
         <div className="flex items-center gap-3 w-full lg:w-auto">
           <button disabled={isUploading} onClick={() => setShowAddUrl(!showAddUrl)} className={`p-4 rounded-2xl transition-all ${showAddUrl ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600 hover:bg-green-100'} disabled:opacity-50`} title="Link Remote URL"><Globe className="w-5 h-5" /></button>
-          <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="flex-grow bg-gray-900 dark:bg-white dark:text-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-all shadow-lg disabled:opacity-50" title="Store New Intel">
+          <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="flex-grow bg-gray-900 dark:bg-white dark:text-black text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-brand-proph transition-all shadow-lg disabled:opacity-50" title="Store New Intel">
             {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {isUploading ? 'Synchronizing...' : 'Archive Material'}
           </button>
@@ -132,9 +132,9 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ user, questions, onAction }) =>
       </div>
 
       {showAddUrl && (
-        <form onSubmit={handleUrlAdd} className="bg-blue-600 p-10 rounded-[2.5rem] text-white shadow-2xl animate-fade-in flex flex-col md:flex-row gap-4 items-center">
-           <input required type="url" placeholder="https://external-resource-link.pdf" className="flex-grow bg-white/10 border border-white/20 px-6 py-4 rounded-2xl outline-none focus:bg-white/20 transition-all font-bold placeholder:text-blue-200" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
-           <button type="submit" className="w-full md:w-auto bg-white text-blue-600 px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-2" title="Link Asset">Add Link <ArrowRight className="w-5 h-5" /></button>
+        <form onSubmit={handleUrlAdd} className="bg-brand-proph p-10 rounded-[2.5rem] text-black shadow-2xl animate-fade-in flex flex-col md:flex-row gap-4 items-center">
+           <input required type="url" placeholder="https://external-resource-link.pdf" className="flex-grow bg-white/10 border border-white/20 px-6 py-4 rounded-2xl outline-none focus:bg-white/20 transition-all font-bold placeholder:text-black/50" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
+           <button type="submit" className="w-full md:w-auto bg-white text-brand-proph px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-2" title="Link Asset">Add Link <ArrowRight className="w-5 h-5" /></button>
         </form>
       )}
 
@@ -146,7 +146,7 @@ const MemoryBank: React.FC<MemoryBankProps> = ({ user, questions, onAction }) =>
                 <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-brand-black/90 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-300 backdrop-blur-sm">{!!doc.fileUrl ? 'Remote' : 'Local'}</div>
                 <button onClick={(e) => { e.stopPropagation(); if(confirm('Purge material?')) DB.deleteDocument(doc.id); }} className="absolute top-4 right-4 p-2 bg-red-600/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Purge Intel"><Trash2 className="w-4 h-4" /></button>
              </div>
-             <div className="p-6"><h4 className="font-black text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors uppercase italic text-sm">{doc.courseTitle || doc.courseCode}</h4><div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none"><Clock className="w-3 h-3" /> ARCHIVED {new Date(doc.createdAt).toLocaleDateString()}</div></div>
+             <div className="p-6"><h4 className="font-black text-gray-900 dark:text-white truncate group-hover:text-brand-proph transition-colors uppercase italic text-sm">{doc.courseTitle || doc.courseCode}</h4><div className="mt-4 flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none"><Clock className="w-3 h-3" /> ARCHIVED {new Date(doc.createdAt).toLocaleDateString()}</div></div>
            </div>
         )) : <div className="col-span-full py-40 text-center opacity-40"><Database className="w-20 h-20 mx-auto mb-6" /><h3 className="text-2xl font-black uppercase italic">Vault Depleted</h3></div>}
       </div>

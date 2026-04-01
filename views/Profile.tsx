@@ -327,7 +327,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
       {/* Tip Modal */}
       {showTipModal && user && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-brand-card w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center">
               <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Coins className="w-10 h-10 text-yellow-500" />
@@ -343,7 +343,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
                     className={`py-3 rounded-2xl font-black text-xs transition-all border-2 ${
                       tipAmount === amount 
                         ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
-                        : 'border-gray-100 dark:border-gray-800 hover:border-yellow-500/50'
+                        : 'border-gray-100 dark:border-brand-border hover:border-yellow-500/50'
                     }`}
                   >
                     {amount}

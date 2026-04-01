@@ -405,11 +405,20 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                 <textarea 
                     value={newPostContent}
                     onChange={e => {
-                      const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? ]/g, '');
+                      // Allow alphanumeric, common punctuation, spaces, and newlines
+                      const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? \n]/g, '');
                       setNewPostContent(val);
                     }}
+                    onKeyDown={e => {
+                      // Ensure Enter creates a new line (default behavior for textarea)
+                      // but we can explicitly handle it if needed. 
+                      // Here we just make sure we don't prevent default unless it's a specific shortcut.
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        // Default behavior is newline, which is what the user wants.
+                      }
+                    }}
                     placeholder="Synchronize scholarly thought..."
-                    className="w-full bg-transparent text-xl border-none outline-none resize-none min-h-[50px] placeholder:text-brand-muted text-gray-900 dark:text-white"
+                    className="w-full bg-transparent text-xl border-none outline-none resize-none min-h-[100px] placeholder:text-brand-muted text-gray-900 dark:text-white"
                 />
                 {mediaFile && (
                     <div className="relative mt-3 rounded-2xl overflow-hidden border border-brand-border">
@@ -836,7 +845,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
       {/* Tip Modal */}
       {tippingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-brand-card w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center">
               <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Coins className="w-10 h-10 text-yellow-500" />
@@ -852,7 +861,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                     className={`py-3 rounded-2xl font-black text-xs transition-all border-2 ${
                       tipAmount === amount 
                         ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
-                        : 'border-gray-100 dark:border-gray-800 hover:border-yellow-500/50'
+                        : 'border-gray-100 dark:border-brand-border hover:border-yellow-500/50'
                     }`}
                   >
                     {amount}
@@ -863,7 +872,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
               <div className="flex gap-3">
                 <button 
                   onClick={() => setTippingUser(null)}
-                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                  className="flex-1 py-4 bg-gray-100 dark:bg-brand-card rounded-2xl font-black uppercase tracking-widest text-[10px]"
                 >
                   Cancel
                 </button>
@@ -883,7 +892,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
       {/* Report Modal */}
       {reportingPost && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-brand-card w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-black uppercase italic">Report Content</h3>
@@ -907,7 +916,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                     className={`w-full text-left p-4 rounded-2xl font-bold text-sm transition-all border-2 ${
                       reportReason === reason 
                         ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' 
-                        : 'border-gray-100 dark:border-gray-800 hover:border-brand-proph/30'
+                        : 'border-gray-100 dark:border-brand-border hover:border-brand-proph/30'
                     }`}
                   >
                     {reason}
@@ -919,13 +928,13 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                 value={reportDetails}
                 onChange={e => setReportDetails(e.target.value)}
                 placeholder="Additional details (optional)..."
-                className="w-full bg-gray-50 dark:bg-white/5 border border-brand-border rounded-2xl p-4 text-sm outline-none focus:border-brand-proph mb-6 min-h-[100px]"
+                className="w-full bg-gray-50 dark:bg-brand-card border border-brand-border rounded-2xl p-4 text-sm outline-none focus:border-brand-proph mb-6 min-h-[100px]"
               />
 
               <div className="flex gap-3">
                 <button 
                   onClick={() => setReportingPost(null)}
-                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                  className="flex-1 py-4 bg-gray-100 dark:bg-brand-card rounded-2xl font-black uppercase tracking-widest text-[10px]"
                 >
                   Cancel
                 </button>

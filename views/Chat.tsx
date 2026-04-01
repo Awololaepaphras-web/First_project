@@ -187,10 +187,10 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-800">
+    <div className="flex h-[calc(100vh-120px)] bg-white dark:bg-brand-black rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-brand-border">
       {/* Sidebar: User Search */}
-      <div className="w-80 border-r border-gray-100 dark:border-gray-800 flex flex-col">
-        <div className="p-4 border-bottom border-gray-100 dark:border-gray-800">
+      <div className="w-80 border-r border-gray-100 dark:border-brand-border flex flex-col">
+        <div className="p-4 border-bottom border-gray-100 dark:border-brand-border">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -198,7 +198,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
               placeholder="Search by nickname..."
               value={searchQuery}
               onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-brand-card rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
             />
           </div>
         </div>
@@ -209,7 +209,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
               <button
                 key={user.id}
                 onClick={() => setSelectedUser(user)}
-                className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${selectedUser?.id === user.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-brand-card transition-colors ${selectedUser?.id === user.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
               >
                 <img src={user.avatar || `https://ui-avatars.com/api/?name=${user.nickname}`} className="w-10 h-10 rounded-full object-cover" alt="" />
                 <div className="text-left">
@@ -231,7 +231,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
         {selectedUser ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-10">
+            <div className="p-4 border-b border-gray-100 dark:border-brand-border flex items-center justify-between bg-white/80 dark:bg-brand-black/80 backdrop-blur-md sticky top-0 z-10">
               <div className="flex items-center gap-3">
                 <img src={selectedUser.avatar || `https://ui-avatars.com/api/?name=${selectedUser.nickname}`} className="w-10 h-10 rounded-full object-cover" alt="" />
                 <div>
@@ -240,42 +240,42 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={startVideoCall} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 transition-colors">
+                <button onClick={startVideoCall} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
                   <Video className="w-5 h-5" />
                 </button>
-                <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 transition-colors">
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
                   <Phone className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-gray-900/50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-brand-black/50">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] rounded-2xl p-3 shadow-sm ${msg.senderId === currentUser.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white dark:bg-gray-800 dark:text-white rounded-tl-none'}`}>
-                    {msg.text && <p className="text-sm">{msg.text}</p>}
-                    {msg.mediaUrl && (
-                      <div className="mt-2">
-                        {msg.mediaType === 'image' && <img src={msg.mediaUrl} className="rounded-lg max-h-60 w-full object-cover" alt="" />}
-                        {msg.mediaType === 'video' && <video src={msg.mediaUrl} controls className="rounded-lg max-h-60 w-full" />}
-                        {msg.mediaType === 'audio' && <audio src={msg.mediaUrl} controls className="w-full" />}
-                        <p className="text-[10px] mt-1 opacity-70 italic">Expires in 24h</p>
-                      </div>
-                    )}
-                    <p className={`text-[10px] mt-1 ${msg.senderId === currentUser.id ? 'text-blue-100' : 'text-gray-400'}`}>
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
+                    <div className={`max-w-[70%] rounded-2xl p-3 shadow-sm ${msg.senderId === currentUser.id ? 'bg-brand-proph text-black rounded-tr-none' : 'bg-white dark:bg-brand-card dark:text-white rounded-tl-none'}`}>
+                      {msg.text && <p className="text-sm">{msg.text}</p>}
+                      {msg.mediaUrl && (
+                        <div className="mt-2">
+                          {msg.mediaType === 'image' && <img src={msg.mediaUrl} className="rounded-lg max-h-60 w-full object-cover" alt="" />}
+                          {msg.mediaType === 'video' && <video src={msg.mediaUrl} controls className="rounded-lg max-h-60 w-full" />}
+                          {msg.mediaType === 'audio' && <audio src={msg.mediaUrl} controls className="w-full" />}
+                          <p className="text-[10px] mt-1 opacity-70 italic">Expires in 24h</p>
+                        </div>
+                      )}
+                      <p className={`text-[10px] mt-1 ${msg.senderId === currentUser.id ? 'text-black/60' : 'text-gray-400'}`}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+            <div className="p-4 bg-white dark:bg-brand-black border-t border-gray-100 dark:border-brand-border">
               <div className="flex items-center gap-2">
-                <label className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-500 cursor-pointer transition-colors">
+                <label className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-500 cursor-pointer transition-colors">
                   <ImageIcon className="w-5 h-5" />
                   <input type="file" className="hidden" accept="image/*,video/*" onChange={handleFileUpload} />
                 </label>
@@ -287,7 +287,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="w-full pl-4 pr-10 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full pl-4 pr-10 py-2 bg-gray-50 dark:bg-brand-card rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
                   />
                   <button 
                     onMouseDown={startRecording}
@@ -316,7 +316,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-8">
-            <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <div className="w-20 h-20 bg-gray-100 dark:bg-brand-card rounded-full flex items-center justify-center mb-4">
               <Send className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold dark:text-white mb-2">Your Messages</h3>

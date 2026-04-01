@@ -75,7 +75,7 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
               <p className="text-3xl font-black italic text-gray-900 dark:text-white">AI Study App</p>
               <p className="text-[10px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mt-2">Unlock Protocol</p>
               <p className="text-xs text-gray-500 dark:text-brand-muted/70 mt-3 font-medium italic">Refer 3 unique users to unlock AI Study App for 2 weeks.</p>
-              <div className="mt-4 w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+              <div className="mt-4 w-full bg-gray-100 dark:bg-brand-border/30 rounded-full h-2 overflow-hidden">
                 <div 
                   className="bg-brand-proph h-full transition-all duration-1000" 
                   style={{ width: `${Math.min((user.referralCount || 0) / 3 * 100, 100)}%` }}
@@ -135,15 +135,15 @@ const Referrals: React.FC<ReferralsProps> = ({ user }) => {
                 Live Network Performance
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                 <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-brand-border">
+                 <div className="p-6 bg-gray-50 dark:bg-brand-black rounded-3xl border border-gray-100 dark:border-brand-border">
                     <p className="text-[9px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mb-1">Total Clicks</p>
                     <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.clicks}</p>
                  </div>
-                 <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-brand-border">
+                 <div className="p-6 bg-gray-50 dark:bg-brand-black rounded-3xl border border-gray-100 dark:border-brand-border">
                     <p className="text-[9px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mb-1">Active Scholars</p>
                     <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.signups}</p>
                  </div>
-                 <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-brand-border">
+                 <div className="p-6 bg-gray-50 dark:bg-brand-black rounded-3xl border border-gray-100 dark:border-brand-border">
                     <p className="text-[9px] font-black text-gray-400 dark:text-brand-muted uppercase tracking-widest mb-1">Streak Completions</p>
                     <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">{stats.loginStreaks}</p>
                  </div>

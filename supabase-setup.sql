@@ -83,7 +83,35 @@ CREATE TABLE IF NOT EXISTS public.posts (
     is_edited BOOLEAN DEFAULT false,
     ad_id UUID,
     stats JSONB DEFAULT '{"linkClicks": 0, "profileClicks": 0, "mediaViews": 0, "detailsExpanded": 0, "impressions": 0}',
-    created_at BIGINT NOT NULL
+    created_at BIGINT NOT NULL,
+    university TEXT -- For university feed filtering
+);
+
+-- Post Comments Table
+CREATE TABLE IF NOT EXISTS public.post_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    user_name TEXT,
+    text TEXT NOT NULL,
+    created_at BIGINT NOT NULL,
+    likes UUID[] DEFAULT '{}'
+);
+
+-- Post Likes Table
+CREATE TABLE IF NOT EXISTS public.post_likes (
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    created_at BIGINT DEFAULT (extract(epoch from now()) * 1000)::bigint,
+    PRIMARY KEY (post_id, user_id)
+);
+
+-- Post Reposts Table
+CREATE TABLE IF NOT EXISTS public.post_reposts (
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    created_at BIGINT DEFAULT (extract(epoch from now()) * 1000)::bigint,
+    PRIMARY KEY (post_id, user_id)
 );
 
 -- Documents Table
@@ -397,6 +425,45 @@ BEGIN
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- RPC FUNCTIONS
+
+-- Function to fetch a secure, personalized feed
+CREATE OR REPLACE FUNCTION public.fetch_secure_feed(limit_count INTEGER, offset_count INTEGER)
+RETURNS SETOF public.posts AS $$
+BEGIN
+    RETURN QUERY
+    SELECT *
+    FROM public.posts
+    WHERE visibility = 'public'
+    AND status = 'active'
+    ORDER BY created_at DESC
+    LIMIT limit_count
+    OFFSET offset_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to update algorithm weights (placeholder)
+CREATE OR REPLACE FUNCTION public.update_algorithm_weights(new_weights JSONB)
+RETURNS VOID AS $$
+BEGIN
+    -- This could update a system_config entry or a dedicated weights table
+    UPDATE public.system_config
+    SET config = jsonb_set(config, '{algorithmWeights}', new_weights)
+    WHERE id = 'default';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get current user's wallet info
+CREATE OR REPLACE FUNCTION public.get_my_wallet()
+RETURNS TABLE(points INTEGER, gladiator_earnings JSONB) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.points, u.gladiator_earnings
+    FROM public.users u
+    WHERE u.id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Posts Policies
 CREATE POLICY "Posts are viewable by university node" ON public.posts FOR SELECT 

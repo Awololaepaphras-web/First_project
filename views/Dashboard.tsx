@@ -77,7 +77,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
            { label: 'Study Minutes', val: user.lifetimeMinutes || 0, icon: <Clock className="w-6 h-6" />, color: 'text-orange-500' },
          ].map(s => (
            <div key={s.label} className="bg-white dark:bg-brand-card border border-brand-border p-8 rounded-[2.5rem] flex items-center gap-6 shadow-xl group hover:border-brand-proph/50 transition-all flex-shrink-0 w-[85vw] sm:w-auto snap-center">
-              <div className="bg-gray-100 dark:bg-brand-border p-4 rounded-2xl group-hover:scale-110 transition-transform">{React.cloneElement(s.icon, { className: `${s.color} w-7 h-7` })}</div>
+              <div className="bg-brand-border/30 dark:bg-brand-border p-4 rounded-2xl group-hover:scale-110 transition-transform">{React.cloneElement(s.icon, { className: `${s.color} w-7 h-7` })}</div>
               <div>
                  <p className="text-[10px] font-black text-brand-muted uppercase tracking-[0.2em]">{s.label}</p>
                  <p className="text-3xl font-black italic tracking-tighter text-gray-900 dark:text-white">{s.val}</p>
@@ -121,7 +121,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
                 rel="noopener noreferrer"
                 className="bg-white dark:bg-brand-card rounded-[2.5rem] border border-brand-border overflow-hidden group hover:border-brand-proph transition-all flex-shrink-0 w-[85vw] sm:w-[400px] snap-center shadow-2xl"
               >
-                <div className="aspect-video bg-gray-100 dark:bg-brand-border relative">
+                <div className="aspect-video bg-brand-border/30 dark:bg-brand-border relative">
                   {ad.type === 'video' ? (
                     <video src={ad.mediaUrl} className="w-full h-full object-cover" muted loop autoPlay />
                   ) : (
@@ -153,7 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
                <input 
                 placeholder="Find specific intel..." 
-                className="bg-gray-100 dark:bg-brand-card border border-brand-border rounded-full py-3 pl-12 pr-6 text-xs font-bold focus:ring-1 focus:ring-brand-proph outline-none w-48 sm:w-64 shadow-inner text-gray-900 dark:text-white"
+                className="bg-brand-border/30 dark:bg-brand-card border border-brand-border rounded-full py-3 pl-12 pr-6 text-xs font-bold focus:ring-1 focus:ring-brand-proph outline-none w-48 sm:w-64 shadow-inner text-gray-900 dark:text-white"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                />
@@ -164,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
          {filteredQuestions.map(q => (
            <div key={q.id} className="bg-white dark:bg-brand-card rounded-[2.5rem] border border-brand-border overflow-hidden group hover:border-brand-proph transition-all flex flex-col h-full shadow-2xl relative">
-              <div className="aspect-video bg-gray-50 dark:bg-brand-border flex items-center justify-center relative overflow-hidden">
+              <div className="aspect-video bg-brand-border/30 dark:bg-brand-border flex items-center justify-center relative overflow-hidden">
                  <FileText className="w-20 h-20 text-brand-muted opacity-10 group-hover:scale-110 transition-transform duration-500" />
                  <div className="absolute top-4 left-4 bg-brand-proph text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter italic shadow-lg">
                     {q.courseCode}
@@ -181,7 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
                  <div className="space-y-4">
                     <h3 className="text-xl font-black text-gray-900 dark:text-white leading-tight italic line-clamp-2 group-hover:text-brand-proph transition-colors">{q.courseTitle}</h3>
                     <div className="flex flex-wrap gap-2">
-                       <span className="text-[9px] font-black text-brand-muted uppercase tracking-widest bg-gray-100 dark:bg-brand-border px-3 py-1 rounded-full">{q.faculty}</span>
+                       <span className="text-[9px] font-black text-brand-muted uppercase tracking-widest bg-brand-border/30 dark:bg-brand-border px-3 py-1 rounded-full">{q.faculty}</span>
                        <span className="text-[9px] font-black text-brand-proph uppercase tracking-widest bg-brand-proph/5 px-3 py-1 rounded-full">{q.department}</span>
                     </div>
                  </div>

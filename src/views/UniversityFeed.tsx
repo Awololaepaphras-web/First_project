@@ -339,9 +339,9 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
   };
 
   return (
-    <div className="max-w-2xl mx-auto border-x border-gray-200 dark:border-gray-800 min-h-screen bg-white dark:bg-black text-black dark:text-white">
+    <div className="max-w-2xl mx-auto border-x border-gray-200 dark:border-brand-border min-h-screen bg-white dark:bg-brand-black text-black dark:text-white">
       {/* Backend Status Indicator */}
-      <div className="px-4 py-2 flex items-center justify-between bg-brand-black/50 border-b border-brand-border">
+      <div className="px-4 py-2 flex items-center justify-between bg-gray-50 dark:bg-brand-black/50 border-b border-gray-200 dark:border-brand-border">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${
             connectionStatus === 'connected' ? 'bg-green-500' : 
@@ -358,7 +358,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       </div>
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-md p-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md p-4 border-b border-gray-200 dark:border-brand-border">
         <div className="flex flex-col">
           <h1 className="text-xl font-bold">University Feed</h1>
           <p className="text-xs text-brand-proph font-black uppercase tracking-widest">{user.university}</p>
@@ -366,18 +366,26 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       </div>
 
       {/* Post Box */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="p-4 border-b border-gray-200 dark:border-brand-border">
         <div className="flex gap-4">
           <div className="w-12 h-12 rounded-full bg-brand-proph/10 flex items-center justify-center font-bold text-brand-proph">
             {user.name[0]}
           </div>
           <div className="flex-grow">
             <textarea
-              className="w-full bg-transparent text-lg outline-none resize-none placeholder-gray-500"
+              className="w-full bg-transparent text-lg outline-none resize-none placeholder-gray-500 min-h-[120px]"
               placeholder={`What's happening at ${user.university}?`}
-              rows={3}
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                // Allow alphanumeric, common punctuation, spaces, and newlines
+                const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? \n]/g, '');
+                setContent(val);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  // Default behavior is newline
+                }
+              }}
             />
             {image && (
               <div className="relative mt-2">
@@ -387,7 +395,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                 </button>
               </div>
             )}
-            <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100 dark:border-gray-900">
+            <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100 dark:border-brand-border/30">
               <label className="cursor-pointer text-brand-proph hover:bg-brand-proph/10 p-2 rounded-full transition-colors">
                 <ImageIcon className="w-5 h-5" />
                 <input type="file" hidden onChange={(e) => setImage(e.target.files?.[0] || null)} />
@@ -405,7 +413,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       </div>
 
       {/* Feed */}
-      <div className="divide-y divide-gray-200 dark:divide-gray-800">
+      <div className="divide-y divide-gray-200 dark:divide-brand-border">
         {posts.filter(p => !user.blockedUsers?.includes(p.userId)).length === 0 ? (
           <div className="p-20 text-center">
             <p className="text-gray-500 font-medium italic">No intel has been shared at {user.university} yet. Be the first to broadcast!</p>
@@ -437,9 +445,9 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                 {adToShow && (
                   (adToShow.adTypes?.includes('banner') || adToShow.adType === 'banner') ? <BannerAd ad={adToShow} /> : <NativeAd ad={adToShow} />
                 )}
-                <div className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
+                <div className="p-4 hover:bg-gray-50 dark:hover:bg-brand-card transition-colors cursor-pointer group">
               <div className="flex gap-3">
-                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center font-bold">
+                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-brand-border flex items-center justify-center font-bold">
                   {post.userName?.[0]}
                 </div>
                 <div className="flex-grow">
@@ -456,13 +464,13 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                           e.stopPropagation();
                           setShowPostOptions(showPostOptions === post.id ? null : post.id);
                         }}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-colors"
                       >
                         <MoreHorizontal className="w-4 h-4 text-gray-500" />
                       </button>
                       
                       {showPostOptions === post.id && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden py-2">
+                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-brand-card rounded-2xl shadow-2xl border border-gray-100 dark:border-brand-border z-50 overflow-hidden py-2">
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -541,11 +549,11 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
       {/* Modals */}
       {reportingPost && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <h3 className="font-black uppercase italic text-sm">Report Intel</h3>
-              <button onClick={() => setReportingPost(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-5 h-5" />
+          <div className="bg-white dark:bg-brand-card w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-gray-100 dark:border-brand-border flex justify-between items-center">
+              <h3 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Report Intel</h3>
+              <button onClick={() => setReportingPost(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-border rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             <div className="p-6">
@@ -564,7 +572,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                     className={`w-full p-4 rounded-2xl text-left font-bold text-sm transition-all border-2 ${
                       reportReason === reason.id 
                         ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' 
-                        : 'border-gray-100 dark:border-gray-800 hover:border-brand-proph/50'
+                        : 'border-gray-100 dark:border-brand-border hover:border-brand-proph/50 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {reason.label}
@@ -572,7 +580,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                 ))}
               </div>
               <textarea
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 text-sm outline-none focus:border-brand-proph transition-colors min-h-[100px]"
+                className="w-full bg-gray-50 dark:bg-brand-black border border-gray-100 dark:border-brand-border rounded-2xl p-4 text-sm outline-none focus:border-brand-proph transition-colors min-h-[100px] text-gray-900 dark:text-white"
                 placeholder="Additional details (optional)..."
                 value={reportDetails}
                 onChange={(e) => setReportDetails(e.target.value)}
@@ -587,7 +595,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
               <div className="flex gap-3">
                 <button 
                   onClick={() => setReportingPost(null)}
-                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                  className="flex-1 py-4 bg-gray-100 dark:bg-brand-border rounded-2xl font-black uppercase tracking-widest text-[10px] text-gray-700 dark:text-gray-300"
                 >
                   Cancel
                 </button>
@@ -606,24 +614,24 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
 
       {replyingTo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <h3 className="font-black uppercase italic text-sm">Reply to Intel</h3>
-              <button onClick={() => setReplyingTo(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-5 h-5" />
+          <div className="bg-white dark:bg-brand-card w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-gray-100 dark:border-brand-border flex justify-between items-center">
+              <h3 className="font-black uppercase italic text-sm text-gray-900 dark:text-white">Reply to Intel</h3>
+              <button onClick={() => setReplyingTo(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-border rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             <div className="p-4">
               <div className="flex gap-3 mb-4 opacity-50">
-                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center font-bold">{replyingTo.userName[0]}</div>
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-brand-border flex items-center justify-center font-bold text-gray-900 dark:text-white">{replyingTo.userName[0]}</div>
                 <div className="flex-grow">
-                  <p className="text-sm font-bold">{replyingTo.userName}</p>
-                  <p className="text-sm line-clamp-2">{replyingTo.content}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{replyingTo.userName}</p>
+                  <p className="text-sm line-clamp-2 text-gray-700 dark:text-gray-300">{replyingTo.content}</p>
                 </div>
               </div>
               <textarea
                 autoFocus
-                className="w-full bg-transparent text-lg outline-none resize-none placeholder-gray-500 min-h-[120px]"
+                className="w-full bg-transparent text-lg outline-none resize-none placeholder-gray-500 min-h-[120px] text-gray-900 dark:text-white"
                 placeholder="Post your reply..."
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
@@ -644,12 +652,12 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
 
       {tippingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-brand-card w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center">
               <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Coins className="w-10 h-10 text-yellow-500" />
               </div>
-              <h3 className="text-xl font-black uppercase italic mb-2">Tip {tippingUser.name}</h3>
+              <h3 className="text-xl font-black uppercase italic mb-2 text-gray-900 dark:text-white">Tip {tippingUser.name}</h3>
               <p className="text-gray-500 text-sm mb-6">Support your fellow student with some points!</p>
               
               <div className="grid grid-cols-3 gap-3 mb-6">
@@ -660,7 +668,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
                     className={`py-3 rounded-2xl font-black text-xs transition-all border-2 ${
                       tipAmount === amount 
                         ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
-                        : 'border-gray-100 dark:border-gray-800 hover:border-yellow-500/50'
+                        : 'border-gray-100 dark:border-brand-border hover:border-yellow-500/50 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {amount}
@@ -671,7 +679,7 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
               <div className="flex gap-3">
                 <button 
                   onClick={() => setTippingUser(null)}
-                  className="flex-1 py-4 bg-gray-100 dark:bg-white/5 rounded-2xl font-black uppercase tracking-widest text-[10px]"
+                  className="flex-1 py-4 bg-gray-100 dark:bg-brand-border rounded-2xl font-black uppercase tracking-widest text-[10px] text-gray-700 dark:text-gray-300"
                 >
                   Cancel
                 </button>

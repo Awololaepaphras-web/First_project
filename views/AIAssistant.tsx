@@ -127,9 +127,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 h-[calc(100vh-100px)] flex flex-col">
-      <div className="bg-white rounded-3xl shadow-2xl flex-grow overflow-hidden flex flex-col border border-gray-100">
+      <div className="bg-white dark:bg-brand-black rounded-3xl shadow-2xl flex-grow overflow-hidden flex flex-col border border-gray-100 dark:border-brand-border">
         {/* Header */}
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 backdrop-blur-sm">
+        <div className="p-5 border-b border-gray-100 dark:border-brand-border flex justify-between items-center bg-gray-50/50 dark:bg-brand-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-green-100">
               <Sparkles className="w-7 h-7" />
@@ -162,7 +162,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
         </div>
 
         {/* Chat Area */}
-        <div ref={scrollRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-white">
+        <div ref={scrollRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-white dark:bg-brand-black">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -173,8 +173,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
                 </div>
                 <div className={`p-5 rounded-3xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
                   msg.role === 'user' 
-                  ? 'bg-blue-50 text-blue-900 rounded-tr-none border border-blue-100' 
-                  : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-100'
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 rounded-tr-none border border-blue-100 dark:border-blue-900/30' 
+                  : 'bg-gray-50 dark:bg-brand-card text-gray-800 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-brand-border'
                 }`}>
                   {msg.text}
                 </div>
@@ -187,7 +187,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
                 <div className="w-9 h-9 rounded-xl bg-green-600 flex items-center justify-center text-white shadow-sm">
                   <Bot className="w-5 h-5" />
                 </div>
-                <div className="bg-gray-50 p-5 rounded-3xl rounded-tl-none border border-gray-100 flex items-center gap-3">
+                <div className="bg-gray-50 dark:bg-brand-card p-5 rounded-3xl rounded-tl-none border border-gray-100 dark:border-brand-border flex items-center gap-3">
                   <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
                   <span className="text-sm text-gray-500 font-medium">Analyzing document and thinking...</span>
                 </div>
@@ -197,19 +197,19 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
         </div>
 
         {/* Input Area */}
-        <div className="p-5 border-t border-gray-100 bg-gray-50/50">
+        <div className="p-5 border-t border-gray-100 dark:border-brand-border bg-gray-50/50 dark:bg-brand-card/50">
           {selectedFile && (
-            <div className="mb-4 flex items-center justify-between bg-white p-3 rounded-2xl border border-green-200 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+            <div className="mb-4 flex items-center justify-between bg-white dark:bg-brand-card p-3 rounded-2xl border border-green-200 dark:border-green-900/30 shadow-sm animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center gap-3">
-                <div className="bg-green-100 p-2 rounded-lg">
+                <div className="bg-green-100 dark:bg-green-900/20 p-2 rounded-lg">
                   <FileText className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{fileName}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[200px]">{fileName}</p>
                   <p className="text-[10px] text-gray-500 uppercase font-bold">Ready to analyze</p>
                 </div>
               </div>
-              <button onClick={removeFile} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-red-500 transition-colors">
+              <button onClick={removeFile} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full text-gray-400 hover:text-red-500 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -220,7 +220,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user }) => {
               <textarea
                 rows={1}
                 placeholder={selectedFile ? "Ask something about this file..." : "Type a question or upload a document..."}
-                className="w-full pl-6 pr-14 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all shadow-sm resize-none"
+                className="w-full pl-6 pr-14 py-4 bg-white dark:bg-brand-black border border-gray-200 dark:border-brand-border rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all shadow-sm resize-none dark:text-white"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {

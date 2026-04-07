@@ -28,6 +28,7 @@ import Chat from './views/Chat';
 import Settings from './views/Settings';
 import IncomeAnalysis from './views/IncomeAnalysis';
 import AnonymousUpload from './views/AnonymousUpload';
+import Statuses from './views/Statuses';
 import LocalHub from './views/GladiatorHub';
 import GladiatorLanding from './views/GladiatorLanding';
 import GladiatorPool from './views/GladiatorPool';
@@ -716,10 +717,24 @@ const App: React.FC = () => {
       return;
     }
 
-    // Check wallet if it's a reply
-    if (parentId && wallet && wallet.prophy_points < 30) {
-      alert('Insufficient Prophy Points! Each reply costs 30 points.');
-      return;
+    // If it's a reply, use the secure RPC
+    if (parentId) {
+      try {
+        const result = await SupabaseService.handlePostReply(parentId, content, mediaUrl, mediaType);
+        if (result.success) {
+          // Update local wallet points if deducted
+          if (result.cost_deducted > 0 && wallet) {
+            setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - result.cost_deducted } : null);
+          }
+          // Realtime hook will handle adding the post to the list
+        } else {
+          alert(result.message || 'Failed to post reply');
+        }
+        return;
+      } catch (error: any) {
+        alert(error.message || 'Failed to save reply');
+        return;
+      }
     }
 
     const newPost: Post = {
@@ -741,12 +756,10 @@ const App: React.FC = () => {
     
     try {
       await SupabaseService.savePost(newPost);
-      // Update local wallet state
+      // Update local wallet state for new post
       if (wallet) {
-        const cost = parentId ? 30 : 50;
-        setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - cost } : null);
+        setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - 50 } : null);
       }
-      // Note: Realtime hook will handle adding the post to the list
     } catch (error: any) {
       alert(error.message || 'Failed to save post');
     }
@@ -990,6 +1003,7 @@ const App: React.FC = () => {
             // Forceful visibility: Post to community feed
             handlePost(`A new past question was contributed anonymously: ${q.courseCode} - ${q.courseTitle}! Check it out in the Study Hub.`, q.fileUrl, q.type === 'image' ? 'image' : undefined, undefined, { id: 'anonymous', name: 'Anonymous Contributor', nickname: 'Ghost', university: 'Global' });
           }} universityColleges={universityColleges} collegeDepartments={collegeDepartments} />} />
+          <Route path="/statuses" element={<Statuses user={user} />} />
           <Route path="/tasks" element={user ? <Tasks user={user} tasks={tasks} /> : <Navigate to="/login" />} />
           <Route path="/universities" element={user ? <UniversityList user={user} universities={universities} /> : <Navigate to="/login" />} />
           <Route path="/university/:id" element={user ? <UniversityDetail user={user} questions={questions} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments} globalAds={globalAds} /> : <Navigate to="/login" />} />

@@ -271,6 +271,21 @@ CREATE TABLE IF NOT EXISTS public.reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Statuses Table (Stories)
+CREATE TABLE IF NOT EXISTS public.statuses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    user_name TEXT NOT NULL,
+    user_nickname TEXT NOT NULL,
+    media_url TEXT NOT NULL,
+    media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'gif')),
+    caption TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    renewed_count INTEGER DEFAULT 0,
+    last_renewed_at TIMESTAMP WITH TIME ZONE
+);
+
 -- 4. SECURITY FUNCTIONS
 
 -- Function to check if the current user is an admin
@@ -305,6 +320,7 @@ ALTER TABLE public.universities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gladiator_vault ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.statuses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_logs ENABLE ROW LEVEL SECURITY;
 
@@ -529,6 +545,12 @@ CREATE POLICY "Users can view their own conversations" ON public.conversations F
 CREATE POLICY "Users can create conversations" ON public.conversations FOR INSERT WITH CHECK (auth.uid() = user1_id OR auth.uid() = user2_id);
 CREATE POLICY "Users can update their own conversations" ON public.conversations FOR UPDATE USING (auth.uid() = user1_id OR auth.uid() = user2_id);
 
+-- Statuses Policies
+CREATE POLICY "Statuses are viewable by everyone" ON public.statuses FOR SELECT USING (expires_at > now());
+CREATE POLICY "Users can create their own statuses" ON public.statuses FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own statuses" ON public.statuses FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own statuses" ON public.statuses FOR DELETE USING (auth.uid() = user_id OR is_admin());
+
 -- Admin Logs Policies
 CREATE POLICY "Admins can view all admin logs" ON public.admin_logs FOR SELECT USING (is_admin());
 CREATE POLICY "Admins can create admin logs" ON public.admin_logs FOR INSERT WITH CHECK (is_admin());
@@ -591,9 +613,28 @@ DECLARE
   reward_admin INTEGER := 10; -- Reward for super admin
   parent_poster_id UUID;
   admin_id UUID;
+  has_replied_before BOOLEAN;
 BEGIN
   -- Only apply to replies (posts with a parent_id)
   IF NEW.parent_id IS NOT NULL THEN
+    -- Get original poster ID
+    SELECT user_id INTO parent_poster_id FROM public.posts WHERE id = NEW.parent_id;
+    
+    -- 1. Skip if original poster is replying to their own post
+    IF NEW.user_id = parent_poster_id THEN
+      RETURN NEW;
+    END IF;
+
+    -- 2. Check if this user has already replied to this specific post
+    SELECT EXISTS (
+      SELECT 1 FROM public.posts 
+      WHERE parent_id = NEW.parent_id AND user_id = NEW.user_id
+    ) INTO has_replied_before;
+
+    IF has_replied_before THEN
+      RETURN NEW;
+    END IF;
+
     -- Get current user points
     SELECT points INTO user_points FROM public.users WHERE id = NEW.user_id;
     
@@ -601,9 +642,6 @@ BEGIN
     IF user_points < cost THEN
       RAISE EXCEPTION 'Insufficient Prophy Coins to reply. Each reply costs 30 coins.';
     END IF;
-    
-    -- Get original poster ID
-    SELECT user_id INTO parent_poster_id FROM public.posts WHERE id = NEW.parent_id;
     
     -- Get super admin ID
     SELECT id INTO admin_id FROM public.users WHERE email = 'awololaeo.22@student.funaab.edu.ng' LIMIT 1;
@@ -613,8 +651,8 @@ BEGIN
     SET points = points - cost 
     WHERE id = NEW.user_id;
     
-    -- 2. Reward original poster (if exists and not the same person)
-    IF parent_poster_id IS NOT NULL AND parent_poster_id != NEW.user_id THEN
+    -- 2. Reward original poster
+    IF parent_poster_id IS NOT NULL THEN
       UPDATE public.users 
       SET points = points + reward_poster 
       WHERE id = parent_poster_id;
@@ -671,6 +709,41 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 8. TRIGGERS & AUTOMATION
+
+-- Function to renew status
+CREATE OR REPLACE FUNCTION public.renew_status(status_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    s_record RECORD;
+BEGIN
+    SELECT * INTO s_record FROM public.statuses WHERE id = status_id AND user_id = auth.uid();
+    
+    IF s_record IS NULL THEN
+        RAISE EXCEPTION 'Status not found or unauthorized';
+    END IF;
+    
+    IF s_record.renewed_count >= 1 THEN
+        RAISE EXCEPTION 'Status can only be renewed once';
+    END IF;
+    
+    -- Check if it's within 1 hour of expiration
+    IF s_record.expires_at - now() > interval '1 hour' THEN
+        RAISE EXCEPTION 'Status can only be renewed 1 hour before expiration';
+    END IF;
+    
+    IF s_record.expires_at < now() THEN
+        RAISE EXCEPTION 'Status has already expired';
+    END IF;
+
+    UPDATE public.statuses 
+    SET expires_at = expires_at + interval '24 hours',
+        renewed_count = renewed_count + 1,
+        last_renewed_at = now()
+    WHERE id = status_id;
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Chat Triggers & Functions
 

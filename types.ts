@@ -229,6 +229,20 @@ export interface Report {
   createdAt: number;
 }
 
+export interface Status {
+  id: string;
+  userId: string;
+  userName: string;
+  userNickname: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video' | 'gif';
+  caption?: string;
+  createdAt: number;
+  expiresAt: number;
+  renewedCount: number;
+  lastRenewedAt?: number;
+}
+
 export interface AdPricing {
   daily: number;
   weekly: number;

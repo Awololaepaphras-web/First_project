@@ -919,7 +919,7 @@ export const SupabaseService = {
     try {
       const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      return data.map((r: any) => ({
+      return (data || []).map((r: any) => ({
         id: r.id,
         reporterId: r.reporter_id,
         targetId: r.target_id,
@@ -938,6 +938,74 @@ export const SupabaseService = {
   async updateReportStatus(reportId: string, status: 'resolved' | 'dismissed') {
     const { error } = await supabase.from('reports').update({ status }).eq('id', reportId);
     if (error) console.error('Error updating report status:', error);
+  },
+
+  // Statuses (Stories)
+  async getStatuses(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('statuses')
+        .select('*')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return (data || []).map(s => ({
+        id: s.id,
+        userId: s.user_id,
+        userName: s.user_name,
+        userAvatar: s.user_avatar,
+        mediaUrl: s.media_url,
+        mediaType: s.media_type,
+        caption: s.caption,
+        expiresAt: new Date(s.expires_at).getTime(),
+        createdAt: new Date(s.created_at).getTime()
+      }));
+    } catch (error) {
+      console.error('Error fetching statuses:', error);
+      return [];
+    }
+  },
+
+  async saveStatus(status: any) {
+    try {
+      const { error } = await supabase.from('statuses').insert({
+        user_id: status.userId,
+        user_name: status.userName,
+        user_avatar: status.userAvatar,
+        media_url: status.mediaUrl,
+        media_type: status.mediaType,
+        caption: status.caption,
+        expires_at: new Date(status.expiresAt).toISOString()
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving status:', error);
+      return { success: false, error };
+    }
+  },
+
+  async deleteStatus(statusId: string) {
+    const { error } = await supabase.from('statuses').delete().eq('id', statusId);
+    if (error) console.error('Error deleting status:', error);
+  },
+
+  // Secure Reply
+  async handlePostReply(postId: string, content: string, mediaUrl?: string, mediaType?: string) {
+    try {
+      const { data, error } = await supabase.rpc('handle_post_reply', {
+        p_post_id: postId,
+        p_reply_content: content,
+        p_media_url: mediaUrl,
+        p_media_type: mediaType
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error in handlePostReply:', error);
+      throw error;
+    }
   },
 
   // Gladiator Hub

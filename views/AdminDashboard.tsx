@@ -104,6 +104,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newCollegeNames, setNewCollegeNames] = useState('');
   const [selectedCollegeForDept, setSelectedCollegeForDept] = useState('');
   const [newDeptNames, setNewDeptNames] = useState('');
+  const [reports, setReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
 
   const adFileInputRef = useRef<HTMLInputElement>(null);
   const uniLogoInputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +173,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       };
     }
   }, [selectedConversation]);
+
+  React.useEffect(() => {
+    if (activeTab === 'reports') {
+      const fetchReports = async () => {
+        setLoadingReports(true);
+        const data = await SupabaseService.getReports();
+        setReports(data);
+        setLoadingReports(false);
+      };
+      fetchReports();
+
+      const sub = SupabaseService.subscribeToTable('reports', (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setReports(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+        }
+      });
+
+      return () => {
+        sub.unsubscribe();
+      };
+    }
+  }, [activeTab]);
 
   const handleUpdateConfig = async (updates: Partial<SystemConfig>) => {
     const newConfig = { ...config, ...updates };
@@ -332,6 +358,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'sug', label: 'SUG Verification', icon: <Award className="w-5 h-5" /> },
     { id: 'staff', label: 'Staff Management', icon: <ShieldCheck className="w-5 h-5" /> },
     { id: 'chat-monitor', label: 'Chat Monitor', icon: <MessageSquare className="w-5 h-5" /> },
+    { id: 'reports', label: 'Security Reports', icon: <AlertCircle className="w-5 h-5" /> },
     { id: 'vercel-sql', label: 'Database SQL', icon: <Globe className="w-5 h-5" />, isLink: true, path: '/vercel-sql' },
     { id: 'payments', label: 'Payment Verification', icon: <FileCheck className="w-5 h-5" />, isLink: true, path: '/Epaphrastheadminofprophandloveforx/payments' },
   ];
@@ -1606,26 +1633,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            </td>
                            <td className="p-8">
                              <div className="flex flex-wrap gap-2">
-                               {['command', 'financials', 'engagement', 'submissions', 'payouts', 'ad-engine', 'academic', 'users', 'broadcast', 'tasks', 'algorithms', 'branding', 'sug'].map(page => (
-                                 <button
-                                   key={page}
-                                   onClick={() => {
-                                     if (u.role === 'admin' && u.email === 'awololaeo.22@student.funaab.edu.ng') return;
-                                     const currentPerms = u.staffPermissions || [];
-                                     const newPerms = currentPerms.includes(page)
-                                       ? currentPerms.filter(p => p !== page)
-                                       : [...currentPerms, page];
-                                     onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, staffPermissions: newPerms } : usr));
-                                   }}
-                                   className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase transition-all ${
-                                     (u.staffPermissions || []).includes(page)
-                                       ? 'bg-brand-proph text-black'
-                                       : 'bg-gray-800 text-gray-400 hover:text-white'
-                                   }`}
-                                 >
-                                   {page}
-                                 </button>
-                               ))}
+                                {['command', 'financials', 'engagement', 'submissions', 'payouts', 'ad-engine', 'academic', 'users', 'broadcast', 'tasks', 'algorithms', 'branding', 'sug', 'reports'].map(page => (
+                                  <button
+                                    key={page}
+                                    onClick={() => {
+                                      if (u.role === 'admin' && u.email === 'awololaeo.22@student.funaab.edu.ng') return;
+                                      const currentPerms = u.staffPermissions || [];
+                                      const newPerms = currentPerms.includes(page)
+                                        ? currentPerms.filter(p => p !== page)
+                                        : [...currentPerms, page];
+                                      onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, staffPermissions: newPerms } : usr));
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase transition-all ${
+                                      (u.staffPermissions || []).includes(page)
+                                        ? 'bg-brand-proph text-black'
+                                        : 'bg-gray-800 text-gray-400 hover:text-white'
+                                    }`}
+                                  >
+                                    {page}
+                                  </button>
+                                ))}
                              </div>
                            </td>
                            <td className="p-8 text-right">
@@ -1647,6 +1674,117 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </div>
           </div>
          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="space-y-12 animate-fade-in">
+             <div className="flex items-center justify-between">
+                <h1 className="text-4xl font-black tracking-tighter uppercase italic">Security Reports</h1>
+                <button 
+                  onClick={async () => {
+                    setLoadingReports(true);
+                    const data = await SupabaseService.getReports();
+                    setReports(data);
+                    setLoadingReports(false);
+                  }}
+                  className="p-3 bg-gray-800 text-gray-400 rounded-xl hover:bg-white/10 transition-all"
+                >
+                  <RefreshCw className={`w-5 h-5 ${loadingReports ? 'animate-spin' : ''}`} />
+                </button>
+             </div>
+
+             <div className="bg-gray-900 rounded-[3.5rem] border border-gray-800 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto no-scrollbar">
+                   <table className="w-full text-left border-collapse">
+                      <thead>
+                         <tr className="border-b border-gray-800 bg-gray-800/50">
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Reporter</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Target</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Reason</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800/50">
+                         {reports.length === 0 ? (
+                           <tr>
+                             <td colSpan={5} className="p-20 text-center text-gray-600 font-black italic uppercase text-xs">No active reports found</td>
+                           </tr>
+                         ) : (
+                           reports.map(report => (
+                             <tr key={report.id} className="hover:bg-white/5 transition-colors group">
+                                <td className="p-8">
+                                   <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center">
+                                         <Users className="w-5 h-5 text-gray-400" />
+                                      </div>
+                                      <p className="text-xs font-black text-white italic truncate max-w-[150px]">{report.reporterId}</p>
+                                   </div>
+                                </td>
+                                <td className="p-8">
+                                   <div className="space-y-1">
+                                      <span className="px-2 py-0.5 bg-red-600/10 text-red-500 rounded text-[8px] font-black uppercase">{report.targetType}</span>
+                                      <p className="text-[10px] font-mono text-gray-500 truncate max-w-[150px]">{report.targetId}</p>
+                                   </div>
+                                </td>
+                                <td className="p-8">
+                                   <div className="space-y-1">
+                                      <p className="text-xs font-black text-white italic uppercase tracking-tighter">{report.reason}</p>
+                                      <p className="text-[10px] text-gray-500 font-medium italic line-clamp-2">{report.details}</p>
+                                   </div>
+                                </td>
+                                <td className="p-8">
+                                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
+                                     report.status === 'pending' ? 'bg-yellow-600/10 text-yellow-500' :
+                                     report.status === 'resolved' ? 'bg-green-600/10 text-green-500' :
+                                     'bg-gray-600/10 text-gray-500'
+                                   }`}>
+                                      {report.status}
+                                   </span>
+                                </td>
+                                <td className="p-8">
+                                   <div className="flex items-center gap-2">
+                                      {report.status === 'pending' && (
+                                        <>
+                                          <button 
+                                            onClick={() => SupabaseService.updateReportStatus(report.id, 'resolved')}
+                                            className="p-3 bg-green-600/10 text-green-500 rounded-xl hover:bg-green-600 hover:text-white transition-all"
+                                            title="Resolve"
+                                          >
+                                            <CheckCircle2 className="w-5 h-5" />
+                                          </button>
+                                          <button 
+                                            onClick={() => SupabaseService.updateReportStatus(report.id, 'dismissed')}
+                                            className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                                            title="Dismiss"
+                                          >
+                                            <XCircle className="w-5 h-5" />
+                                          </button>
+                                        </>
+                                      )}
+                                      <button 
+                                        onClick={() => {
+                                          if (report.targetType === 'post') {
+                                            navigate(`/community?post=${report.targetId}`);
+                                          } else if (report.targetType === 'user') {
+                                            navigate(`/profile/${report.targetId}`);
+                                          }
+                                        }}
+                                        className="p-3 bg-gray-800 text-gray-400 rounded-xl hover:bg-white/10 transition-all"
+                                        title="View Target"
+                                      >
+                                        <ChevronRight className="w-5 h-5" />
+                                      </button>
+                                   </div>
+                                </td>
+                             </tr>
+                           ))
+                         )}
+                      </tbody>
+                   </table>
+                </div>
+             </div>
+          </div>
         )}
 
         {activeTab === 'chat-monitor' && (

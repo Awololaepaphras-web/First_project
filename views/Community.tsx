@@ -7,6 +7,7 @@ import {
   BarChart, Image as ImageIcon, Twitter, Facebook, Instagram, Ghost, MessageSquare,
   Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone, ExternalLink, Coins
 } from 'lucide-react';
+import VideoEmbed from '../src/components/VideoEmbed';
 import { User, Post, PostComment, Advertisement, Report } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import { SupabaseService } from '../src/services/supabaseService';
@@ -55,7 +56,7 @@ const BannerAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
       </div>
       <a href={ad.link} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-2xl border border-brand-proph/20 aspect-[3/1]">
         {ad.mediaType === 'image' ? (
-          <img src={ad.mediaUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={ad.title} referrerPolicy="no-referrer" />
+          <img src={CloudinaryService.getOptimizedUrl(ad.mediaUrl)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={ad.title} referrerPolicy="no-referrer" />
         ) : (
           <video src={ad.mediaUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
         )}
@@ -96,7 +97,7 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
           <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner relative group/media">
             <div className="absolute inset-0 bg-brand-proph/5 opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none" />
             {ad.mediaType === 'image' ? (
-              <img src={ad.mediaUrl} className="w-full h-auto max-h-[600px] object-cover" alt="Ad" referrerPolicy="no-referrer" />
+              <img src={CloudinaryService.getOptimizedUrl(ad.mediaUrl)} className="w-full h-auto max-h-[600px] object-cover" alt="Ad" referrerPolicy="no-referrer" />
             ) : (
               <video src={ad.mediaUrl} className="w-full h-auto max-h-[600px]" controls />
             )}
@@ -141,11 +142,16 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   const fileInputRef = useRef<HTMLInputElement>(null);
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // Handle Trends tab from URL
+  // Handle Trends tab and post highlighting from URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('tab') === 'trends') {
       setActiveTab('trends');
+    }
+    const postId = params.get('post');
+    if (postId) {
+      setSelectedTrend(postId);
+      setActiveTab('all');
     }
   }, [location.search]);
 
@@ -398,8 +404,8 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
 
       <div className="p-4 border-b border-brand-border">
         <div className="flex gap-4">
-            <div className="w-12 h-12 rounded-full bg-brand-border overflow-hidden flex-shrink-0">
-                {user.profilePicture ? <img src={user.profilePicture} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">{user.name.charAt(0)}</div>}
+            <div className="w-12 h-12 rounded-full bg-brand-border overflow-hidden flex-shrink-0 text-gray-900 dark:text-white">
+                {user.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(user.profilePicture)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">{user.name.charAt(0)}</div>}
             </div>
             <div className="flex-grow pt-2">
                 <textarea 
@@ -422,7 +428,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                 />
                 {mediaFile && (
                     <div className="relative mt-3 rounded-2xl overflow-hidden border border-brand-border">
-                        {mediaFile.type === 'image' ? <img src={mediaFile.url} className="w-full h-auto object-cover" /> : <video src={mediaFile.url} className="w-full h-auto" controls />}
+                        {mediaFile.type === 'image' ? <img src={CloudinaryService.getOptimizedUrl(mediaFile.url)} className="w-full h-auto object-cover" /> : <video src={mediaFile.url} className="w-full h-auto" controls />}
                         <button disabled={isUploading} onClick={() => setMediaFile(null)} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 disabled:opacity-50" title="Remove Media"><X className="w-4 h-4" /></button>
                         {isUploading && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -593,7 +599,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                   ).slice(0, 5).map(u => (
                     <div key={u.id} className="flex items-center gap-2 bg-white dark:bg-brand-card p-2 rounded-xl border border-brand-border hover:border-brand-proph transition-all cursor-pointer group">
                       <div className="w-8 h-8 rounded-full bg-brand-border overflow-hidden flex-shrink-0">
-                        {u.profilePicture ? <img src={u.profilePicture} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-[10px] text-gray-400">{u.name.charAt(0)}</div>}
+                        {u.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(u.profilePicture)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-[10px] text-gray-400">{u.name.charAt(0)}</div>}
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] font-black dark:text-white truncate">{u.name}</p>
@@ -739,13 +745,14 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                       ) : (
                         <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all">
                           {renderContentWithTags(post.content)}
+                          <VideoEmbed content={post.content} />
                         </div>
                       )}
                       {post.mediaUrl && (
                         <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner" title="Media Preview">
                            {post.mediaType === 'image' ? (
                              <img 
-                               src={post.mediaUrl} 
+                               src={CloudinaryService.getOptimizedUrl(post.mediaUrl)} 
                                className="w-full h-auto max-h-[600px] object-cover hover:scale-[1.02] transition-transform duration-500" 
                                alt="Post media"
                              />

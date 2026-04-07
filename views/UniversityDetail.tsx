@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, ChevronDown, Share2, MapPin, ArrowLeft, Image as ImageIcon, BookOpen, Lock, Layers, FileText, GraduationCap, Zap, ShieldAlert, Megaphone, ChevronRight } from 'lucide-react';
 import { PastQuestion, StudyDocument, User, University, Advertisement } from '../types';
 import { COMMON_FACULTIES } from '../constants';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 interface UniversityDetailProps {
   questions: PastQuestion[];
@@ -103,7 +104,7 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
         </Link>
         <div className="bg-white dark:bg-brand-card rounded-[4rem] p-12 md:p-16 shadow-2xl border border-gray-100 dark:border-brand-border flex flex-col md:flex-row items-center gap-12 relative overflow-hidden">
           <div className="w-36 h-36 md:w-48 md:h-48 bg-gray-50 dark:bg-brand-black rounded-[3rem] p-10 flex-shrink-0 flex items-center justify-center">
-            <img src={university.logo} alt={university.name} className="w-full h-full object-contain" />
+            <img src={CloudinaryService.getOptimizedUrl(university.logo)} alt={university.name} className="w-full h-full object-contain" />
           </div>
           <div className="text-center md:text-left flex-grow">
             <h1 className="text-4xl md:text-7xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{university.name}</h1>
@@ -132,7 +133,7 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
                   {ad.type === 'video' ? (
                     <video src={ad.mediaUrl} className="w-full h-full object-cover" muted loop autoPlay />
                   ) : (
-                    <img src={ad.mediaUrl} className="w-full h-full object-cover" alt={ad.title} />
+                    <img src={CloudinaryService.getOptimizedUrl(ad.mediaUrl)} className="w-full h-full object-cover" alt={ad.title} />
                   )}
                   <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-white/10">
                     Sponsored

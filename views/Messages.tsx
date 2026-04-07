@@ -6,6 +6,8 @@ import {
   Info, ShieldCheck, CheckCircle2, User as UserIcon
 } from 'lucide-react';
 import { User, Message, SystemConfig } from '../types';
+import { CloudinaryService } from '../src/services/cloudinaryService';
+import VideoEmbed from '../src/components/VideoEmbed';
 
 interface MessagesProps {
   user: User;
@@ -75,7 +77,7 @@ const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, config, o
                   {allUsers.slice(0, 5).map(u => (
                     <img 
                       key={u.id}
-                      src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`} 
+                      src={CloudinaryService.getOptimizedUrl(u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username}`)} 
                       className="w-8 h-8 rounded-full border-2 border-white dark:border-brand-black"
                       alt=""
                     />
@@ -106,7 +108,7 @@ const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, config, o
                   {!isOwn && (
                     <div className="w-10 h-10 bg-gray-100 dark:bg-brand-card rounded-xl flex-shrink-0 overflow-hidden border border-brand-border">
                        {sender?.avatar ? (
-                         <img src={sender.avatar} alt="" className="w-full h-full object-cover" />
+                         <img src={CloudinaryService.getOptimizedUrl(sender.avatar)} alt="" className="w-full h-full object-cover" />
                        ) : (
                          <div className="w-full h-full flex items-center justify-center font-black text-gray-400 text-xs">
                            {sender?.name.charAt(0)}
@@ -125,7 +127,10 @@ const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, config, o
                         ? 'bg-brand-proph text-black rounded-tr-none border-brand-proph' 
                         : 'bg-white dark:bg-brand-card text-gray-700 dark:text-gray-200 rounded-tl-none border-brand-border'
                     }`}>
-                      <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
+                      <div className="text-sm font-medium leading-relaxed">
+                        {msg.text}
+                        {msg.text && <VideoEmbed content={msg.text} />}
+                      </div>
                       <div className="flex justify-end items-center gap-1 mt-3">
                          <span className={`text-[9px] font-black uppercase tracking-tighter ${isOwn ? 'text-black/40' : 'text-brand-muted'}`}>
                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

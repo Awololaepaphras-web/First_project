@@ -1244,7 +1244,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div key={u.id} className="flex items-center justify-between p-3 bg-gray-950 rounded-xl group border border-transparent hover:border-gray-800 transition-all">
                            <div className="flex items-center gap-3">
                              <div className="relative group/logo">
-                               <img src={u.logo} className="w-8 h-8 rounded-lg object-contain bg-white/5" />
+                               <img src={CloudinaryService.getOptimizedUrl(u.logo)} className="w-8 h-8 rounded-lg object-contain bg-white/5" />
                                <button 
                                  disabled={isUploadingUni}
                                  onClick={() => {
@@ -1312,7 +1312,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    <tbody className="divide-y divide-gray-800">
                       {allUsers.filter(u => u.email !== 'awololaeo.22@student.funaab.edu.ng').map(u => (
                         <tr key={u.id} className="hover:bg-gray-800/30 transition-all">
-                           <td className="p-8"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white">{u.name.charAt(0)}</div><div><p className="font-black italic text-base text-white">{u.name}</p><p className="text-[10px] text-green-500 font-black">@{u.nickname}</p></div></div></td>
+                           <td className="p-8"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white overflow-hidden">{u.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(u.profilePicture)} className="w-full h-full object-cover" /> : u.name.charAt(0)}</div><div><p className="font-black italic text-base text-white">{u.name}</p><p className="text-[10px] text-green-500 font-black">@{u.nickname}</p></div></div></td>
                            <td className="p-8 font-mono text-[10px] text-gray-400">{u.email || 'N/A'}</td>
                            <td className="p-8"><select value={u.role} onChange={(e) => onUpdateUsers(allUsers.map(usr => usr.id === u.id ? { ...usr, role: e.target.value as any } : usr))} className="bg-gray-950 border border-gray-800 text-[10px] font-black uppercase px-4 py-2 rounded-xl outline-none text-white">{['student', 'moderator', 'sub-admin', 'admin', 'staff'].map(r => <option key={r} value={r}>{r}</option>)}</select></td>
                            <td className="p-8 text-right">
@@ -1579,7 +1579,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    <tbody className="divide-y divide-gray-800">
                       {allUsers.filter(u => u.nickname.toLowerCase().includes('sug')).map(u => (
                         <tr key={u.id} className="hover:bg-gray-800/30 transition-all">
-                           <td className="p-8"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white">{u.name.charAt(0)}</div><div><p className="font-black italic text-base text-white">{u.name}</p><p className="text-[10px] text-green-500 font-black">@{u.nickname}</p></div></div></td>
+                           <td className="p-8"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-gray-800 rounded-full border border-gray-700 flex items-center justify-center font-black italic text-white overflow-hidden">{u.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(u.profilePicture)} className="w-full h-full object-cover" /> : u.name.charAt(0)}</div><div><p className="font-black italic text-base text-white">{u.name}</p><p className="text-[10px] text-green-500 font-black">@{u.nickname}</p></div></div></td>
                            <td className="p-8 font-black uppercase text-gray-400">{u.university}</td>
                            <td className="p-8">
                              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.isSugVerified ? 'bg-green-600/10 text-green-500' : 'bg-yellow-600/10 text-yellow-500'}`}>
@@ -1760,6 +1760,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                           >
                                             <XCircle className="w-5 h-5" />
                                           </button>
+                                          {report.targetType === 'post' && (
+                                            <button 
+                                              onClick={async () => {
+                                                if (window.confirm('Are you sure you want to delete this reported post?')) {
+                                                  await SupabaseService.deletePost(report.targetId);
+                                                  await SupabaseService.updateReportStatus(report.id, 'resolved');
+                                                  const data = await SupabaseService.getReports();
+                                                  setReports(data);
+                                                }
+                                              }}
+                                              className="p-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all"
+                                              title="Delete Post"
+                                            >
+                                              <Trash2 className="w-5 h-5" />
+                                            </button>
+                                          )}
                                         </>
                                       )}
                                       <button 
@@ -1823,8 +1839,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           >
                              <div className="flex items-center gap-4 mb-3">
                                 <div className="flex -space-x-3">
-                                   <img src={conv.user1?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.user1?.username}`} className="w-10 h-10 rounded-xl border-2 border-gray-900" alt="" />
-                                   <img src={conv.user2?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.user2?.username}`} className="w-10 h-10 rounded-xl border-2 border-gray-900" alt="" />
+                                   <img src={CloudinaryService.getOptimizedUrl(conv.user1?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.user1?.username}`)} className="w-10 h-10 rounded-xl border-2 border-gray-900" alt="" />
+                                   <img src={CloudinaryService.getOptimizedUrl(conv.user2?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conv.user2?.username}`)} className="w-10 h-10 rounded-xl border-2 border-gray-900" alt="" />
                                 </div>
                                 <div>
                                    <p className="text-xs font-black text-white italic">@{conv.user1?.username} + @{conv.user2?.username}</p>
@@ -1866,7 +1882,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                const isUser1 = selectedConversation.id === 'global' ? true : msg.sender_id === selectedConversation.user1_id;
                                return (
                                  <div key={msg.id} className={`flex gap-4 ${isUser1 ? '' : 'flex-row-reverse'}`}>
-                                    <img src={sender?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sender?.username}`} className="w-10 h-10 rounded-xl flex-shrink-0" alt="" />
+                                    <img src={CloudinaryService.getOptimizedUrl(sender?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sender?.username}`)} className="w-10 h-10 rounded-xl flex-shrink-0" alt="" />
                                     <div className={`max-w-[80%] space-y-1 ${isUser1 ? '' : 'items-end flex flex-col'}`}>
                                        {selectedConversation.id === 'global' && (
                                          <p className="text-[9px] font-black text-red-500 uppercase tracking-widest ml-1">@{sender?.username || 'Unknown Node'}</p>

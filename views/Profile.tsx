@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { User, Post } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
+import { CloudinaryService } from '../src/services/cloudinaryService';
+import VideoEmbed from '../src/components/VideoEmbed';
 
 interface ProfileProps {
   currentUser: User;
@@ -88,7 +90,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
         <div className="absolute -bottom-16 left-6">
           <div className="w-32 h-32 rounded-full border-4 border-white dark:border-brand-black bg-brand-border overflow-hidden shadow-2xl">
             {user.profilePicture ? (
-              <img src={user.profilePicture} className="w-full h-full object-cover" alt={user.name} />
+              <img src={CloudinaryService.getOptimizedUrl(user.profilePicture)} className="w-full h-full object-cover" alt={user.name} />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-4xl font-black text-gray-400">
                 {user.name.charAt(0)}
@@ -230,7 +232,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
               <div key={post.id} className="p-4 hover:bg-black/[0.05] dark:hover:bg-brand-black transition-colors cursor-pointer group">
                 <div className="flex gap-3">
                   <div className="w-12 h-12 rounded-full bg-brand-border flex-shrink-0 flex items-center justify-center font-black overflow-hidden shadow-inner">
-                    {user.profilePicture ? <img src={user.profilePicture} className="w-full h-full object-cover" /> : user.name.charAt(0)}
+                    {user.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(user.profilePicture)} className="w-full h-full object-cover" /> : user.name.charAt(0)}
                   </div>
                   <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-1">
@@ -238,10 +240,13 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
                       <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
                       <span className="text-brand-muted text-[15px] truncate">@{user.nickname}</span>
                     </div>
-                    <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap">{post.content}</div>
+                    <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap">
+                      {post.content}
+                      <VideoEmbed content={post.content} />
+                    </div>
                     {post.mediaUrl && (
                       <div className="mt-3 rounded-2xl overflow-hidden border border-brand-border">
-                        {post.mediaType === 'image' ? <img src={post.mediaUrl} className="w-full h-auto object-cover" /> : <video src={post.mediaUrl} className="w-full h-auto" controls />}
+                        {post.mediaType === 'image' ? <img src={CloudinaryService.getOptimizedUrl(post.mediaUrl)} className="w-full h-auto object-cover" /> : <video src={post.mediaUrl} className="w-full h-auto" controls />}
                       </div>
                     )}
                     <div className="flex justify-between items-center mt-3 max-w-md text-brand-muted">
@@ -266,7 +271,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
               <div key={u.id} onClick={() => navigate(`/profile/${u.id}`)} className="p-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-brand-border overflow-hidden flex items-center justify-center font-black">
-                    {u.profilePicture ? <img src={u.profilePicture} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                    {u.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(u.profilePicture)} className="w-full h-full object-cover" /> : u.name.charAt(0)}
                   </div>
                   <div>
                     <h4 className="font-black italic text-gray-900 dark:text-white">{u.name}</h4>
@@ -298,7 +303,7 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
               <div key={u.id} onClick={() => navigate(`/profile/${u.id}`)} className="p-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-brand-border overflow-hidden flex items-center justify-center font-black">
-                    {u.profilePicture ? <img src={u.profilePicture} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                    {u.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(u.profilePicture)} className="w-full h-full object-cover" /> : u.name.charAt(0)}
                   </div>
                   <div>
                     <h4 className="font-black italic text-gray-900 dark:text-white">{u.name}</h4>

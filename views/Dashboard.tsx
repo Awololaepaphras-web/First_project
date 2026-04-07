@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { User, PastQuestion, Announcement, Badge, Advertisement, SystemConfig } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
+import { CloudinaryService } from '../src/services/cloudinaryService';
+import StatusPanel from '../src/components/StatusPanel';
 
 interface DashboardProps {
   user: User;
@@ -66,6 +68,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
            </button>
         </div>
       </div>
+
+      {/* Retention Status Panel */}
+      <StatusPanel currentUser={user} />
 
       {/* Metrics (Slidable on Mobile) */}
       <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-6 overflow-x-auto no-scrollbar snap-x p-1">
@@ -125,7 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
                   {ad.type === 'video' ? (
                     <video src={ad.mediaUrl} className="w-full h-full object-cover" muted loop autoPlay />
                   ) : (
-                    <img src={ad.mediaUrl} className="w-full h-full object-cover" alt={ad.title} />
+                    <img src={CloudinaryService.getOptimizedUrl(ad.mediaUrl)} className="w-full h-full object-cover" alt={ad.title} />
                   )}
                   <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-white/10">
                     Sponsored

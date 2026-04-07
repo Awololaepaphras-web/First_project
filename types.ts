@@ -233,14 +233,13 @@ export interface Status {
   id: string;
   userId: string;
   userName: string;
-  userNickname: string;
+  userAvatar?: string;
   mediaUrl: string;
   mediaType: 'image' | 'video' | 'gif';
   caption?: string;
-  createdAt: number;
+  renewed: boolean;
   expiresAt: number;
-  renewedCount: number;
-  lastRenewedAt?: number;
+  createdAt: number;
 }
 
 export interface AdPricing {

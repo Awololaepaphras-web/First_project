@@ -958,6 +958,7 @@ export const SupabaseService = {
         mediaUrl: s.media_url,
         mediaType: s.media_type,
         caption: s.caption,
+        renewed: s.renewed,
         expiresAt: new Date(s.expires_at).getTime(),
         createdAt: new Date(s.created_at).getTime()
       }));
@@ -989,6 +990,104 @@ export const SupabaseService = {
   async deleteStatus(statusId: string) {
     const { error } = await supabase.from('statuses').delete().eq('id', statusId);
     if (error) console.error('Error deleting status:', error);
+  },
+
+  async renewStatus(id: string, newExpiresAt: number) {
+    try {
+      const { error } = await supabase
+        .from('statuses')
+        .update({ 
+          expires_at: new Date(newExpiresAt).toISOString(),
+          renewed: true 
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error renewing status:', error);
+      return { success: false };
+    }
+  },
+
+  async getStatusPanelData() {
+    try {
+      const { data, error } = await supabase
+        .from('statuses')
+        .select(`
+          *,
+          user:user_id (
+            id,
+            name,
+            nickname,
+            profile_picture
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return (data || []).map(s => ({
+        id: s.id,
+        userId: s.user_id,
+        userName: s.user?.name || 'Unknown',
+        userNickname: s.user?.nickname || 'Unknown',
+        userAvatar: s.user?.profile_picture,
+        url: s.url,
+        renewalCount: s.renewal_count || 0,
+        viewCount: s.view_count || 0,
+        expiresAt: new Date(s.expires_at).getTime(),
+        createdAt: new Date(s.created_at).getTime()
+      }));
+    } catch (error) {
+      console.error('Error fetching status panel data:', error);
+      return [];
+    }
+  },
+
+  async saveStatusPanelItem(userId: string, url: string) {
+    try {
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase.from('statuses').insert({
+        user_id: userId,
+        url: url,
+        expires_at: expiresAt,
+        renewal_count: 0,
+        view_count: 0
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving status panel item:', error);
+      return { success: false, error };
+    }
+  },
+
+  async renewStatusPanelItem(id: string, currentExpiresAt: number) {
+    try {
+      const newExpiresAt = new Date(currentExpiresAt + 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from('statuses')
+        .update({ 
+          expires_at: newExpiresAt,
+          renewal_count: 1 
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error renewing status panel item:', error);
+      return { success: false };
+    }
+  },
+
+  async incrementStatusViewCount(id: string) {
+    try {
+      const { error } = await supabase.rpc('increment_status_view_count', { status_id: id });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error incrementing status view count:', error);
+    }
   },
 
   // Secure Reply

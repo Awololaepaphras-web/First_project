@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 import CloudinaryUploader from '../components/CloudinaryUploader';
 
 interface Status {
@@ -18,6 +19,7 @@ interface Status {
   mediaUrl: string;
   mediaType: 'image' | 'video' | 'gif';
   caption?: string;
+  renewed: boolean;
   expiresAt: number;
   createdAt: number;
 }
@@ -122,6 +124,17 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
     }
   };
 
+  const handleRenewStatus = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newExpiresAt = Date.now() + (24 * 60 * 60 * 1000);
+    const result = await SupabaseService.renewStatus(id, newExpiresAt);
+    if (result.success) {
+      fetchStatuses();
+    } else {
+      alert('Failed to renew status');
+    }
+  };
+
   // Group statuses by user
   const userStatuses = statuses.reduce((acc, status) => {
     if (!acc[status.userId]) {
@@ -159,7 +172,7 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
             <div className="relative">
               <div className="w-16 h-16 rounded-full border-2 border-dashed border-brand-proph/30 flex items-center justify-center group-hover:border-brand-proph transition-colors">
                 {user?.avatar ? (
-                  <img src={user.avatar} className="w-14 h-14 rounded-full object-cover" alt="Me" />
+                  <img src={CloudinaryService.getOptimizedUrl(user.avatar)} className="w-14 h-14 rounded-full object-cover" alt="Me" />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-brand-card flex items-center justify-center">
                     <Plus className="w-6 h-6 text-brand-proph" />
@@ -185,7 +198,7 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
             >
               <div className="w-16 h-16 rounded-full p-0.5 border-2 border-brand-proph animate-pulse-slow">
                 <img 
-                  src={userStatusList[0].userAvatar || 'https://picsum.photos/seed/avatar/200'} 
+                  src={CloudinaryService.getOptimizedUrl(userStatusList[0].userAvatar || 'https://picsum.photos/seed/avatar/200')} 
                   className="w-full h-full rounded-full object-cover border-2 border-white dark:border-brand-black" 
                   alt={userStatusList[0].userName} 
                 />
@@ -208,24 +221,35 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
               {status.mediaType === 'video' ? (
                 <video src={status.mediaUrl} className="w-full h-full object-cover" muted loop playsInline />
               ) : (
-                <img src={status.mediaUrl} className="w-full h-full object-cover" alt="Status" />
+                <img src={CloudinaryService.getOptimizedUrl(status.mediaUrl)} className="w-full h-full object-cover" alt="Status" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
               
               <div className="absolute top-3 left-3 flex items-center gap-2">
-                <img src={status.userAvatar} className="w-6 h-6 rounded-full border border-white/20" alt="" />
+                <img src={CloudinaryService.getOptimizedUrl(status.userAvatar)} className="w-6 h-6 rounded-full border border-white/20" alt="" />
                 <span className="text-[10px] font-bold text-white uppercase tracking-widest truncate max-w-[80px]">
                   {status.userName}
                 </span>
               </div>
 
               {status.userId === user?.id && (
-                <button 
-                  onClick={(e) => handleDeleteStatus(status.id, e)}
-                  className="absolute top-3 right-3 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {!status.renewed && (status.expiresAt - Date.now() <= 60 * 60 * 1000) && (
+                    <button 
+                      onClick={(e) => handleRenewStatus(status.id, e)}
+                      className="p-2 bg-brand-proph text-black rounded-full hover:scale-110 transition-transform"
+                      title="Renew for 24h"
+                    >
+                      <Clock className="w-3 h-3" />
+                    </button>
+                  )}
+                  <button 
+                    onClick={(e) => handleDeleteStatus(status.id, e)}
+                    className="p-2 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               )}
 
               <div className="absolute bottom-4 left-4 right-4">
@@ -275,7 +299,7 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
               {/* Header */}
               <div className="absolute top-10 left-4 right-4 flex items-center justify-between z-20">
                 <div className="flex items-center gap-3">
-                  <img src={activeStatus.userAvatar} className="w-10 h-10 rounded-full border-2 border-brand-proph" alt="" />
+                  <img src={CloudinaryService.getOptimizedUrl(activeStatus.userAvatar)} className="w-10 h-10 rounded-full border-2 border-brand-proph" alt="" />
                   <div>
                     <p className="text-white font-black italic uppercase tracking-tighter">{activeStatus.userName}</p>
                     <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">
@@ -319,7 +343,7 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
                     onEnded={handleNext}
                   />
                 ) : (
-                  <img src={activeStatus.mediaUrl} className="w-full h-full object-contain" alt="" />
+                  <img src={CloudinaryService.getOptimizedUrl(activeStatus.mediaUrl)} className="w-full h-full object-contain" alt="" />
                 )}
               </div>
 
@@ -404,7 +428,7 @@ const Statuses: React.FC<StatusesProps> = ({ user }) => {
                       {selectedMedia.type === 'video' ? (
                         <video src={selectedMedia.url} className="w-full h-full object-cover" autoPlay muted loop />
                       ) : (
-                        <img src={selectedMedia.url} className="w-full h-full object-cover" alt="Preview" />
+                        <img src={CloudinaryService.getOptimizedUrl(selectedMedia.url)} className="w-full h-full object-cover" alt="Preview" />
                       )}
                       <button 
                         onClick={() => setSelectedMedia(null)}

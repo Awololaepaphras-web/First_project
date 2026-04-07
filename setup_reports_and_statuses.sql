@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.statuses (
     media_url TEXT NOT NULL,
     media_type TEXT NOT NULL, -- 'image', 'video', 'gif'
     caption TEXT,
+    renewed BOOLEAN DEFAULT FALSE,
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now()
 );

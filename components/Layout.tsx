@@ -12,6 +12,7 @@ import {
 import StudyTimer from './StudyTimer';
 import { Notification, User as UserType, SystemConfig } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LayoutProps {
@@ -224,7 +225,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
             <div className="mt-auto w-full relative">
               <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center justify-between xl:gap-3 p-3 rounded-full hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all" title="User Menu">
                 <div className="w-12 h-12 bg-brand-border dark:bg-brand-card rounded-full overflow-hidden flex items-center justify-center font-black text-xl text-brand-muted border border-brand-border shadow-inner flex-shrink-0">
-                  {user.profilePicture ? <img src={user.profilePicture} className="w-full h-full object-cover" /> : user.name.charAt(0)}
+                  {user.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(user.profilePicture)} className="w-full h-full object-cover" /> : user.name.charAt(0)}
                 </div>
                 <div className="hidden xl:block flex-grow min-w-0">
                   <p className="font-black text-sm truncate uppercase italic tracking-tighter">{user.name}</p>

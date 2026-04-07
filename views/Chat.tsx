@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { SupabaseService } from '../src/services/supabaseService';
 import { User, Message, SystemConfig } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
-import { Shield } from 'lucide-react';
+import { Shield, Clock } from 'lucide-react';
+import VideoEmbed from '../src/components/VideoEmbed';
 
 interface ChatProps {
   currentUser: User;
@@ -211,7 +212,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                 onClick={() => setSelectedUser(user)}
                 className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-brand-card transition-colors ${selectedUser?.id === user.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
               >
-                <img src={user.avatar || `https://ui-avatars.com/api/?name=${user.nickname}`} className="w-10 h-10 rounded-full object-cover" alt="" />
+                <img src={CloudinaryService.getOptimizedUrl(user.avatar || `https://ui-avatars.com/api/?name=${user.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
                 <div className="text-left">
                   <p className="font-semibold text-sm dark:text-white">@{user.nickname}</p>
                   <p className="text-xs text-gray-500 truncate">{user.name}</p>
@@ -233,7 +234,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
             {/* Header */}
             <div className="p-4 border-b border-gray-100 dark:border-brand-border flex items-center justify-between bg-white/80 dark:bg-brand-black/80 backdrop-blur-md sticky top-0 z-10">
               <div className="flex items-center gap-3">
-                <img src={selectedUser.avatar || `https://ui-avatars.com/api/?name=${selectedUser.nickname}`} className="w-10 h-10 rounded-full object-cover" alt="" />
+                <img src={CloudinaryService.getOptimizedUrl(selectedUser.avatar || `https://ui-avatars.com/api/?name=${selectedUser.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
                 <div>
                   <p className="font-semibold dark:text-white">@{selectedUser.nickname}</p>
                   <p className="text-xs text-green-500">Online</p>
@@ -254,10 +255,15 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] rounded-2xl p-3 shadow-sm ${msg.senderId === currentUser.id ? 'bg-brand-proph text-black rounded-tr-none' : 'bg-white dark:bg-brand-card dark:text-white rounded-tl-none'}`}>
-                      {msg.text && <p className="text-sm">{msg.text}</p>}
+                      {msg.text && (
+                        <div className="text-sm">
+                          {msg.text}
+                          <VideoEmbed content={msg.text} />
+                        </div>
+                      )}
                       {msg.mediaUrl && (
                         <div className="mt-2">
-                          {msg.mediaType === 'image' && <img src={msg.mediaUrl} className="rounded-lg max-h-60 w-full object-cover" alt="" />}
+                          {msg.mediaType === 'image' && <img src={CloudinaryService.getOptimizedUrl(msg.mediaUrl)} className="rounded-lg max-h-60 w-full object-cover" alt="" />}
                           {msg.mediaType === 'video' && <video src={msg.mediaUrl} controls className="rounded-lg max-h-60 w-full" />}
                           {msg.mediaType === 'audio' && <audio src={msg.mediaUrl} controls className="w-full" />}
                           <p className="text-[10px] mt-1 opacity-70 italic">Expires in 24h</p>
@@ -335,7 +341,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
             >
               <div className="relative w-full max-w-2xl aspect-video bg-gray-800 rounded-3xl overflow-hidden shadow-2xl">
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <img src={selectedUser?.avatar || `https://ui-avatars.com/api/?name=${selectedUser?.nickname}`} className="w-32 h-32 rounded-full blur-sm opacity-50" alt="" />
+                  <img src={CloudinaryService.getOptimizedUrl(selectedUser?.avatar || `https://ui-avatars.com/api/?name=${selectedUser?.nickname}`)} className="w-32 h-32 rounded-full blur-sm opacity-50" alt="" />
                   <div className="absolute text-center">
                     <p className="text-white text-xl font-bold mb-2">Calling @{selectedUser?.nickname}...</p>
                     <div className="flex gap-4 justify-center">

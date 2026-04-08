@@ -163,10 +163,20 @@ export interface PastQuestion {
   data?: string; // Base64 data for Gemini analysis
   visibility?: 'public' | 'private';
   type: 'document' | 'image';
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'archived';
   uploadedBy: string;
   createdAt: number;
   reviews?: { userId: string; rating: number; comment: string; createdAt: number }[];
+  intelData?: any;
+}
+
+export interface ArchiveIntel {
+  id: string;
+  questionId: string;
+  action: 'archived' | 'restored' | 'viewed_archive';
+  performedBy: string;
+  metadata: any;
+  createdAt: number;
 }
 
 export interface WithdrawalRequest {
@@ -216,6 +226,8 @@ export interface Message {
   mediaType?: 'image' | 'video' | 'audio';
   expiresAt?: number;
   createdAt: number;
+  replyTo?: string;
+  replyToContent?: string;
 }
 
 export interface Report {

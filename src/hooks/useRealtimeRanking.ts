@@ -79,7 +79,7 @@ export const useTopEngagedUsers = () => {
         .from('users')
         .select('id, name, nickname, engagement_score')
         .order('engagement_score', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (fetchError) throw fetchError;
       setUsers(data?.map(u => ({

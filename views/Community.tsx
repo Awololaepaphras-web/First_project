@@ -136,6 +136,8 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   const [tipAmount, setTipAmount] = useState(10);
   const [isTippingInProgress, setIsTippingInProgress] = useState(false);
   const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [topChats, setTopChats] = useState<any[]>([]);
+  const [loadingTopChats, setLoadingTopChats] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
@@ -154,6 +156,18 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
       setActiveTab('all');
     }
   }, [location.search]);
+
+  useEffect(() => {
+    if (activeTab === 'trends') {
+      const fetchTopChats = async () => {
+        setLoadingTopChats(true);
+        const chats = await SupabaseService.getTopEngagedChats();
+        setTopChats(chats);
+        setLoadingTopChats(false);
+      };
+      fetchTopChats();
+    }
+  }, [activeTab]);
 
   const filteredPosts = posts.filter(p => {
     const matchesSearch = p.userName.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -540,6 +554,53 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                     </div>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand-proph/20 flex items-center justify-center shadow-[0_0_15px_rgba(0,186,124,0.2)]">
+                  <MessageSquare className="w-6 h-6 text-brand-proph" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tighter italic text-gray-900 dark:text-white">Top Engaged Chats</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Most active encrypted links</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {loadingTopChats ? (
+                  <div className="col-span-full py-10 flex items-center justify-center gap-3">
+                    <Loader2 className="w-6 h-6 text-brand-proph animate-spin" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Syncing Matrix Chats...</span>
+                  </div>
+                ) : topChats.length > 0 ? (
+                  topChats.map((chat, idx) => (
+                    <div 
+                      key={chat.id}
+                      className="p-6 rounded-[2rem] border border-brand-border bg-black/[0.02] dark:bg-white/[0.02] hover:border-brand-proph/30 transition-all group"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex -space-x-3">
+                          <img src={CloudinaryService.getOptimizedUrl(chat.user1.avatar || `https://ui-avatars.com/api/?name=${chat.user1.nickname}`)} className="w-10 h-10 rounded-full border-2 border-white dark:border-brand-black object-cover" alt="" />
+                          <img src={CloudinaryService.getOptimizedUrl(chat.user2.avatar || `https://ui-avatars.com/api/?name=${chat.user2.nickname}`)} className="w-10 h-10 rounded-full border-2 border-white dark:border-brand-black object-cover" alt="" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph">{chat.engagementScore} Engagement</p>
+                          <p className="text-[8px] text-brand-muted uppercase font-black">{chat.messageCount} Messages</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-black italic text-gray-900 dark:text-white">@{chat.user1.nickname} × @{chat.user2.nickname}</p>
+                        <p className="text-xs text-brand-muted truncate italic">"{chat.lastMessage}"</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-10 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">No high-engagement chats detected.</p>
+                  </div>
+                )}
               </div>
             </div>
 

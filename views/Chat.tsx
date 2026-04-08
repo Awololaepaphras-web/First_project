@@ -1,6 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Mic, Video, Image as ImageIcon, X, Phone, PhoneOff, Trash2, User as UserIcon } from 'lucide-react';
+import { 
+  Search, Send, Mic, Video, Image as ImageIcon, X, 
+  Phone, PhoneOff, Trash2, User as UserIcon, 
+  MoreVertical, Check, CheckCheck, Plus, 
+  ArrowLeft, Paperclip, Smile, Ghost, AlertCircle
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SupabaseService } from '../src/services/supabaseService';
 import { User, Message, SystemConfig } from '../types';
@@ -13,6 +17,13 @@ interface ChatProps {
   config: SystemConfig;
 }
 
+interface Conversation {
+  id: string;
+  otherUser: User;
+  lastMessage: string;
+  lastMessageAt: string;
+}
+
 const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -23,9 +34,29 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [isVideoCalling, setIsVideoCalling] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [recentConversations, setRecentConversations] = useState<Conversation[]>([]);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recordingIntervalRef = useRef<any>(null);
+
+  useEffect(() => {
+    loadRecentConversations();
+    
+    // Subscribe to conversation updates
+    const sub = SupabaseService.subscribeToTable('conversations', (payload) => {
+      if (payload.new && (payload.new.user1_id === currentUser.id || payload.new.user2_id === currentUser.id)) {
+        loadRecentConversations();
+      }
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedUser) {
@@ -63,6 +94,11 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
     );
   }
 
+  const loadRecentConversations = async () => {
+    const data = await SupabaseService.getRecentConversations(currentUser.id);
+    setRecentConversations(data);
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -70,17 +106,12 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const loadMessages = async () => {
     if (!selectedUser) return;
     const msgs = await SupabaseService.getMessages(currentUser.id);
-    // Filter for conversation with selected user and handle expiry
     const now = Date.now();
     const filtered = msgs.filter(m => {
       const isRelevant = (m.senderId === currentUser.id && m.receiverId === selectedUser.id) ||
                          (m.senderId === selectedUser.id && m.receiverId === currentUser.id);
       if (!isRelevant) return false;
-      
-      // Check expiry for media
-      if (m.mediaUrl && m.expiresAt && now > m.expiresAt) {
-        return false;
-      }
+      if (m.mediaUrl && m.expiresAt && now > m.expiresAt) return false;
       return true;
     });
     setMessages(filtered);
@@ -99,15 +130,18 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || !selectedUser) return;
-    
     try {
       await SupabaseService.sendMessage({
         senderId: currentUser.id,
         receiverId: selectedUser.id,
-        text: inputText
+        text: inputText,
+        replyTo: replyingTo?.id,
+        replyToContent: replyingTo?.text || (replyingTo?.mediaType ? `Sent a ${replyingTo.mediaType}` : undefined)
       });
       setInputText('');
+      setReplyingTo(null);
       loadMessages();
+      loadRecentConversations();
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -132,29 +166,27 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
       recorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-      const timer = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-      (recorder as any)._timer = timer;
+      recordingIntervalRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
     } catch (err) {
       console.error('Error accessing microphone:', err);
+      alert('Microphone access denied.');
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      clearInterval((mediaRecorderRef.current as any)._timer);
+      clearInterval(recordingIntervalRef.current);
       setIsRecording(false);
     }
   };
 
-  const uploadMedia = async (blob: Blob, type: 'image' | 'video' | 'audio') => {
+  const uploadMedia = async (blob: Blob | File, type: 'image' | 'video' | 'audio') => {
     if (!selectedUser) return;
     setIsUploading(true);
     try {
-      const file = new File([blob], `media_${Date.now()}`, { type: blob.type });
+      const file = blob instanceof File ? blob : new File([blob], `media_${Date.now()}`, { type: blob.type });
       const url = await CloudinaryService.uploadFile(file);
-      
-      // Set expiry to 24 hours from now
       const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
 
       await SupabaseService.sendMessage({
@@ -165,6 +197,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
         expiresAt
       });
       loadMessages();
+      loadRecentConversations();
     } catch (error) {
       console.error('Media upload failed:', error);
     } finally {
@@ -175,206 +208,421 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedUser) return;
-
     const type = file.type.startsWith('image/') ? 'image' : 
                  file.type.startsWith('video/') ? 'video' : 'audio';
-    
     await uploadMedia(file, type as any);
   };
 
   const startVideoCall = () => {
     setIsVideoCalling(true);
-    // In a real app, this would initiate WebRTC signaling
+  };
+
+  const formatTime = (timestamp: number | string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <div className="flex h-[calc(100vh-120px)] bg-white dark:bg-brand-black rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-brand-border">
-      {/* Sidebar: User Search */}
-      <div className="w-80 border-r border-gray-100 dark:border-brand-border flex flex-col">
-        <div className="p-4 border-bottom border-gray-100 dark:border-brand-border">
+      {/* Sidebar: Recent Conversations */}
+      <div className={`w-full lg:w-96 border-r border-gray-100 dark:border-brand-border flex flex-col ${selectedUser ? 'hidden lg:flex' : 'flex'}`}>
+        <div className="p-4 bg-gray-50 dark:bg-brand-black flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img 
+              src={CloudinaryService.getOptimizedUrl(currentUser.profilePicture || `https://ui-avatars.com/api/?name=${currentUser.name}`)} 
+              className="w-10 h-10 rounded-full object-cover border border-brand-border" 
+              alt="" 
+            />
+            <h2 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">Chats</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowNewChat(true)}
+              className="p-2 hover:bg-gray-200 dark:hover:bg-brand-card rounded-full transition-all text-gray-600 dark:text-gray-400"
+              title="New Chat"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            <button className="p-2 hover:bg-gray-200 dark:hover:bg-brand-card rounded-full transition-all text-gray-600 dark:text-gray-400">
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by nickname..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-brand-card rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+              placeholder="Search chats..."
+              className="w-full pl-10 pr-4 py-2 bg-100 dark:bg-brand-card rounded-xl text-sm focus:outline-none transition-all dark:text-white"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {searchResults.length > 0 ? (
-            searchResults.map(user => (
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {recentConversations.length > 0 ? (
+            recentConversations.map(conv => (
               <button
-                key={user.id}
-                onClick={() => setSelectedUser(user)}
-                className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-brand-card transition-colors ${selectedUser?.id === user.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                key={conv.id}
+                onClick={() => setSelectedUser(conv.otherUser)}
+                className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-brand-card transition-colors border-b border-gray-50 dark:border-brand-border/30 ${selectedUser?.id === conv.otherUser.id ? 'bg-gray-100 dark:bg-brand-card' : ''}`}
               >
-                <img src={CloudinaryService.getOptimizedUrl(user.avatar || `https://ui-avatars.com/api/?name=${user.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
-                <div className="text-left">
-                  <p className="font-semibold text-sm dark:text-white">@{user.nickname}</p>
-                  <p className="text-xs text-gray-500 truncate">{user.name}</p>
+                <div className="relative">
+                  <img src={CloudinaryService.getOptimizedUrl(conv.otherUser.avatar || `https://ui-avatars.com/api/?name=${conv.otherUser.nickname}`)} className="w-12 h-12 rounded-full object-cover" alt="" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-brand-black" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="font-bold text-sm dark:text-white truncate">@{conv.otherUser.nickname}</p>
+                    <p className="text-[10px] text-gray-500">{formatTime(conv.lastMessageAt)}</p>
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">{conv.lastMessage}</p>
                 </div>
               </button>
             ))
           ) : (
             <div className="p-8 text-center text-gray-500">
-              <p className="text-sm">Search for users to start chatting</p>
+              <p className="text-sm">No recent conversations</p>
+              <button 
+                onClick={() => setShowNewChat(true)}
+                className="mt-4 text-brand-proph font-black text-xs uppercase tracking-widest"
+              >
+                Start a new chat
+              </button>
             </div>
           )}
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative">
+      <div className={`flex-1 flex flex-col relative ${!selectedUser ? 'hidden lg:flex' : 'flex'}`}>
         {selectedUser ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b border-gray-100 dark:border-brand-border flex items-center justify-between bg-white/80 dark:bg-brand-black/80 backdrop-blur-md sticky top-0 z-10">
+            <div className="p-4 border-b border-gray-100 dark:border-brand-border flex items-center justify-between bg-white dark:bg-brand-black sticky top-0 z-10">
               <div className="flex items-center gap-3">
-                <img src={CloudinaryService.getOptimizedUrl(selectedUser.avatar || `https://ui-avatars.com/api/?name=${selectedUser.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
+                <button onClick={() => setSelectedUser(null)} className="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="relative">
+                  <img src={CloudinaryService.getOptimizedUrl(selectedUser.avatar || `https://ui-avatars.com/api/?name=${selectedUser.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-brand-black" />
+                </div>
                 <div>
-                  <p className="font-semibold dark:text-white">@{selectedUser.nickname}</p>
-                  <p className="text-xs text-green-500">Online</p>
+                  <p className="font-bold dark:text-white text-sm">@{selectedUser.nickname}</p>
+                  <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Online</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <button onClick={startVideoCall} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
                   <Video className="w-5 h-5" />
                 </button>
                 <button className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
                   <Phone className="w-5 h-5" />
                 </button>
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
+                  <MoreVertical className="w-5 h-5" />
+                </button>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-brand-black/50">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] rounded-2xl p-3 shadow-sm ${msg.senderId === currentUser.id ? 'bg-brand-proph text-black rounded-tr-none' : 'bg-white dark:bg-brand-card dark:text-white rounded-tl-none'}`}>
-                      {msg.text && (
-                        <div className="text-sm">
-                          {msg.text}
-                          <VideoEmbed content={msg.text} />
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[#e5ddd5] dark:bg-brand-black/90 relative custom-scrollbar">
+              {/* WhatsApp-like Background Pattern (Simulated) */}
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none dark:opacity-[0.05]" style={{ backgroundImage: 'url("https://picsum.photos/seed/pattern/100/100")', backgroundRepeat: 'repeat' }} />
+              
+              {messages.map((msg, index) => {
+                const isOwn = msg.senderId === currentUser.id;
+                const showDate = index === 0 || new Date(messages[index-1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
+
+                return (
+                  <React.Fragment key={msg.id}>
+                    {showDate && (
+                      <div className="flex justify-center my-4">
+                        <span className="px-3 py-1 bg-white/80 dark:bg-brand-card/80 backdrop-blur-md rounded-lg text-[10px] font-black uppercase tracking-widest text-gray-500 shadow-sm border border-brand-border/30">
+                          {new Date(msg.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    )}
+                    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} relative z-10 group`}>
+                      <div className={`max-w-[85%] sm:max-w-[70%] rounded-xl p-2 px-3 shadow-sm relative ${isOwn ? 'bg-[#dcf8c6] dark:bg-brand-proph text-black rounded-tr-none' : 'bg-white dark:bg-brand-card dark:text-white rounded-tl-none'}`}>
+                        {/* Bubble Tail (Simulated) */}
+                        <div className={`absolute top-0 w-2 h-2 ${isOwn ? '-right-1 bg-[#dcf8c6] dark:bg-brand-proph' : '-left-1 bg-white dark:bg-brand-card'}`} style={{ clipPath: isOwn ? 'polygon(0 0, 0 100%, 100% 0)' : 'polygon(0 0, 100% 100%, 100% 0)' }} />
+                        
+                        {/* Reply Preview in Bubble */}
+                        {msg.replyToContent && (
+                          <div className={`mb-2 p-2 rounded-lg border-l-4 text-[11px] bg-black/5 dark:bg-white/5 ${isOwn ? 'border-brand-black/20' : 'border-brand-proph/50'}`}>
+                            <p className="font-black opacity-50 uppercase tracking-widest text-[9px] mb-1">Replying to:</p>
+                            <p className="italic line-clamp-2">{msg.replyToContent}</p>
+                          </div>
+                        )}
+
+                        {msg.text && (
+                          <div className="text-[13px] leading-relaxed break-words">
+                            {msg.text}
+                            <VideoEmbed content={msg.text} />
+                          </div>
+                        )}
+                        {msg.mediaUrl && (
+                          <div className="mt-1">
+                            {msg.mediaType === 'image' && (
+                              <img 
+                                src={CloudinaryService.getOptimizedUrl(msg.mediaUrl)} 
+                                className="rounded-lg max-h-80 w-full object-cover cursor-pointer hover:brightness-90 transition-all" 
+                                alt="" 
+                                onClick={() => window.open(msg.mediaUrl, '_blank')}
+                              />
+                            )}
+                            {msg.mediaType === 'video' && <video src={msg.mediaUrl} controls className="rounded-lg max-h-80 w-full" />}
+                            {msg.mediaType === 'audio' && (
+                              <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl flex items-center gap-3 min-w-[200px]">
+                                <div className="w-10 h-10 bg-brand-proph rounded-full flex items-center justify-center text-black">
+                                  <Mic className="w-5 h-5" />
+                                </div>
+                                <audio src={msg.mediaUrl} controls className="h-8 flex-1" />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 mt-1 opacity-50">
+                              <Clock className="w-2.5 h-2.5" />
+                              <p className="text-[9px] italic">Expires in 24h</p>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex justify-end items-center gap-1 mt-1">
+                          <p className={`text-[9px] font-bold ${isOwn ? 'text-black/50' : 'text-gray-400'}`}>
+                            {formatTime(msg.createdAt)}
+                          </p>
+                          {isOwn && (
+                            <CheckCheck className="w-3 h-3 text-blue-500" />
+                          )}
                         </div>
-                      )}
-                      {msg.mediaUrl && (
-                        <div className="mt-2">
-                          {msg.mediaType === 'image' && <img src={CloudinaryService.getOptimizedUrl(msg.mediaUrl)} className="rounded-lg max-h-60 w-full object-cover" alt="" />}
-                          {msg.mediaType === 'video' && <video src={msg.mediaUrl} controls className="rounded-lg max-h-60 w-full" />}
-                          {msg.mediaType === 'audio' && <audio src={msg.mediaUrl} controls className="w-full" />}
-                          <p className="text-[10px] mt-1 opacity-70 italic">Expires in 24h</p>
-                        </div>
-                      )}
-                      <p className={`text-[10px] mt-1 ${msg.senderId === currentUser.id ? 'text-black/60' : 'text-gray-400'}`}>
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                        
+                        {/* Reply Action Button (Visible on Hover) */}
+                        <button 
+                          onClick={() => setReplyingTo(msg)}
+                          className={`absolute top-1/2 -translate-y-1/2 p-2 bg-white/90 dark:bg-brand-card/90 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-20 ${isOwn ? '-left-12' : '-right-12'}`}
+                          title="Reply"
+                        >
+                          <Plus className="w-4 h-4 text-brand-proph rotate-45" />
+                        </button>
+                      </div>
                     </div>
-                </div>
-              ))}
+                  </React.Fragment>
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white dark:bg-brand-black border-t border-gray-100 dark:border-brand-border">
-              <div className="flex items-center gap-2">
-                <label className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-500 cursor-pointer transition-colors">
-                  <ImageIcon className="w-5 h-5" />
-                  <input type="file" className="hidden" accept="image/*,video/*" onChange={handleFileUpload} />
+            <div className="bg-[#f0f2f5] dark:bg-brand-black border-t border-gray-100 dark:border-brand-border flex flex-col">
+              {/* Reply Preview */}
+              <AnimatePresence>
+                {replyingTo && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="px-4 py-2 bg-brand-proph/10 border-b border-brand-proph/20 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex-1 min-w-0 border-l-4 border-brand-proph pl-3 py-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph mb-1">Replying to</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 truncate italic">
+                        {replyingTo.text || (replyingTo.mediaType ? `Sent a ${replyingTo.mediaType}` : 'Media message')}
+                      </p>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-brand-proph/20 rounded-full transition-all">
+                      <X className="w-4 h-4 text-brand-proph" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="p-3 flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                <button className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-white transition-colors">
+                  <Smile className="w-6 h-6" />
+                </button>
+                <label className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-white cursor-pointer transition-colors">
+                  <Paperclip className="w-6 h-6" />
+                  <input type="file" className="hidden" accept="image/*,video/*,audio/*" onChange={handleFileUpload} />
                 </label>
-                
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    placeholder="Type a message..."
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="w-full pl-4 pr-10 py-2 bg-gray-50 dark:bg-brand-card rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
-                  />
+              </div>
+              
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="w-full pl-4 pr-4 py-2.5 bg-white dark:bg-brand-card rounded-xl text-sm focus:outline-none transition-all dark:text-white shadow-sm"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                {inputText.trim() ? (
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={isUploading}
+                    className="p-3 bg-brand-proph text-black rounded-full hover:brightness-110 disabled:opacity-50 transition-all shadow-lg shadow-brand-proph/20"
+                  >
+                    <Send className="w-6 h-6" />
+                  </button>
+                ) : (
                   <button 
                     onMouseDown={startRecording}
                     onMouseUp={stopRecording}
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-blue-500'}`}
+                    onTouchStart={startRecording}
+                    onTouchEnd={stopRecording}
+                    className={`p-3 rounded-full transition-all shadow-lg ${isRecording ? 'bg-red-500 text-white animate-pulse scale-125' : 'bg-brand-proph text-black hover:brightness-110 shadow-brand-proph/20'}`}
                   >
-                    <Mic className="w-4 h-4" />
+                    <Mic className="w-6 h-6" />
                   </button>
-                </div>
-
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!inputText.trim() || isUploading}
-                  className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+                )}
               </div>
-              {isRecording && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-red-500 font-medium">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                  Recording: {recordingTime}s
-                </div>
-              )}
             </div>
-          </>
+          </div>
+          {isRecording && (
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-500 text-white rounded-full flex items-center gap-3 shadow-2xl z-50 animate-bounce">
+              <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+              <span className="font-black text-xs uppercase tracking-widest">Recording: {recordingTime}s</span>
+              <span className="text-[10px] opacity-70">Release to send</span>
+            </div>
+          )}
+        </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-8">
-            <div className="w-20 h-20 bg-gray-100 dark:bg-brand-card rounded-full flex items-center justify-center mb-4">
-              <Send className="w-8 h-8 text-gray-400" />
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-8 bg-[#f8f9fa] dark:bg-brand-black">
+            <div className="w-24 h-24 bg-gray-200 dark:bg-brand-card rounded-full flex items-center justify-center mb-6 shadow-inner">
+              <Shield className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold dark:text-white mb-2">Your Messages</h3>
-            <p className="text-sm text-center max-w-xs">Select a user from the sidebar to start a conversation. Messages are secure and media expires after 24 hours.</p>
+            <h3 className="text-2xl font-black dark:text-white mb-3 uppercase italic tracking-tighter">Proph Secure Link</h3>
+            <p className="text-sm text-center max-w-sm font-medium leading-relaxed">
+              Select a node to establish an encrypted communication channel. 
+              All transmissions are protected by the Proph Security Protocol.
+            </p>
+            <button 
+              onClick={() => setShowNewChat(true)}
+              className="mt-8 px-8 py-3 bg-brand-proph text-black font-black rounded-full text-xs uppercase tracking-widest shadow-xl shadow-brand-proph/20 hover:scale-105 transition-all"
+            >
+              Initialize New Link
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Video Call Overlay (Simulated) */}
-        <AnimatePresence>
-          {isVideoCalling && (
+      {/* New Chat Modal */}
+      <AnimatePresence>
+        {showNewChat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-8"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-brand-black w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-brand-border"
             >
-              <div className="relative w-full max-w-2xl aspect-video bg-gray-800 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <img src={CloudinaryService.getOptimizedUrl(selectedUser?.avatar || `https://ui-avatars.com/api/?name=${selectedUser?.nickname}`)} className="w-32 h-32 rounded-full blur-sm opacity-50" alt="" />
-                  <div className="absolute text-center">
-                    <p className="text-white text-xl font-bold mb-2">Calling @{selectedUser?.nickname}...</p>
-                    <div className="flex gap-4 justify-center">
-                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
-                      <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Local Video Preview (Simulated) */}
-                <div className="absolute bottom-4 right-4 w-40 aspect-video bg-gray-700 rounded-xl border-2 border-gray-600 overflow-hidden">
-                  <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                    <UserIcon className="w-8 h-8 text-gray-500" />
-                  </div>
-                </div>
+              <div className="p-6 border-b border-brand-border flex items-center justify-between">
+                <h3 className="text-xl font-black uppercase italic text-gray-900 dark:text-white">New Link</h3>
+                <button onClick={() => setShowNewChat(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-all">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
               </div>
+              <div className="p-6 space-y-6">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by nickname..."
+                    value={searchQuery}
+                    onChange={handleSearch}
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-brand-card rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-proph transition-all dark:text-white font-bold"
+                  />
+                </div>
 
-              <div className="mt-8 flex items-center gap-6">
-                <button className="p-4 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors">
-                  <Mic className="w-6 h-6" />
-                </button>
-                <button onClick={() => setIsVideoCalling(false)} className="p-4 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-xl shadow-red-500/20">
-                  <PhoneOff className="w-8 h-8" />
-                </button>
-                <button className="p-4 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors">
-                  <Video className="w-6 h-6" />
-                </button>
+                <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+                  {searchResults.length > 0 ? (
+                    searchResults.map(user => (
+                      <button
+                        key={user.id}
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowNewChat(false);
+                          setSearchQuery('');
+                          setSearchResults([]);
+                        }}
+                        className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-brand-card rounded-2xl transition-all border border-transparent hover:border-brand-border"
+                      >
+                        <img src={CloudinaryService.getOptimizedUrl(user.avatar || `https://ui-avatars.com/api/?name=${user.nickname}`)} className="w-12 h-12 rounded-full object-cover" alt="" />
+                        <div className="text-left">
+                          <p className="font-black text-sm dark:text-white">@{user.nickname}</p>
+                          <p className="text-[10px] text-gray-500 uppercase font-black">{user.name}</p>
+                        </div>
+                      </button>
+                    ))
+                  ) : searchQuery.length > 2 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <p className="text-sm">No nodes found matching "{searchQuery}"</p>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      <p className="text-sm font-bold italic">Enter at least 3 characters to search</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Video Call Overlay (Simulated) */}
+      <AnimatePresence>
+        {isVideoCalling && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-8"
+          >
+            <div className="relative w-full max-w-4xl aspect-video bg-gray-900 rounded-[3rem] overflow-hidden shadow-2xl border border-gray-800">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img src={CloudinaryService.getOptimizedUrl(selectedUser?.avatar || `https://ui-avatars.com/api/?name=${selectedUser?.nickname}`)} className="w-48 h-48 rounded-full blur-2xl opacity-20 animate-pulse" alt="" />
+                <div className="absolute text-center">
+                  <div className="w-32 h-32 rounded-full border-4 border-brand-proph p-1 mx-auto mb-6">
+                    <img src={CloudinaryService.getOptimizedUrl(selectedUser?.avatar || `https://ui-avatars.com/api/?name=${selectedUser?.nickname}`)} className="w-full h-full rounded-full object-cover" alt="" />
+                  </div>
+                  <p className="text-white text-2xl font-black uppercase italic tracking-tighter mb-2">Establishing Link...</p>
+                  <p className="text-brand-proph text-sm font-black uppercase tracking-widest">@{selectedUser?.nickname}</p>
+                </div>
+              </div>
+              
+              {/* Local Video Preview */}
+              <div className="absolute bottom-8 right-8 w-48 aspect-video bg-gray-800 rounded-2xl border-2 border-brand-proph/30 overflow-hidden shadow-2xl">
+                <div className="w-full h-full flex items-center justify-center bg-gray-950">
+                  <UserIcon className="w-10 h-10 text-gray-700" />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-12 flex items-center gap-8">
+              <button className="p-5 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-all shadow-xl">
+                <Mic className="w-6 h-6" />
+              </button>
+              <button onClick={() => setIsVideoCalling(false)} className="p-6 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-2xl shadow-red-500/40 scale-110">
+                <PhoneOff className="w-8 h-8" />
+              </button>
+              <button className="p-5 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-all shadow-xl">
+                <Video className="w-6 h-6" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

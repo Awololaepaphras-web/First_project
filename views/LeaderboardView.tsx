@@ -24,11 +24,11 @@ const LeaderboardView: React.FC = () => {
           </p>
         </header>
 
-        {/* Top 10 All-Time Engaged (New Section) */}
+        {/* Top 20 All-Time Engaged (Updated Section) */}
         <section className="space-y-6">
           <div className="flex items-center gap-3">
             <Star className="w-6 h-6 text-brand-proph" />
-            <h2 className="text-2xl font-black uppercase italic tracking-tight">Top 10 All-Time Engaged</h2>
+            <h2 className="text-2xl font-black uppercase italic tracking-tight">Top 20 All-Time Engaged</h2>
           </div>
           
           {topUsersLoading ? (

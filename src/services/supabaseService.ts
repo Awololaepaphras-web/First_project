@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document } from '../../types';
+import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -514,8 +514,61 @@ export const SupabaseService = {
       courseTitle: d.course_title,
       fileUrl: d.file_url,
       uploadedBy: d.uploaded_by,
-      createdAt: d.created_at ? new Date(d.created_at).getTime() : Date.now()
+      createdAt: d.created_at ? new Date(d.created_at).getTime() : Date.now(),
+      intelData: d.intel_data
     };
+  },
+
+  // Student Past Questions (New Table)
+  async getStudentPastQuestions(): Promise<PastQuestion[]> {
+    const { data, error } = await supabase.from('student_past_questions').select('*');
+    if (error) {
+      console.error('Error fetching student past questions:', error);
+      return [];
+    }
+    return (data || []).map(q => this.mapDocument(q));
+  },
+
+  async saveStudentPastQuestion(question: PastQuestion) {
+    const dbQ = {
+      id: question.id,
+      university_id: question.universityId,
+      course_code: question.courseCode,
+      course_title: question.courseTitle,
+      year: question.year,
+      semester: question.semester,
+      file_url: question.fileUrl,
+      uploaded_by: question.uploadedBy,
+      status: question.status,
+      intel_data: question.intelData,
+      created_at: new Date(question.createdAt).toISOString()
+    };
+    const { error } = await supabase.from('student_past_questions').upsert(dbQ);
+    if (error) console.error('Error saving student past question:', error);
+  },
+
+  async archiveStudentPastQuestion(id: string, reason: string) {
+    const { error } = await supabase
+      .from('student_past_questions')
+      .update({ status: 'archived', intel_data: { archive_reason: reason } })
+      .eq('id', id);
+    if (error) console.error('Error archiving student past question:', error);
+  },
+
+  async getArchiveIntel(): Promise<ArchiveIntel[]> {
+    const { data, error } = await supabase.from('archive_intel').select('*');
+    if (error) {
+      console.error('Error fetching archive intel:', error);
+      return [];
+    }
+    return (data || []).map(i => ({
+      id: i.id,
+      questionId: i.question_id,
+      action: i.action as any,
+      performedBy: i.performed_by,
+      metadata: i.metadata,
+      createdAt: new Date(i.created_at).getTime()
+    }));
   },
 
   subscribeToDocuments(callback: (payload: any) => void) {
@@ -799,7 +852,9 @@ export const SupabaseService = {
       mediaUrl: msg.media_url,
       mediaType: msg.media_type,
       expiresAt: msg.expires_at ? new Date(msg.expires_at).getTime() : undefined,
-      createdAt: new Date(msg.created_at).getTime()
+      createdAt: new Date(msg.created_at).getTime(),
+      replyTo: msg.reply_to,
+      replyToContent: msg.reply_to_content
     }));
   },
 
@@ -811,14 +866,85 @@ export const SupabaseService = {
       media_url: message.mediaUrl,
       media_type: message.mediaType,
       expires_at: message.expiresAt ? new Date(message.expiresAt).toISOString() : null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      reply_to: message.replyTo,
+      reply_to_content: message.replyToContent
     };
     const { data, error } = await supabase.from('messages').insert(dbMsg).select().single();
     if (error) {
       console.error('Error sending message:', error);
       throw error;
     }
+
+    // Update conversation last message
+    if (message.receiverId) {
+      const convId = [message.senderId, message.receiverId].sort().join(':');
+      await supabase.from('conversations').upsert({
+        id: convId,
+        user1_id: message.senderId < message.receiverId ? message.senderId : message.receiverId,
+        user2_id: message.senderId < message.receiverId ? message.receiverId : message.senderId,
+        last_message: message.text || `Sent a ${message.mediaType}`,
+        last_message_at: new Date().toISOString()
+      });
+    }
+
     return data;
+  },
+
+  async getRecentConversations(userId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        user1:user1_id(id, name, nickname, avatar, profile_picture),
+        user2:user2_id(id, name, nickname, avatar, profile_picture)
+      `)
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+      .order('last_message_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching recent conversations:', error);
+      return [];
+    }
+
+    return data.map(conv => {
+      const otherUser = conv.user1_id === userId ? conv.user2 : conv.user1;
+      return {
+        id: conv.id,
+        otherUser: this.mapUser(otherUser),
+        lastMessage: conv.last_message,
+        lastMessageAt: conv.last_message_at,
+        engagementScore: conv.engagement_score,
+        messageCount: conv.message_count
+      };
+    });
+  },
+
+  async getTopEngagedChats(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select(`
+        *,
+        user1:user1_id(id, name, nickname, avatar, profile_picture),
+        user2:user2_id(id, name, nickname, avatar, profile_picture)
+      `)
+      .order('engagement_score', { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error('Error fetching top engaged chats:', error);
+      return [];
+    }
+
+    return data.map(conv => ({
+      id: conv.id,
+      user1: this.mapUser(conv.user1),
+      user2: this.mapUser(conv.user2),
+      lastMessage: conv.last_message,
+      lastMessageAt: conv.last_message_at,
+      engagementScore: conv.engagement_score,
+      messageCount: conv.message_count
+    }));
   },
 
   async searchUsersByNickname(query: string): Promise<User[]> {

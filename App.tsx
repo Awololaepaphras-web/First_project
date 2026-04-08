@@ -169,6 +169,7 @@ const App: React.FC = () => {
   const [appIcon, setAppIcon] = useState<string>(localStorage.getItem('proph_app_icon') || '');
   const [showSplashScreen, setShowSplashScreen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [adsAllowed, setAdsAllowed] = useState(false);
   
   useEffect(() => {
     if (config.isSplashScreenEnabled && !sessionStorage.getItem('proph_splash_shown')) {
@@ -588,6 +589,19 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('proph_system_config', JSON.stringify(config)); }, [config]);
   useEffect(() => { DB.saveSession(user); }, [user]);
 
+  useEffect(() => {
+    if (user) {
+      const timer = setTimeout(() => {
+        setAdsAllowed(true);
+      }, 60000); // 1 minute delay
+      return () => clearTimeout(timer);
+    } else {
+      setAdsAllowed(false);
+    }
+  }, [user]);
+
+  const visibleAds = adsAllowed ? globalAds : [];
+
   const handleSaveConfig = async (newConfig: SystemConfig) => {
     setConfig(newConfig);
     try {
@@ -940,7 +954,7 @@ const App: React.FC = () => {
           hasShownInitialAd={hasShownInitialAd}
           setHasShownInitialAd={setHasShownInitialAd}
           triggerAd={triggerAd}
-          globalAds={globalAds}
+          globalAds={visibleAds}
         />
         <Layout user={user} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} notifications={notifications} onSelectTrend={()=>{}} appLogo={appLogo} onSaveConfig={handleSaveConfig} config={config}>
         <Routes>
@@ -954,10 +968,10 @@ const App: React.FC = () => {
             (user ? <Navigate to="/dashboard" /> : <Signup onSignup={u => { setUser(u); setAllUsers([...allUsers, u]); setLoginTime(Date.now()); }} allUsers={allUsers} onReferralClick={()=>{}} />)
           } />
           
-          <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={globalAds} config={config} /> : <Navigate to="/login" />} />
+          <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={visibleAds} config={config} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={globalAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} /> : <Navigate to="/login" />} />
-          <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={globalAds} /> : <Navigate to="/login" />} />
+          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} /> : <Navigate to="/login" />} />
+          <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={visibleAds} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} config={config} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
             const newMsg = {
@@ -989,7 +1003,7 @@ const App: React.FC = () => {
           <Route path="/gladiator-hub/competition" element={user ? <GladiatorPool user={user} onCommit={()=>{}} /> : <Navigate to="/login" />} />
           <Route path="/income-analysis" element={user ? <IncomeAnalysis user={user} analytics={[]} /> : <Navigate to="/login" />} />
           <Route path="/monetization" element={user ? <AdRevenueSharing user={user} /> : <Navigate to="/login" />} />
-          <Route path="/settings" element={user ? <Settings user={user} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
+          <Route path="/settings" element={user ? <Settings user={user} onUpdateUser={setUser} onLogout={() => { setUser(null); localStorage.removeItem('proph_session_user'); }} /> : <Navigate to="/login" />} />
           <Route path="/withdraw" element={user ? <Withdrawal user={user} isEnabled={config.isWithdrawalEnabled} conversionRate={config.nairaPerPoint} onAddRequest={req => setWithdrawalRequests([req, ...withdrawalRequests])} requests={withdrawalRequests} /> : <Navigate to="/login" />} />
           <Route path="/upload" element={user ? <UserUpload user={user} isEnabled={config.isPastQuestionContributionEnabled} onUpload={q => { 
             setQuestions([q, ...questions]); 
@@ -1006,7 +1020,7 @@ const App: React.FC = () => {
           <Route path="/statuses" element={<Statuses user={user} />} />
           <Route path="/tasks" element={user ? <Tasks user={user} tasks={tasks} /> : <Navigate to="/login" />} />
           <Route path="/universities" element={user ? <UniversityList user={user} universities={universities} /> : <Navigate to="/login" />} />
-          <Route path="/university/:id" element={user ? <UniversityDetail user={user} questions={questions} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments} globalAds={globalAds} /> : <Navigate to="/login" />} />
+          <Route path="/university/:id" element={user ? <UniversityDetail user={user} questions={questions} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments} globalAds={visibleAds} /> : <Navigate to="/login" />} />
           <Route path="/advertise" element={
             user ? (
               config.isUserAdsEnabled ? (
@@ -1052,7 +1066,7 @@ const App: React.FC = () => {
               )
             ) : <Navigate to="/login" />
           } />
-          <Route path="/ad-analytics" element={user ? <AdAnalytics user={user} ads={globalAds} /> : <Navigate to="/login" />} />
+          <Route path="/ad-analytics" element={user ? <AdAnalytics user={user} ads={visibleAds} /> : <Navigate to="/login" />} />
           <Route path="/premium" element={user ? <Premium config={config} onUpgrade={(u) => setUser(u)} /> : <Navigate to="/login" />} />
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
           <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />

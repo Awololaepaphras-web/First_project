@@ -51,6 +51,7 @@ interface AdminDashboardProps {
   onRemoveDept: (college: string, dept: string) => void;
   onApproveQuestion: (id: string) => void;
   onRejectQuestion: (id: string) => void;
+  onArchiveQuestion: (id: string, reason: string) => void;
   onApproveWithdrawal: (id: string) => void;
   onRejectWithdrawal: (id: string) => void;
   globalAds: Advertisement[];
@@ -70,7 +71,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onDeleteQuestion, onDeleteTask, onDeleteUser, onAddTask, onBroadcast,
   universities, universityColleges, collegeDepartments,
   onAddUniversity, onRemoveUniversity, onAddCollege, onRemoveCollege, onAddDept, onRemoveDept,
-  onApproveQuestion, onRejectQuestion, onApproveWithdrawal, onRejectWithdrawal,
+  onApproveQuestion, onRejectQuestion, onArchiveQuestion, onApproveWithdrawal, onRejectWithdrawal,
   globalAds, onAddAd, onDeleteAd, onUpdateAd, onUpdateUniversity, onUpdateLogo, onUpdateIcon, onUpdateSplashScreen, onLogout
 }) => {
   const navigate = useNavigate();
@@ -80,6 +81,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [messages, setMessages] = useState<any[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [archiveIntel, setArchiveIntel] = useState<any[]>([]);
+  const [loadingArchive, setLoadingArchive] = useState(false);
   
   const [broadcast, setBroadcast] = useState({ title: '', content: '', type: 'info' as Notification['type'] });
   const [newTask, setNewTask] = useState({ title: '', link: '', points: 50, question: '' });
@@ -198,11 +201,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   }, [activeTab]);
 
+  React.useEffect(() => {
+    if (activeTab === 'archive-intel') {
+      const fetchArchive = async () => {
+        setLoadingArchive(true);
+        const data = await SupabaseService.getArchiveIntel();
+        setArchiveIntel(data);
+        setLoadingArchive(false);
+      };
+      fetchArchive();
+
+      const sub = SupabaseService.subscribeToTable('archive_intel', (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setArchiveIntel(prev => [payload.new, ...prev]);
+        }
+      });
+
+      return () => {
+        sub.unsubscribe();
+      };
+    }
+  }, [activeTab]);
+
   const handleUpdateConfig = async (updates: Partial<SystemConfig>) => {
     const newConfig = { ...config, ...updates };
     onUpdateConfig(newConfig);
-    
-    // Sync with backend if rates or weights changed
     if (updates.earnRates || updates.engagementWeights) {
       try {
         await fetch('/api/admin/update-rates', {
@@ -346,6 +369,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'revenue', label: 'Revenue Dashboard', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'engagement', label: 'Engagement', icon: <BarChart3 className="w-5 h-5" /> },
     { id: 'submissions', label: 'Question Review', icon: <FileCheck className="w-5 h-5" /> },
+    { id: 'archive-intel', label: 'Archive Intel', icon: <Database className="w-5 h-5" /> },
     { id: 'payouts', label: 'Withdrawals', icon: <CreditCard className="w-5 h-5" /> },
     { id: 'ad-engine', label: 'Ad Management', icon: <Monitor className="w-5 h-5" /> },
     { id: 'ad-review', label: 'Ad Verification', icon: <Target className="w-5 h-5" /> },
@@ -968,6 +992,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               }} className="p-3 bg-blue-600/10 text-blue-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Download Asset"><Download className="w-4 h-4" /></button>
                               <button onClick={() => onApproveQuestion(q.id)} className="p-3 bg-green-600/10 text-green-500 rounded-xl hover:bg-green-600 hover:text-white transition-all" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
                               <button onClick={() => onRejectQuestion(q.id)} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Reject"><XCircle className="w-4 h-4" /></button>
+                              <button onClick={() => {
+                                const reason = window.prompt('Enter archive reason:');
+                                if (reason) onArchiveQuestion(q.id, reason);
+                              }} className="p-3 bg-yellow-600/10 text-yellow-500 rounded-xl hover:bg-yellow-600 hover:text-white transition-all" title="Archive"><Database className="w-4 h-4" /></button>
                               <button onClick={() => onDeleteQuestion(q.id)} className="p-3 bg-gray-600/10 text-gray-500 rounded-xl hover:bg-gray-600 hover:text-white transition-all" title="Delete"><Trash2 className="w-4 h-4" /></button>
                            </td>
                         </tr>
@@ -977,6 +1005,72 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </div>
           </div>
          </div>
+        )}
+
+        {activeTab === 'archive-intel' && (
+          <div className="space-y-12 animate-fade-in">
+             <div className="flex items-center justify-between">
+                <h1 className="text-4xl font-black tracking-tighter uppercase italic">Archive Intelligence</h1>
+                <button 
+                  onClick={async () => {
+                    setLoadingArchive(true);
+                    const data = await SupabaseService.getArchiveIntel();
+                    setArchiveIntel(data);
+                    setLoadingArchive(false);
+                  }}
+                  className="p-3 bg-gray-800 text-gray-400 rounded-xl hover:bg-white/10 transition-all"
+                >
+                  <RefreshCw className={`w-5 h-5 ${loadingArchive ? 'animate-spin' : ''}`} />
+                </button>
+             </div>
+
+             <div className="bg-gray-900 rounded-[3.5rem] border border-gray-800 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto no-scrollbar">
+                   <table className="w-full text-left border-collapse">
+                      <thead>
+                         <tr className="border-b border-gray-800 bg-gray-800/50">
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Question ID</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Action</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Performed By</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Metadata</th>
+                            <th className="p-8 text-[10px] font-black uppercase tracking-widest text-gray-400">Timestamp</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800/50">
+                         {archiveIntel.length === 0 ? (
+                           <tr>
+                             <td colSpan={5} className="p-20 text-center text-gray-600 font-black italic uppercase text-xs">No archive intel captured</td>
+                           </tr>
+                         ) : (
+                           archiveIntel.map(intel => (
+                             <tr key={intel.id} className="hover:bg-white/5 transition-colors group">
+                                <td className="p-8 font-mono text-[10px] text-gray-400">{intel.questionId}</td>
+                                <td className="p-8">
+                                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${
+                                     intel.action === 'archived' ? 'bg-yellow-600/10 text-yellow-500' :
+                                     intel.action === 'restored' ? 'bg-green-600/10 text-green-500' :
+                                     'bg-blue-600/10 text-blue-500'
+                                   }`}>
+                                      {intel.action}
+                                   </span>
+                                </td>
+                                <td className="p-8 text-xs font-black text-white italic">{intel.performedBy}</td>
+                                <td className="p-8">
+                                   <pre className="text-[9px] text-gray-500 font-mono bg-black/30 p-2 rounded-lg max-w-[200px] overflow-hidden truncate">
+                                      {JSON.stringify(intel.metadata)}
+                                   </pre>
+                                </td>
+                                <td className="p-8 text-[10px] font-mono text-gray-500">
+                                   {new Date(intel.createdAt).toLocaleString()}
+                                </td>
+                             </tr>
+                           ))
+                         )}
+                      </tbody>
+                   </table>
+                </div>
+             </div>
+          </div>
         )}
 
         {activeTab === 'payouts' && (

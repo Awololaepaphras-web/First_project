@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, ChevronDown, Share2, MapPin, ArrowLeft, Image as ImageIcon, BookOpen, Lock, Layers, FileText, GraduationCap, Zap, ShieldAlert, Megaphone, ChevronRight } from 'lucide-react';
-import { PastQuestion, StudyDocument, User, University, Advertisement } from '../types';
+import { Search, Filter, ChevronDown, Share2, MapPin, ArrowLeft, Image as ImageIcon, BookOpen, Lock, Layers, FileText, GraduationCap, Zap, ShieldAlert, Megaphone, ChevronRight, Clock, Award } from 'lucide-react';
+import { PastQuestion, StudyDocument, User, University, Advertisement, Status } from '../types';
 import { COMMON_FACULTIES } from '../constants';
 import { CloudinaryService } from '../src/services/cloudinaryService';
+import { SupabaseService } from '../src/services/supabaseService';
+import StatusFeed from '../src/components/StatusFeed';
 
 interface UniversityDetailProps {
   questions: PastQuestion[];
@@ -20,9 +22,33 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFaculty, setActiveFaculty] = useState('All');
   const [activeDepartment, setActiveDepartment] = useState('All');
+  const [statuses, setStatuses] = useState<Status[]>([]);
+
+  useEffect(() => {
+    fetchStatuses();
+  }, []);
+
+  const fetchStatuses = async () => {
+    const data = await SupabaseService.getStatuses();
+    setStatuses(data);
+  };
 
   const university = universities.find(u => u.id === id);
-  const approvedAds = globalAds.filter(ad => ad.status === 'active' && (ad.targetUniversity === 'all' || ad.targetUniversity === university?.id));
+  
+  const now = new Date();
+  const hour = now.getHours();
+  let currentTimeFrame: any = '12am-6am';
+  if (hour >= 6 && hour < 12) currentTimeFrame = '6am-12pm';
+  else if (hour >= 12 && hour < 18) currentTimeFrame = '12pm-6pm';
+  else if (hour >= 18) currentTimeFrame = '6pm-12am';
+
+  const approvedAds = globalAds.filter(ad => 
+    ad.status === 'active' && 
+    (!ad.expiryDate || ad.expiryDate > Date.now()) &&
+    (ad.targetUniversity === 'all' || ad.targetUniversity === university?.id) &&
+    ((ad.placements && ad.placements.includes('university')) || ad.placement === 'university') &&
+    (!ad.timeFrames || ad.timeFrames.length === 0 || ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day'))
+  );
   
   if (!university) {
     return (
@@ -115,6 +141,19 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
         </div>
       </div>
 
+      {user && (
+        <div className="mb-12">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-brand-proph" /> Student Status
+          </h3>
+          <StatusFeed 
+            user={user} 
+            statuses={statuses} 
+            onStatusAdded={fetchStatuses} 
+          />
+        </div>
+      )}
+
       {approvedAds.length > 0 && (
         <div className="mb-12">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
@@ -186,6 +225,11 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
             <button onClick={() => navigate('/ai-assistant')} className="w-full bg-gray-900 dark:bg-white dark:text-black text-white py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-600 transition-all">
                <Zap className="w-4 h-4" /> Launch AI Portal
             </button>
+            {user && !user.isPremium && (
+              <button onClick={() => navigate('/premium')} className="w-full bg-yellow-500 text-black py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-yellow-500/20">
+                <Award className="w-4 h-4" /> Unlock Premium
+              </button>
+            )}
           </div>
         </aside>
 

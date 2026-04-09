@@ -42,7 +42,7 @@ export const Database = {
       localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify([doc, ...current]));
     }
   },
-  updateDocumentStatus: async (id: string, status: 'approved' | 'rejected') => {
+  updateDocumentStatus: async (id: string, status: 'approved' | 'rejected' | 'archived') => {
     await SupabaseService.updateDocumentStatus(id, status);
     const current = await Database.getDocuments();
     localStorage.setItem(KEYS.DOCUMENTS, JSON.stringify(current.map(d => d.id === id ? { ...d, status } : d)));

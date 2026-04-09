@@ -9,12 +9,14 @@ import {
   List, Swords, Star, Shield
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
-import { PastQuestion, AIMessage } from '../types';
+import { PastQuestion, AIMessage, Advertisement } from '../types';
 import { useNavigate } from 'react-router-dom';
+import BannerAd from '../components/BannerAd';
 
 interface StudyHubProps {
   questions: PastQuestion[];
   onAction: (actions: number) => void;
+  globalAds?: Advertisement[];
 }
 
 interface ExtractedPart {
@@ -24,13 +26,27 @@ interface ExtractedPart {
   content: string;
 }
 
-const StudyHub: React.FC<StudyHubProps> = ({ questions, onAction }) => {
+const StudyHub: React.FC<StudyHubProps> = ({ questions, onAction, globalAds = [] }) => {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [extractionMode, setExtractionMode] = useState(false);
   const [extractedParts, setExtractedParts] = useState<ExtractedPart[]>([]);
   
   const navigate = useNavigate();
+
+  const now = new Date();
+  const hour = now.getHours();
+  let currentTimeFrame: any = '12am-6am';
+  if (hour >= 6 && hour < 12) currentTimeFrame = '6am-12pm';
+  else if (hour >= 12 && hour < 18) currentTimeFrame = '12pm-6pm';
+  else if (hour >= 18) currentTimeFrame = '6pm-12am';
+
+  const studyAds = globalAds.filter(ad => 
+    ad.status === 'active' && 
+    (!ad.expiryDate || ad.expiryDate > Date.now()) &&
+    ((ad.placements && ad.placements.includes('study-hub')) || ad.placement === 'study-hub') &&
+    (!ad.timeFrames || ad.timeFrames.length === 0 || ad.timeFrames.includes(currentTimeFrame) || ad.timeFrames.includes('all-day'))
+  );
 
   useEffect(() => {
     const lastViewed = localStorage.getItem('proph_last_viewed_doc');
@@ -83,6 +99,17 @@ const StudyHub: React.FC<StudyHubProps> = ({ questions, onAction }) => {
           <div className="flex-grow overflow-y-auto p-3 space-y-2 custom-scrollbar">
             {questions.map(doc => <div key={doc.id} onClick={() => setActiveDocId(doc.id)} className={`p-4 rounded-2xl cursor-pointer transition-all border flex items-center gap-4 ${activeDocId === doc.id ? 'bg-brand-proph/10 border-brand-proph text-brand-proph' : 'bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'}`} title={doc.courseTitle || doc.courseCode}><div className="p-2 rounded-xl bg-gray-100 dark:bg-brand-border"><FileText className="w-4 h-4" /></div><span className="text-xs font-bold truncate dark:text-white">{doc.courseTitle || doc.courseCode}</span></div>)}
           </div>
+          {studyAds.length > 0 && (
+            <div className="p-4 border-t border-brand-border">
+              <div className="bg-brand-proph/5 rounded-2xl p-4 border border-brand-proph/20">
+                <p className="text-[8px] font-black uppercase tracking-widest text-brand-muted mb-2">Sponsored</p>
+                <a href={studyAds[0].link} target="_blank" rel="noopener noreferrer" className="block">
+                  <img src={studyAds[0].mediaUrl} className="w-full h-24 object-cover rounded-xl mb-2" alt="Ad" />
+                  <p className="text-[10px] font-black text-gray-900 dark:text-white line-clamp-1">{studyAds[0].title}</p>
+                </a>
+              </div>
+            </div>
+          )}
         </aside>
 
         <main className="flex-grow relative overflow-hidden flex flex-col bg-gray-100 dark:bg-brand-black p-4 sm:p-8">
@@ -104,7 +131,16 @@ const StudyHub: React.FC<StudyHubProps> = ({ questions, onAction }) => {
                </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center p-10"><div className="w-24 h-24 bg-brand-proph/10 rounded-full flex items-center justify-center mb-6"><MonitorPlay className="w-10 h-10 text-brand-proph" /></div><h3 className="text-xl font-black text-gray-900 dark:text-white mb-2 uppercase italic">Awaiting Synchronous Node</h3><p className="text-brand-muted max-w-xs mb-8">Select an archive from your bank to begin analysis.</p></div>
+            <div className="h-full flex flex-col items-center justify-center text-center p-10">
+              <div className="w-24 h-24 bg-brand-proph/10 rounded-full flex items-center justify-center mb-6"><MonitorPlay className="w-10 h-10 text-brand-proph" /></div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2 uppercase italic">Awaiting Synchronous Node</h3>
+              <p className="text-brand-muted max-w-xs mb-8">Select an archive from your bank to begin analysis.</p>
+              {studyAds.length > 1 && (
+                <div className="w-full max-w-md">
+                  <BannerAd ad={studyAds[1]} />
+                </div>
+              )}
+            </div>
           )}
         </main>
       </div>

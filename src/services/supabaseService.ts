@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel } from '../../types';
+import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel, Status } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -327,7 +327,7 @@ export const SupabaseService = {
       // Points mapping from config or defaults
       const pointsMap = {
         like: config.earnRates.likeReward || 0.1,
-        comment: config.earnRates.replyReward || 0.5,
+        comment: 20, // 20 points for the author when someone replies
         repost: config.earnRates.repostReward || 1.0,
         link: 0.05,
         profile: 0.05,
@@ -556,7 +556,7 @@ export const SupabaseService = {
   },
 
   async getArchiveIntel(): Promise<ArchiveIntel[]> {
-    const { data, error } = await supabase.from('archive_intel').select('*');
+    const { data, error } = await supabase.from('archive_intel').select('*').order('created_at', { ascending: false });
     if (error) {
       console.error('Error fetching archive intel:', error);
       return [];
@@ -569,6 +569,92 @@ export const SupabaseService = {
       metadata: i.metadata,
       createdAt: new Date(i.created_at).getTime()
     }));
+  },
+
+  async getStatuses(): Promise<Status[]> {
+    const { data, error } = await supabase
+      .from('statuses')
+      .select('*, users(name, nickname, profile_picture)')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching statuses:', error);
+      return [];
+    }
+
+    return (data || []).map(s => ({
+      id: s.id,
+      userId: s.user_id,
+      userName: s.users?.name || 'Unknown',
+      userAvatar: s.users?.profile_picture,
+      mediaUrl: s.image_url,
+      mediaType: 'image',
+      caption: s.caption,
+      renewed: s.renewal_count > 0,
+      expiresAt: new Date(s.expires_at).getTime(),
+      createdAt: new Date(s.created_at).getTime()
+    }));
+  },
+
+  async saveStatus(status: any) {
+    try {
+      const { error } = await supabase.from('statuses').insert({
+        user_id: status.userId,
+        user_name: status.userName,
+        user_avatar: status.userAvatar,
+        image_url: status.mediaUrl,
+        media_type: status.mediaType || 'image',
+        caption: status.caption,
+        expires_at: new Date(status.expiresAt || (Date.now() + 24 * 60 * 60 * 1000)).toISOString(),
+        renewal_count: 0
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving status:', error);
+      return { success: false, error };
+    }
+  },
+
+  async renewStatus(statusId: string, _unused_newExpiresAt?: number) {
+    try {
+      // First check if it can be renewed
+      const { data: status, error: fetchError } = await supabase
+        .from('statuses')
+        .select('*')
+        .eq('id', statusId)
+        .single();
+
+      if (fetchError || !status) return { success: false };
+
+      const now = Date.now();
+      const expiresAt = new Date(status.expires_at).getTime();
+      const oneHour = 60 * 60 * 1000;
+
+      // Check if already renewed
+      if (status.renewal_count > 0) return { success: false };
+
+      // Check if within 1 hour of expiry
+      if (expiresAt - now > oneHour) return { success: false };
+      if (now > expiresAt) return { success: false }; // Already expired
+
+      const newExpiresAt = new Date(expiresAt + 24 * 60 * 60 * 1000).toISOString();
+
+      const { error: updateError } = await supabase
+        .from('statuses')
+        .update({
+          expires_at: newExpiresAt,
+          renewal_count: 1
+        })
+        .eq('id', statusId);
+
+      if (updateError) throw updateError;
+      return { success: true };
+    } catch (error) {
+      console.error('Error renewing status:', error);
+      return { success: false };
+    }
   },
 
   subscribeToDocuments(callback: (payload: any) => void) {
@@ -631,9 +717,14 @@ export const SupabaseService = {
     }
   },
 
-  async updateDocumentStatus(id: string, status: 'approved' | 'rejected') {
+  async updateDocumentStatus(id: string, status: 'approved' | 'rejected' | 'archived') {
     const { error } = await supabase.from('documents').update({ status }).eq('id', id);
     if (error) console.error('Error updating document status:', error);
+  },
+
+  async updateStudentPastQuestionStatus(id: string, status: 'approved' | 'rejected' | 'archived') {
+    const { error } = await supabase.from('student_past_questions').update({ status }).eq('id', id);
+    if (error) console.error('Error updating student past question status:', error);
   },
 
   // Advertisements
@@ -920,6 +1011,33 @@ export const SupabaseService = {
     });
   },
 
+  async upgradeUserToPremium(userId: string, tier: 'weekly' | 'monthly' | 'yearly'): Promise<User | null> {
+    const durations = {
+      weekly: 7 * 24 * 60 * 60 * 1000,
+      monthly: 30 * 24 * 60 * 60 * 1000,
+      yearly: 365 * 24 * 60 * 60 * 1000
+    };
+
+    const expiry = Date.now() + durations[tier];
+    
+    const { data, error } = await supabase
+      .from('users')
+      .update({ 
+        is_premium: true, 
+        premium_until: expiry 
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Failed to upgrade user:', error);
+      return null;
+    }
+
+    return this.mapUser(data);
+  },
+
   async getTopEngagedChats(): Promise<any[]> {
     const { data, error } = await supabase
       .from('conversations')
@@ -1066,74 +1184,9 @@ export const SupabaseService = {
     if (error) console.error('Error updating report status:', error);
   },
 
-  // Statuses (Stories)
-  async getStatuses(): Promise<any[]> {
-    try {
-      const { data, error } = await supabase
-        .from('statuses')
-        .select('*')
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return (data || []).map(s => ({
-        id: s.id,
-        userId: s.user_id,
-        userName: s.user_name,
-        userAvatar: s.user_avatar,
-        mediaUrl: s.media_url,
-        mediaType: s.media_type,
-        caption: s.caption,
-        renewed: s.renewed,
-        expiresAt: new Date(s.expires_at).getTime(),
-        createdAt: new Date(s.created_at).getTime()
-      }));
-    } catch (error) {
-      console.error('Error fetching statuses:', error);
-      return [];
-    }
-  },
-
-  async saveStatus(status: any) {
-    try {
-      const { error } = await supabase.from('statuses').insert({
-        user_id: status.userId,
-        user_name: status.userName,
-        user_avatar: status.userAvatar,
-        media_url: status.mediaUrl,
-        media_type: status.mediaType,
-        caption: status.caption,
-        expires_at: new Date(status.expiresAt).toISOString()
-      });
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Error saving status:', error);
-      return { success: false, error };
-    }
-  },
-
   async deleteStatus(statusId: string) {
     const { error } = await supabase.from('statuses').delete().eq('id', statusId);
     if (error) console.error('Error deleting status:', error);
-  },
-
-  async renewStatus(id: string, newExpiresAt: number) {
-    try {
-      const { error } = await supabase
-        .from('statuses')
-        .update({ 
-          expires_at: new Date(newExpiresAt).toISOString(),
-          renewed: true 
-        })
-        .eq('id', id);
-      
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Error renewing status:', error);
-      return { success: false };
-    }
   },
 
   async getStatusPanelData() {
@@ -1217,6 +1270,22 @@ export const SupabaseService = {
   },
 
   // Secure Reply
+  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, parentId?: string) {
+    try {
+      const { data, error } = await supabase.rpc('create_post_v2', {
+        p_content: content,
+        p_media_url: mediaUrl,
+        p_media_type: mediaType,
+        p_parent_id: parentId
+      });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error in createPostV2:', error);
+      throw error;
+    }
+  },
+
   async handlePostReply(postId: string, content: string, mediaUrl?: string, mediaType?: string) {
     try {
       const { data, error } = await supabase.rpc('handle_post_reply', {
@@ -1414,6 +1483,45 @@ export const SupabaseService = {
   async deleteUniversity(uniId: string) {
     const { error } = await supabase.from('universities').delete().eq('id', uniId);
     if (error) console.error('Error deleting university:', error);
+  },
+
+  // Colleges & Departments
+  async getColleges(): Promise<any[]> {
+    const { data, error } = await supabase.from('university_colleges').select('*');
+    if (error) {
+      console.error('Error fetching colleges:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async saveCollege(universityId: string, name: string) {
+    const { error } = await supabase.from('university_colleges').upsert({ university_id: universityId, name });
+    if (error) console.error('Error saving college:', error);
+  },
+
+  async deleteCollege(universityId: string, name: string) {
+    const { error } = await supabase.from('university_colleges').delete().match({ university_id: universityId, name });
+    if (error) console.error('Error deleting college:', error);
+  },
+
+  async getDepartments(): Promise<any[]> {
+    const { data, error } = await supabase.from('college_departments').select('*, university_colleges(name, university_id)');
+    if (error) {
+      console.error('Error fetching departments:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async saveDepartment(collegeId: string, name: string) {
+    const { error } = await supabase.from('college_departments').upsert({ college_id: collegeId, name });
+    if (error) console.error('Error saving department:', error);
+  },
+
+  async deleteDepartment(collegeId: string, name: string) {
+    const { error } = await supabase.from('college_departments').delete().match({ college_id: collegeId, name });
+    if (error) console.error('Error deleting department:', error);
   },
 
   async getTopEngagedUsers(): Promise<User[]> {

@@ -257,6 +257,13 @@ const App: React.FC = () => {
       }
 
       if (savedUser) {
+        // Check premium expiry
+        if (savedUser.isPremium && savedUser.premiumExpiry && savedUser.premiumExpiry < Date.now()) {
+          savedUser = { ...savedUser, isPremium: false };
+          await SupabaseService.saveUser(savedUser);
+          DB.saveSession(savedUser);
+        }
+        
         setUser(savedUser);
         
         // Fetch wallet data
@@ -317,6 +324,33 @@ const App: React.FC = () => {
 
       const savedUnis = await DB.getUniversities();
       if (savedUnis.length > 0) setUniversities(savedUnis);
+
+      // Load academic structure from Supabase
+      const loadAcademicStructure = async () => {
+        const colleges = await SupabaseService.getColleges();
+        if (colleges.length > 0) {
+          const collegeMap: Record<string, string[]> = {};
+          colleges.forEach(c => {
+            if (!collegeMap[c.university_id]) collegeMap[c.university_id] = [];
+            collegeMap[c.university_id].push(c.name);
+          });
+          setUniversityColleges(collegeMap);
+        }
+
+        const depts = await SupabaseService.getDepartments();
+        if (depts.length > 0) {
+          const deptMap: Record<string, string[]> = {};
+          depts.forEach(d => {
+            const collegeName = d.university_colleges?.name;
+            if (collegeName) {
+              if (!deptMap[collegeName]) deptMap[collegeName] = [];
+              deptMap[collegeName].push(d.name);
+            }
+          });
+          setCollegeDepartments(deptMap);
+        }
+      };
+      loadAcademicStructure();
 
       const savedPayments = await DB.getPaymentVerifications();
       if (savedPayments.length > 0) setPaymentVerifications(savedPayments);
@@ -450,7 +484,45 @@ const App: React.FC = () => {
           if (user && mappedUser.id === user.id) setUser(mappedUser);
         }
       }
-      if (payload.eventType === 'DELETE') setAllUsers(prev => prev.filter(u => u.id === payload.old.id));
+      if (payload.eventType === 'DELETE') setAllUsers(prev => prev.filter(u => u.id !== payload.old.id));
+    });
+
+    const collegesSub = SupabaseService.subscribeToTable('university_colleges', (payload: any) => {
+      if (payload.eventType === 'INSERT') {
+        setUniversityColleges(prev => ({
+          ...prev,
+          [payload.new.university_id]: [...(prev[payload.new.university_id] || []), payload.new.name]
+        }));
+      } else if (payload.eventType === 'DELETE') {
+        setUniversityColleges(prev => ({
+          ...prev,
+          [payload.old.university_id]: (prev[payload.old.university_id] || []).filter(n => n !== payload.old.name)
+        }));
+      }
+    });
+
+    const deptsSub = SupabaseService.subscribeToTable('college_departments', async (payload: any) => {
+      if (payload.eventType === 'INSERT') {
+        const colleges = await SupabaseService.getColleges();
+        const college = colleges.find(c => c.id === payload.new.college_id);
+        if (college) {
+          setCollegeDepartments(prev => ({
+            ...prev,
+            [college.name]: [...(prev[college.name] || []), payload.new.name]
+          }));
+        }
+      } else if (payload.eventType === 'DELETE') {
+        const depts = await SupabaseService.getDepartments();
+        const deptMap: Record<string, string[]> = {};
+        depts.forEach(d => {
+          const collegeName = d.university_colleges?.name;
+          if (collegeName) {
+            if (!deptMap[collegeName]) deptMap[collegeName] = [];
+            deptMap[collegeName].push(d.name);
+          }
+        });
+        setCollegeDepartments(deptMap);
+      }
     });
 
     return () => {
@@ -463,6 +535,8 @@ const App: React.FC = () => {
       supabase.removeChannel(paymentsSub);
       supabase.removeChannel(unisSub);
       supabase.removeChannel(usersSub);
+      supabase.removeChannel(collegesSub);
+      supabase.removeChannel(deptsSub);
     };
   }, []);
 
@@ -636,14 +710,59 @@ const App: React.FC = () => {
     DB.deleteTask(id);
   };
 
-  const handleAddUniversity = (uni: University) => {
+  const handleAddUniversity = async (uni: University) => {
     setUniversities([...universities, uni]);
-    DB.saveUniversity(uni);
+    await SupabaseService.saveUniversity(uni);
   };
 
-  const handleRemoveUniversity = (id: string) => {
+  const handleRemoveUniversity = async (id: string) => {
     setUniversities(universities.filter(u => u.id !== id));
-    DB.deleteUniversity(id);
+    await SupabaseService.deleteUniversity(id);
+  };
+
+  const handleAddCollege = async (universityId: string, name: string) => {
+    if (!universityId || !name) return;
+    setUniversityColleges(prev => ({
+      ...prev,
+      [universityId]: [...(prev[universityId] || []), name]
+    }));
+    await SupabaseService.saveCollege(universityId, name);
+  };
+
+  const handleRemoveCollege = async (universityId: string, name: string) => {
+    setUniversityColleges(prev => ({
+      ...prev,
+      [universityId]: (prev[universityId] || []).filter(n => n !== name)
+    }));
+    await SupabaseService.deleteCollege(universityId, name);
+  };
+
+  const handleAddDept = async (collegeName: string, name: string) => {
+    if (!collegeName || !name) return;
+    setCollegeDepartments(prev => ({
+      ...prev,
+      [collegeName]: [...(prev[collegeName] || []), name]
+    }));
+    
+    // Find college ID by name
+    const colleges = await SupabaseService.getColleges();
+    const college = colleges.find(c => c.name === collegeName);
+    if (college) {
+      await SupabaseService.saveDepartment(college.id, name);
+    }
+  };
+
+  const handleRemoveDept = async (collegeName: string, name: string) => {
+    setCollegeDepartments(prev => ({
+      ...prev,
+      [collegeName]: (prev[collegeName] || []).filter(n => n !== name)
+    }));
+    
+    const colleges = await SupabaseService.getColleges();
+    const college = colleges.find(c => c.name === collegeName);
+    if (college) {
+      await SupabaseService.deleteDepartment(college.id, name);
+    }
   };
 
   const handleApproveWithdrawal = (id: string) => {
@@ -721,58 +840,37 @@ const App: React.FC = () => {
     DB.updateDocumentStatus(id, 'rejected');
   };
 
+  const handleArchiveQuestion = async (id: string, reason: string) => {
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'archived', intelData: { ...q.intelData, archive_reason: reason } } : q));
+    await SupabaseService.updateDocumentStatus(id, 'archived');
+    // Note: If we want to use the student_past_questions table specifically, we'd call updateStudentPastQuestionStatus
+  };
+
   const handlePost = async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any) => {
     if (!user && !customUser) return;
     const poster = customUser || user;
     
-    // Check wallet if it's a new post (not a reply)
-    if (!parentId && wallet && wallet.prophy_points < 50) {
-      alert('Insufficient Prophy Points! Each post costs 50 points.');
+    // Check wallet for both posts and replies
+    if (wallet && wallet.prophy_points < 30) {
+      alert('Insufficient Prophy Points! Each action costs 30 coins.');
       return;
     }
 
-    // If it's a reply, use the secure RPC
-    if (parentId) {
-      try {
-        const result = await SupabaseService.handlePostReply(parentId, content, mediaUrl, mediaType);
-        if (result.success) {
-          // Update local wallet points if deducted
-          if (result.cost_deducted > 0 && wallet) {
-            setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - result.cost_deducted } : null);
-          }
-          // Realtime hook will handle adding the post to the list
-        } else {
-          alert(result.message || 'Failed to post reply');
-        }
-        return;
-      } catch (error: any) {
-        alert(error.message || 'Failed to save reply');
-        return;
-      }
-    }
-
-    const newPost: Post = {
-      id: crypto.randomUUID(),
-      userId: poster.id,
-      userName: poster.name,
-      userNickname: poster.nickname || poster.name,
-      userUniversity: poster.university || 'Global',
-      content,
-      mediaUrl,
-      mediaType,
-      likes: [],
-      comments: [],
-      reposts: [],
-      parentId,
-      createdAt: Date.now(),
-      stats: { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 }
-    };
-    
     try {
-      await SupabaseService.savePost(newPost);
-      // Update local wallet state for new post
-      if (wallet) {
-        setWallet(prev => prev ? { ...prev, prophy_points: prev.prophy_points - 50 } : null);
+      const result = await SupabaseService.createPostV2(content, mediaUrl, mediaType, parentId);
+      if (result.success) {
+        // Update local wallet points and DB
+        if (wallet) {
+          const newPoints = wallet.prophy_points - 30;
+          setWallet({ prophy_points: newPoints });
+          await SupabaseService.updateUserPoints(poster.id, newPoints);
+          if (user && poster.id === user.id) {
+            setUser({ ...user, points: newPoints });
+          }
+        }
+        // Realtime hook will handle adding the post to the list
+      } else {
+        alert(result.message || 'Failed to post');
       }
     } catch (error: any) {
       alert(error.message || 'Failed to save post');
@@ -818,6 +916,12 @@ const App: React.FC = () => {
     } else if (type === 'repost' || type === 'share') {
       await SupabaseService.togglePostRepost(postId, user.id);
     } else if (type === 'reply' && text) {
+      // Check points
+      if (wallet && wallet.prophy_points < 30) {
+        alert('Insufficient Prophy Points! Each reply costs 30 coins.');
+        return;
+      }
+
       const newComment: PostComment = {
         id: Math.random().toString(36).substr(2, 9),
         userId: user.id,
@@ -827,6 +931,14 @@ const App: React.FC = () => {
         likes: []
       };
       await SupabaseService.addPostComment(postId, newComment);
+
+      // Deduct coins
+      if (wallet) {
+        const newPoints = wallet.prophy_points - 30;
+        setWallet({ prophy_points: newPoints });
+        await SupabaseService.updateUserPoints(user.id, newPoints);
+        setUser({ ...user, points: newPoints });
+      }
     } else if (['link', 'profile', 'media', 'ad_click'].includes(type)) {
       await SupabaseService.trackPostEngagement(postId, type as any, user.id);
     }
@@ -971,7 +1083,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={visibleAds} config={config} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} /> : <Navigate to="/login" />} />
-          <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={visibleAds} /> : <Navigate to="/login" />} />
+          <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={visibleAds} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} config={config} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
             const newMsg = {
@@ -994,7 +1106,7 @@ const App: React.FC = () => {
           <Route path="/chat" element={user ? <Chat currentUser={user} config={config} /> : <Navigate to="/login" />} />
           <Route path="/ai-assistant" element={user ? <AIAssistant user={user} /> : <Navigate to="/login" />} />
           <Route path="/memory-bank" element={user ? <MemoryBank user={user} questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
-          <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={()=>{}} /> : <Navigate to="/login" />} />
+          <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} globalAds={visibleAds} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub" element={user ? <GladiatorLanding user={user} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub/arena" element={user ? <LocalHub user={user} onJoin={()=>{}} /> : <Navigate to="/login" />} />
           <Route path="/gladiator-hub/vault" element={user ? <GladiatorVault user={user} /> : <Navigate to="/login" />} />
@@ -1067,7 +1179,7 @@ const App: React.FC = () => {
             ) : <Navigate to="/login" />
           } />
           <Route path="/ad-analytics" element={user ? <AdAnalytics user={user} ads={visibleAds} /> : <Navigate to="/login" />} />
-          <Route path="/premium" element={user ? <Premium config={config} onUpgrade={(u) => setUser(u)} /> : <Navigate to="/login" />} />
+          <Route path="/premium" element={user ? <Premium user={user} config={config} onUpgrade={(u) => setUser(u)} /> : <Navigate to="/login" />} />
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
           <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />
           <Route path="/leaderboard" element={<LeaderboardView />} />
@@ -1082,16 +1194,24 @@ const App: React.FC = () => {
             user && user.role === 'admin' ? (
               <AdminDashboard 
                 user={user} config={config} allUsers={allUsers} questions={questions} withdrawalRequests={withdrawalRequests} tasks={tasks}
-                onUpdateConfig={handleSaveConfig} onUpdateUsers={(users) => { setAllUsers(users); DB.saveUsers(users); }} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask}
+                onUpdateConfig={handleSaveConfig} onUpdateUsers={async (users) => { 
+                  setAllUsers(users); 
+                  // Find the user that changed and save to Supabase
+                  const changedUser = users.find((u, i) => JSON.stringify(u) !== JSON.stringify(allUsers[i]));
+                  if (changedUser) {
+                    await SupabaseService.saveUser(changedUser);
+                  }
+                }} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask}
                 onDeleteQuestion={handleDeletePost} onDeleteUser={(id) => { setAllUsers(allUsers.filter(u => u.id !== id)); }}
                 onBroadcast={n => setNotifications([n, ...notifications])} universities={universities} universityColleges={universityColleges} collegeDepartments={collegeDepartments}
                 onAddUniversity={handleAddUniversity} onRemoveUniversity={handleRemoveUniversity}
-                onAddCollege={(uid, c) => setUniversityColleges({...universityColleges, [uid]: [...(universityColleges[uid] || []), c]})}
-                onRemoveCollege={(uid, c) => setUniversityColleges({...universityColleges, [uid]: (universityColleges[uid] || []).filter(x => x !== c)})}
-                onAddDept={(c, d) => setCollegeDepartments({...collegeDepartments, [c]: [...(collegeDepartments[c] || []), d]})}
-                onRemoveDept={(c, d) => setCollegeDepartments({...collegeDepartments, [c]: (collegeDepartments[c] || []).filter(x => x !== d)})}
+                onAddCollege={handleAddCollege}
+                onRemoveCollege={handleRemoveCollege}
+                onAddDept={handleAddDept}
+                onRemoveDept={handleRemoveDept}
                 onApproveQuestion={handleApproveQuestion}
                 onRejectQuestion={handleRejectQuestion}
+                onArchiveQuestion={handleArchiveQuestion}
                 onApproveWithdrawal={handleApproveWithdrawal}
                 onRejectWithdrawal={handleRejectWithdrawal}
                 globalAds={globalAds} onAddAd={handleAddAd} onDeleteAd={handleDeleteAd} onUpdateAd={handleUpdateAd}

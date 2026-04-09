@@ -9,6 +9,7 @@ import { User, Advertisement, AdTimeFrame, Post, PostComment, Report } from '../
 interface UniversityFeedProps {
   user: User;
   globalAds: Advertisement[];
+  onUpdateUser: (user: User) => void;
 }
 
 const BannerAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
@@ -86,7 +87,7 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
   </div>
 );
 
-export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedProps) {
+export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: UniversityFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
@@ -172,6 +173,13 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
   // --- ACTIONS ---
   const handlePost = async () => {
     if (!content.trim() && !image) return;
+
+    // Check points
+    if ((user.points || 0) < 30) {
+      alert('Insufficient Prophy Points! Each post costs 30 coins.');
+      return;
+    }
+
     setUploading(true);
 
     let imageUrl = null;
@@ -201,6 +209,12 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
 
     try {
       await SupabaseService.savePost(newPost);
+      
+      // Deduct coins
+      const newPoints = (user.points || 0) - 30;
+      await SupabaseService.updateUserPoints(user.id, newPoints);
+      onUpdateUser({ ...user, points: newPoints });
+
       setContent("");
       setImage(null);
       // Real-time listener will handle the update
@@ -270,6 +284,13 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
 
   const handleReply = async () => {
     if (!replyingTo || !replyContent.trim()) return;
+
+    // Check points
+    if ((user.points || 0) < 30) {
+      alert('Insufficient Prophy Points! Each reply costs 30 coins.');
+      return;
+    }
+
     const comment: PostComment = {
       id: Math.random().toString(36).substr(2, 9),
       userId: user.id,
@@ -280,6 +301,11 @@ export default function UniversityFeed({ user, globalAds = [] }: UniversityFeedP
     };
     await SupabaseService.addPostComment(replyingTo.id, comment);
     
+    // Deduct coins
+    const newPoints = (user.points || 0) - 30;
+    await SupabaseService.updateUserPoints(user.id, newPoints);
+    onUpdateUser({ ...user, points: newPoints });
+
     if (replyingTo.userId !== user.id) {
       SupabaseService.sendNotification(replyingTo.userId, {
         title: 'New Reply',

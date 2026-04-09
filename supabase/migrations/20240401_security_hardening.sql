@@ -59,7 +59,8 @@ RETURNS TABLE (
     likes_count INT,
     shares_count INT,
     replies_count INT,
-    rank_score FLOAT
+    rank_score FLOAT,
+    comments JSONB
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -111,9 +112,25 @@ BEGIN
         ) / POWER(
             EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 3600.0 + (w->>'time_offset')::FLOAT, 
             (w->>'gravity')::FLOAT
-        ) AS rank_score
+        ) AS rank_score,
+        COALESCE(
+            (
+                SELECT jsonb_agg(jsonb_build_object(
+                    'id', r.id,
+                    'user_id', r.author_id,
+                    'content', r.content,
+                    'created_at', r.created_at,
+                    'likes', r.likes_count,
+                    'users', jsonb_build_object('name', u.name, 'nickname', u.nickname)
+                ))
+                FROM public.posts r
+                JOIN public.users u ON r.author_id = u.id
+                WHERE r.parent_id = p.id AND r.status = 'approved'
+            ),
+            '[]'::jsonb
+        ) as comments
     FROM public.posts p
-    WHERE p.visibility = 'public' AND p.status = 'approved'
+    WHERE p.visibility = 'public' AND p.status = 'approved' AND p.parent_id IS NULL
     ORDER BY rank_score DESC
     LIMIT limit_count
     OFFSET offset_count;

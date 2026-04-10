@@ -13,7 +13,8 @@ import StudyTimer from './StudyTimer';
 import { Notification, User as UserType, SystemConfig } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
 import { CloudinaryService } from '../src/services/cloudinaryService';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 
 interface LayoutProps {
   children: React.ReactNode;

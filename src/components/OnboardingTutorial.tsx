@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Layout, BookOpen, Users, Coins, Sparkles } from 'lucide-react';
 
 interface OnboardingStep {

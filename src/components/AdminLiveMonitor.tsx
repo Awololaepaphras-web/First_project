@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Activity, UserPlus, Zap, Upload, Settings, AlertCircle, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 
 interface AppEvent {
   id: string;

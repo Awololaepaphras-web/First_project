@@ -4,7 +4,8 @@ import {
   Database, Swords, Wallet, Megaphone,
   CheckCircle2, Sparkles, Navigation
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 
 interface TutorialStep {
   title: string;

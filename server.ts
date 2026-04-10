@@ -153,7 +153,7 @@ async function startServer() {
       const config = data?.config || {};
       const appName = "Proph | The Federal Scholar's Network";
       const appShortName = "Proph";
-      const appIcon = config.appIcon || "https://picsum.photos/seed/proph-logo/512/512";
+      const appIcon = config.appIcon || "https://res.cloudinary.com/dovqqw06b/image/upload/v1775841226/rsslbn4l7x3gd9chcvvd.png";
 
       res.json({
         "name": appName,

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 import { 
   Plus, X, Image as ImageIcon, Video, Send, 
   Clock, Trash2, ChevronLeft, ChevronRight,

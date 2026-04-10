@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Shield } from 'lucide-react';
 import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 import Layout from './components/Layout';
 import Home from './views/Home';
 import Login from './views/Login';
@@ -86,6 +87,8 @@ const DEFAULT_CONFIG: SystemConfig = {
     likes: 1.0,
     reposts: 2.5
   },
+  appLogo: 'https://res.cloudinary.com/dovqqw06b/image/upload/v1775841226/rsslbn4l7x3gd9chcvvd.png',
+  appIcon: 'https://res.cloudinary.com/dovqqw06b/image/upload/v1775841226/rsslbn4l7x3gd9chcvvd.png',
   premiumTiers: {
     weekly: 1000,
     monthly: 2500,
@@ -111,7 +114,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   }
 };
 
-const DEFAULT_LOGO = 'https://picsum.photos/seed/proph-logo/512/512';
+const DEFAULT_LOGO = 'https://res.cloudinary.com/dovqqw06b/image/upload/v1775841226/rsslbn4l7x3gd9chcvvd.png';
 const DEFAULT_SPLASH = 'https://picsum.photos/seed/proph-splash/1080/1920';
 
 const SplashScreen: React.FC<{ logo: string; splashUrl?: string; onComplete: () => void }> = ({ logo, splashUrl, onComplete }) => {
@@ -162,6 +165,20 @@ const App: React.FC = () => {
   const [questions, setQuestions] = useState<PastQuestion[]>(MOCK_QUESTIONS);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
   const [config, setConfig] = useState<SystemConfig>(DEFAULT_CONFIG);
+  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   const [tasks, setTasks] = useState<EarnTask[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1100,6 +1117,19 @@ const App: React.FC = () => {
   return (
     <>
       <WaterEffect />
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-0 left-0 w-full z-[10001] bg-red-500 text-white py-3 px-4 flex items-center justify-center gap-3 shadow-lg"
+          >
+            <Shield className="w-5 h-5 animate-pulse" />
+            <span className="font-black uppercase tracking-widest text-xs">Unable to connect to the internet</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {showSplashScreen && (
         <SplashScreen 
           logo={appLogo} 

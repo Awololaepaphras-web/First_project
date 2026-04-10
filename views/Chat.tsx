@@ -6,7 +6,8 @@ import {
   ArrowLeft, Paperclip, Smile, Ghost, AlertCircle,
   UserPlus, Settings as SettingsIcon
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'framer-motion';
 import { SupabaseService } from '../src/services/supabaseService';
 import { User, Message, SystemConfig, ChatInvite, Group } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
@@ -168,18 +169,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const handleSendMessage = async () => {
     if (!inputText.trim() || (!selectedUser && !selectedGroup)) return;
     
-    // Group coin deduction
-    if (selectedGroup) {
-      const cost = 2;
-      if ((currentUser.points || 0) < cost) {
-        alert('Insufficient Prophy coins for group chat.');
-        return;
-      }
-      // Deduct coins
-      const updatedUser = { ...currentUser, points: (currentUser.points || 0) - cost };
-      await SupabaseService.updateUser(updatedUser);
-    }
-
+    // Group coin deduction (2 coins required)
     if (selectedGroup) {
       const deduction = await SupabaseService.deductPoints(currentUser.id, 2);
       if (!deduction.success) {
@@ -437,22 +427,30 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
       </div>
 
       {/* Main Chat Area */}
-      <div className={`flex-1 flex flex-col relative ${!selectedUser ? 'hidden lg:flex' : 'flex'}`}>
-        {selectedUser ? (
+      <div className={`flex-1 flex flex-col relative ${(!selectedUser && !selectedGroup) ? 'hidden lg:flex' : 'flex'}`}>
+        {(selectedUser || selectedGroup) ? (
           <>
             {/* Header */}
             <div className="p-4 border-b border-gray-100 dark:border-brand-border flex items-center justify-between bg-white dark:bg-brand-black sticky top-0 z-10">
               <div className="flex items-center gap-3">
-                <button onClick={() => setSelectedUser(null)} className="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400">
+                <button onClick={() => { setSelectedUser(null); setSelectedGroup(null); }} className="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="relative">
-                  <img src={CloudinaryService.getOptimizedUrl(selectedUser.avatar || `https://ui-avatars.com/api/?name=${selectedUser.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-brand-black" />
+                  {selectedGroup ? (
+                    <div className="w-10 h-10 rounded-full bg-brand-proph/20 flex items-center justify-center font-black text-brand-proph">
+                      {selectedGroup.name.charAt(0)}
+                    </div>
+                  ) : (
+                    <>
+                      <img src={CloudinaryService.getOptimizedUrl(selectedUser?.avatar || `https://ui-avatars.com/api/?name=${selectedUser?.nickname}`)} className="w-10 h-10 rounded-full object-cover" alt="" />
+                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-brand-black" />
+                    </>
+                  )}
                 </div>
                 <div>
                   <p className="font-bold dark:text-white text-sm">
-                    {selectedGroup ? selectedGroup.name : `@${selectedUser.nickname}`}
+                    {selectedGroup ? selectedGroup.name : `@${selectedUser?.nickname}`}
                   </p>
                   <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedUser?.isOnline ? 'text-green-500' : 'text-gray-500'}`}>
                     {selectedGroup ? 'Group Chat' : (selectedUser?.isOnline ? 'Online' : formatLastSeen(selectedUser?.lastSeen))}
@@ -623,15 +621,14 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
               </div>
 
               <div className="flex items-center gap-2">
-                {inputText.trim() ? (
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={isUploading}
-                    className="p-3 bg-brand-proph text-black rounded-full hover:brightness-110 disabled:opacity-50 transition-all shadow-lg shadow-brand-proph/20"
-                  >
-                    <Send className="w-6 h-6" />
-                  </button>
-                ) : (
+                <button
+                  onClick={handleSendMessage}
+                  disabled={isUploading || !inputText.trim()}
+                  className="p-3 bg-brand-proph text-black rounded-full hover:brightness-110 disabled:opacity-50 transition-all shadow-lg shadow-brand-proph/20"
+                >
+                  <Send className="w-6 h-6" />
+                </button>
+                {!inputText.trim() && (
                   <button 
                     onMouseDown={startRecording}
                     onMouseUp={stopRecording}

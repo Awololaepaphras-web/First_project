@@ -28,6 +28,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(localStorage.getItem('proph_notifications_sound_enabled') !== 'false');
   const [activeSection, setActiveSection] = useState<'main' | 'profile' | 'account' | 'privacy' | 'chats' | 'notifications' | 'help'>('main');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,6 +70,12 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
     window.location.reload();
   };
 
+  const toggleNotifications = () => {
+    const newVal = !notificationsEnabled;
+    setNotificationsEnabled(newVal);
+    localStorage.setItem('proph_notifications_sound_enabled', newVal.toString());
+  };
+
   const menuItems = [
     { id: 'account', label: 'Account', sub: 'Security notifications, change number', icon: <Lock className="w-5 h-5 text-gray-500" /> },
     { id: 'privacy', label: 'Privacy', sub: 'Block contacts, disappearing messages', icon: <ShieldCheck className="w-5 h-5 text-gray-500" /> },
@@ -77,6 +84,36 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
     { id: 'storage', label: 'Storage and Data', sub: 'Network usage, auto-download', icon: <Database className="w-5 h-5 text-gray-500" /> },
     { id: 'help', label: 'Help', sub: 'Help center, contact us, privacy policy', icon: <HelpCircle className="w-5 h-5 text-gray-500" /> },
   ];
+
+  if (activeSection === 'notifications') {
+    return (
+      <div className="min-h-screen bg-[#f0f2f5] dark:bg-brand-black">
+        <header className="bg-brand-proph p-6 pt-12 flex items-center gap-6 text-black">
+          <button onClick={() => setActiveSection('main')} className="p-1 hover:bg-black/10 rounded-full transition-all">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h2 className="text-xl font-black uppercase tracking-tight">Notifications</h2>
+        </header>
+
+        <main className="max-w-xl mx-auto p-6 space-y-6">
+          <div className="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-gray-900 dark:text-white">Notification Tones</h4>
+                <p className="text-xs text-gray-500">Play wave sound for incoming signals</p>
+              </div>
+              <button 
+                onClick={toggleNotifications}
+                className={`w-12 h-6 rounded-full relative transition-all ${notificationsEnabled ? 'bg-brand-proph' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${notificationsEnabled ? 'right-1' : 'left-1'}`} />
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (activeSection === 'profile') {
     return (
@@ -212,6 +249,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
           {menuItems.map((item) => (
             <button 
               key={item.id}
+              onClick={() => setActiveSection(item.id as any)}
               className="w-full p-6 flex items-center gap-6 hover:bg-gray-50 dark:hover:bg-brand-card transition-all group"
             >
               <div className="p-2 group-hover:scale-110 transition-transform">

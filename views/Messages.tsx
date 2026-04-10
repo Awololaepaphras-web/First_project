@@ -43,10 +43,15 @@ const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, config, o
     );
   }
 
-  // Global messages are those with no receiverId (or a specific global ID)
-  // For now, let's assume all messages in the 'messages' array that are not private are global
-  // Or better, let's just show ALL messages if the user wants a global chat
-  const globalMessages = messages.filter(m => !m.receiverId);
+  // Global messages are filtered by university for non-admins
+  const globalMessages = messages.filter(m => {
+    if (!m.receiverId && !m.groupId) {
+      const sender = allUsers.find(u => u.id === m.senderId);
+      if (user.role === 'admin') return true;
+      return sender?.university === user.university;
+    }
+    return false;
+  });
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -65,10 +70,14 @@ const Messages: React.FC<MessagesProps> = ({ user, allUsers, messages, config, o
                   <UserIcon className="w-6 h-6" />
                </div>
                <div>
-                  <h3 className="font-black text-gray-900 dark:text-white tracking-tight uppercase italic">Global Academic Link</h3>
+                  <h3 className="font-black text-gray-900 dark:text-white tracking-tight uppercase italic">
+                    {user.role === 'admin' ? 'Global Academic Link' : `${user.university} Node Link`}
+                  </h3>
                   <div className="flex items-center gap-1.5">
                      <div className="w-2 h-2 bg-brand-proph rounded-full animate-pulse" />
-                     <span className="text-[9px] font-bold text-brand-muted uppercase tracking-widest">All Nodes Connected</span>
+                     <span className="text-[9px] font-bold text-brand-muted uppercase tracking-widest">
+                       {user.role === 'admin' ? 'All Nodes Connected' : `Verified ${user.university} Nodes`}
+                     </span>
                   </div>
                </div>
             </div>

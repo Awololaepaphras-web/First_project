@@ -26,6 +26,17 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
 
   useEffect(() => {
     fetchStatuses();
+
+    // Real-time subscription for statuses
+    const channel = SupabaseService.subscribeToTable('statuses', (payload) => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+        fetchStatuses();
+      }
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   const fetchStatuses = async () => {

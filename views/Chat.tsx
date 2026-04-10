@@ -49,6 +49,29 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const [invites, setInvites] = useState<ChatInvite[]>([]);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDesc, setNewGroupDesc] = useState('');
+  
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) return;
+    try {
+      const isPremium = currentUser.premiumTier && currentUser.premiumTier !== 'none';
+      await SupabaseService.createGroup({
+        name: newGroupName,
+        description: newGroupDesc,
+        creatorId: currentUser.id,
+        isMonetized: !!isPremium // Only earn if premium
+      });
+      setNewGroupName('');
+      setNewGroupDesc('');
+      setShowCreateGroup(false);
+      loadGroups();
+      alert(isPremium ? 'Monetized group created!' : 'Group created! (Earning disabled - Upgrade to Premium to earn from groups)');
+    } catch (err) {
+      console.error('Failed to create group:', err);
+    }
+  };
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,18 +96,24 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
 
   useEffect(() => {
     if (selectedUser || selectedGroup) {
+      const cacheKey = selectedGroup ? `messages_group_${selectedGroup.id}` : `messages_user_${selectedUser?.id}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        setMessages(JSON.parse(cached));
+      }
+      
       loadMessages();
       const channel = selectedGroup ? `realtime:group_messages:${selectedGroup.id}` : `realtime:messages:${currentUser.id}`;
       const subscription = SupabaseService.subscribeToMessages(currentUser.id, (payload) => {
         if (selectedGroup) {
           if (payload.new && payload.new.group_id === selectedGroup.id) {
             loadMessages();
-            SoundService.playWaterDrop();
+            SoundService.playNotification();
           }
         } else if (selectedUser) {
           if (payload.new && (payload.new.sender_id === selectedUser.id || payload.new.receiver_id === selectedUser.id)) {
             loadMessages();
-            SoundService.playWaterDrop();
+            SoundService.playNotification();
             if (payload.new.receiver_id === currentUser.id) {
               SupabaseService.markMessageAsSeen(payload.new.id);
             }
@@ -152,7 +181,12 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
       if (m.mediaUrl && m.expiresAt && now > m.expiresAt) return false;
       return true;
     });
+
     setMessages(filtered);
+    
+    // Cache to local storage
+    const cacheKey = selectedGroup ? `messages_group_${selectedGroup.id}` : `messages_user_${selectedUser?.id}`;
+    localStorage.setItem(cacheKey, JSON.stringify(filtered));
   };
 
   const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,7 +224,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
       });
       setInputText('');
       setReplyingTo(null);
-      SoundService.playWaterDrop();
+      SoundService.playNotification();
       loadMessages();
       loadRecentConversations();
     } catch (error) {
@@ -320,6 +354,13 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
             <h2 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">Chats</h2>
           </div>
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowCreateGroup(true)}
+              className="p-2 hover:bg-gray-200 dark:hover:bg-brand-card rounded-full transition-all text-gray-600 dark:text-gray-400"
+              title="New Group"
+            >
+              <UserPlus className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setShowNewChat(true)}
               className="p-2 hover:bg-gray-200 dark:hover:bg-brand-card rounded-full transition-all text-gray-600 dark:text-gray-400"
@@ -762,6 +803,59 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                     </button>
                   ))}
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Group Modal */}
+      <AnimatePresence>
+        {showCreateGroup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-brand-black w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-brand-border"
+            >
+              <div className="p-6 border-b border-brand-border flex items-center justify-between">
+                <h3 className="text-xl font-black uppercase italic text-gray-900 dark:text-white">Create Group</h3>
+                <button onClick={() => setShowCreateGroup(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-all">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-gray-500 ml-4">Group Name</label>
+                  <input 
+                    type="text" 
+                    value={newGroupName}
+                    onChange={e => setNewGroupName(e.target.value)}
+                    placeholder="Enter group name..."
+                    className="w-full bg-gray-50 dark:bg-brand-card border border-brand-border p-4 rounded-2xl text-sm text-gray-900 dark:text-white focus:border-brand-proph outline-none transition-all font-bold"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-gray-500 ml-4">Description</label>
+                  <textarea 
+                    value={newGroupDesc}
+                    onChange={e => setNewGroupDesc(e.target.value)}
+                    placeholder="What is this group about?"
+                    className="w-full bg-gray-50 dark:bg-brand-card border border-brand-border p-4 rounded-2xl text-sm text-gray-900 dark:text-white focus:border-brand-proph outline-none transition-all font-bold h-24 resize-none"
+                  />
+                </div>
+                <button 
+                  onClick={handleCreateGroup}
+                  className="w-full bg-brand-proph py-4 rounded-2xl font-black uppercase text-xs tracking-widest text-black shadow-xl shadow-brand-proph/20 hover:scale-[1.02] transition-all"
+                >
+                  Initialize Group Node
+                </button>
               </div>
             </motion.div>
           </motion.div>

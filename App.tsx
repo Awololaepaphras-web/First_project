@@ -47,7 +47,8 @@ import VercelSqlView from './views/VercelSqlView';
 import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import BlockedUsers from './views/BlockedUsers';
-import FullscreenAd from './components/FullscreenAd';
+import { WaterEffect } from './src/components/WaterEffect';
+import { SoundService } from './src/services/soundService';
 import OnboardingTutorial from './src/components/OnboardingTutorial';
 import { Database as DB } from './src/services/database';
 import { SupabaseService } from './src/services/supabaseService';
@@ -97,6 +98,11 @@ const DEFAULT_CONFIG: SystemConfig = {
   },
   isCardPaymentEnabled: false,
   replyCost: 30,
+  premiumBenefits: {
+    premium: { dailyCoins: 10, noAds: true, groupRevenueShare: 0.10 },
+    premiumPlus: { dailyCoins: 25, noAds: true, groupRevenueShare: 0.15 },
+    alphaPremium: { dailyCoins: 50, noAds: true, groupRevenueShare: 0.30 }
+  },
   splashScreenUrl: '',
   globalAnnouncement: {
     text: 'Welcome to PROPH! The ultimate Federal Universities Past Questions Hub.',
@@ -555,6 +561,7 @@ const App: React.FC = () => {
           read: payload.new.is_read
         };
         setNotifications(prev => [newNotif, ...prev]);
+        SoundService.playWaterDrop();
       }
     });
 
@@ -846,6 +853,50 @@ const App: React.FC = () => {
     // Note: If we want to use the student_past_questions table specifically, we'd call updateStudentPastQuestionStatus
   };
 
+  useEffect(() => {
+    if (!user) return;
+
+    const updateStatus = async (isOnline: boolean) => {
+      await SupabaseService.updateUserStatus(user.id, isOnline);
+    };
+
+    updateStatus(true);
+
+    const handleVisibilityChange = () => {
+      updateStatus(document.visibilityState === 'visible');
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', () => updateStatus(false));
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      updateStatus(false);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !user.premiumTier || user.premiumTier === 'none') return;
+
+    const lastRewardDate = localStorage.getItem(`last_reward_${user.id}`);
+    const today = new Date().toDateString();
+
+    if (lastRewardDate !== today) {
+      const rewards = {
+        premium: 1000,
+        premium_plus: 5000,
+        alpha_premium: 15000
+      };
+      const reward = rewards[user.premiumTier as keyof typeof rewards] || 0;
+      if (reward > 0) {
+        const updatedUser = { ...user, points: (user.points || 0) + reward };
+        setUser(updatedUser);
+        SupabaseService.updateUser(updatedUser);
+        localStorage.setItem(`last_reward_${user.id}`, today);
+      }
+    }
+  }, [user]);
+
   const handlePost = async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any) => {
     if (!user && !customUser) return;
     const poster = customUser || user;
@@ -868,6 +919,7 @@ const App: React.FC = () => {
             setUser({ ...user, points: newPoints });
           }
         }
+        SoundService.playWaterDrop();
         // Realtime hook will handle adding the post to the list
       } else {
         alert(result.message || 'Failed to post');
@@ -1047,6 +1099,7 @@ const App: React.FC = () => {
 
   return (
     <>
+      <WaterEffect />
       {showSplashScreen && (
         <SplashScreen 
           logo={appLogo} 
@@ -1244,6 +1297,37 @@ const App: React.FC = () => {
   );
 };
 
+const FullscreenAd: React.FC<{ ad: Advertisement; onClose: () => void }> = ({ ad, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-8">
+      <div className="relative w-full max-w-4xl aspect-video bg-gray-900 rounded-[3rem] overflow-hidden shadow-2xl border border-gray-800">
+        <img src={ad.imageUrl} className="w-full h-full object-cover" alt={ad.title} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-12">
+          <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter mb-4">{ad.title}</h2>
+          <p className="text-gray-300 text-lg font-medium italic max-w-2xl mb-8">{ad.description}</p>
+          <div className="flex gap-4">
+            <a 
+              href={ad.targetUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="px-10 py-4 bg-brand-proph text-black font-black rounded-2xl uppercase tracking-widest text-sm hover:scale-105 transition-all"
+            >
+              Explore Now
+            </a>
+            <button 
+              onClick={onClose}
+              className="px-10 py-4 bg-white/10 text-white font-black rounded-2xl uppercase tracking-widest text-sm hover:bg-white/20 transition-all"
+            >
+              Close Ad
+            </button>
+          </div>
+        </div>
+      </div>
+      <p className="mt-8 text-brand-muted font-black uppercase tracking-[0.3em] text-[10px]">Sponsored Content • Proph Network</p>
+    </div>
+  );
+};
+
 const AdController: React.FC<{
   user: User | null;
   loginTime: number | null;
@@ -1279,7 +1363,7 @@ const AdController: React.FC<{
 
   // Startup Ad Logic
   useEffect(() => {
-    if (user && isUserPanel && !hasShownInitialAd) {
+    if (user && isUserPanel && !hasShownInitialAd && (!user.premiumTier || user.premiumTier === 'none')) {
       const startupAds = globalAds.filter(ad => ad.status === 'active' && ad.placement === 'startup');
       if (startupAds.length > 0) {
         // Delay slightly to allow layout to settle
@@ -1293,7 +1377,7 @@ const AdController: React.FC<{
   }, [user, isUserPanel, hasShownInitialAd, globalAds, triggerAd, setHasShownInitialAd]);
 
   useEffect(() => {
-    if (user && loginTime && isUserPanel) {
+    if (user && loginTime && isUserPanel && (!user.premiumTier || user.premiumTier === 'none')) {
       const timer = setInterval(() => {
         const elapsed = Date.now() - loginTime;
         if (elapsed >= 60000) { // 1 minute
@@ -1305,10 +1389,10 @@ const AdController: React.FC<{
   }, [user, loginTime, triggerAd, isUserPanel]);
 
   useEffect(() => {
-    if (user && navigationCount >= 7 && isUserPanel) {
+    if (user && navigationCount >= 7 && isUserPanel && (!user.premiumTier || user.premiumTier === 'none')) {
       triggerAd();
       setNavigationCount(0);
-    } else if (user && isUserPanel && Math.random() < 0.05) { // 5% random chance on navigation
+    } else if (user && isUserPanel && Math.random() < 0.05 && (!user.premiumTier || user.premiumTier === 'none')) { // 5% random chance on navigation
       triggerAd();
     }
   }, [user, navigationCount, triggerAd, isUserPanel, setNavigationCount, pathname]);

@@ -12,6 +12,7 @@ import { User, Post, PostComment, Advertisement, Report } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import { SupabaseService } from '../src/services/supabaseService';
 import { useRealtimeFeed } from '../src/services/useRealtimeFeed';
+import { Lightbox } from '../src/components/Lightbox';
 
 interface CommunityProps {
   user: User;
@@ -125,6 +126,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   const [newPostContent, setNewPostContent] = useState('');
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
   const [showShareMenu, setShowShareMenu] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
@@ -810,7 +812,14 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                         </div>
                       )}
                       {post.mediaUrl && (
-                        <div className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner" title="Media Preview">
+                        <div 
+                          className="mt-4 rounded-[2rem] overflow-hidden border border-brand-border bg-black/5 shadow-inner cursor-zoom-in" 
+                          title="Click to expand"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (post.mediaType === 'image') setLightboxImage(post.mediaUrl || null);
+                          }}
+                        >
                            {post.mediaType === 'image' ? (
                              <img 
                                src={CloudinaryService.getOptimizedUrl(post.mediaUrl)} 
@@ -1018,6 +1027,11 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
           </div>
         </div>
       )}
+      <Lightbox 
+        isOpen={!!lightboxImage} 
+        imageUrl={lightboxImage || ''} 
+        onClose={() => setLightboxImage(null)} 
+      />
     </div>
   );
 };

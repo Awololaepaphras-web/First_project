@@ -78,6 +78,8 @@ export interface PostComment {
   createdAt: number;
 }
 
+export type PremiumTier = 'none' | 'premium' | 'premium_plus' | 'alpha_premium';
+
 export interface User {
   id: string;
   name: string;
@@ -90,6 +92,8 @@ export interface User {
   role: 'student' | 'admin' | 'moderator' | 'sub-admin' | 'staff';
   status?: 'active' | 'suspended';
   points?: number;
+  earnings?: number;
+  premiumTier?: PremiumTier;
   isPremium?: boolean;
   isSugVerified?: boolean;
   premiumExpiry?: number;
@@ -104,6 +108,7 @@ export interface User {
   referredBy?: string;
   hasSeenOnboarding?: boolean;
   referralStats?: { 
+  // ...
     clicks: number; 
     signups: number; 
     withdrawals: number;
@@ -114,6 +119,10 @@ export interface User {
   engagementScore?: number;
   registrationIp?: string;
   phone?: string;
+  lastSeen?: number;
+  isOnline?: boolean;
+  badges?: string[];
+  fingerprintId?: string;
   createdAt?: number;
   themePreference?: 'light' | 'dark';
   staffPermissions?: string[];
@@ -221,6 +230,7 @@ export interface Message {
   id: string;
   senderId: string;
   receiverId: string | null;
+  groupId?: string;
   text?: string;
   mediaUrl?: string;
   mediaType?: 'image' | 'video' | 'audio';
@@ -228,6 +238,37 @@ export interface Message {
   createdAt: number;
   replyTo?: string;
   replyToContent?: string;
+  isSeen?: boolean;
+  seenAt?: number;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  creatorId: string;
+  isMonetized: boolean;
+  createdAt: number;
+}
+
+export interface GroupMember {
+  groupId: string;
+  userId: string;
+  role: 'admin' | 'member';
+  joinedAt: number;
+}
+
+export interface ChatInvite {
+  id: string;
+  inviterId: string;
+  inviteeId: string;
+  targetId: string;
+  targetType: 'group' | 'conversation';
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  mutualAgreement: string[];
+  expiresAt: number;
+  createdAt: number;
 }
 
 export interface Report {
@@ -369,6 +410,11 @@ export interface SystemConfig {
   };
   isCardPaymentEnabled: boolean;
   replyCost: number;
+  premiumBenefits: {
+    premium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number };
+    premiumPlus: { dailyCoins: number; noAds: boolean; groupRevenueShare: number };
+    alphaPremium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number };
+  };
   appLogo?: string;
   appIcon?: string;
   splashScreenUrl?: string;

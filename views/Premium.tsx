@@ -19,7 +19,7 @@ const Premium: React.FC<PremiumProps> = ({ user, config, onUpgrade }) => {
 
   const tiers = [
     {
-      id: 'weekly',
+      id: 'none',
       name: 'Free Node',
       price: 0,
       period: 'forever',
@@ -29,24 +29,34 @@ const Premium: React.FC<PremiumProps> = ({ user, config, onUpgrade }) => {
       isPremium: false
     },
     {
-      id: 'monthly',
-      name: 'Proph Plus (Monthly)',
+      id: 'premium',
+      name: 'Premium Node',
       price: config.premiumTiers.monthly,
       period: 'per month',
-      features: ['100% Vault Unlock', 'High-priority Gemini AI', 'Ad-free experience', 'Verified Creator status', 'Premium memory bank extensions'],
+      features: ['100% Vault Unlock', 'Daily 10 Prophy Coins', 'Ad-free experience', 'Verified Creator status', '10% Earnings from users'],
       color: 'bg-brand-proph',
-      btnText: 'Select Monthly',
+      btnText: 'Select Premium',
       isPremium: true,
       featured: true
     },
     {
-      id: 'yearly',
-      name: 'Session Master (Yearly)',
-      price: config.premiumTiers.yearly,
-      period: 'per session',
-      features: ['Lifetime institutional access', 'Neural forging unlimited', 'Direct Academic Board link', 'Exclusive 500L Masterclasses', 'Custom AI study paths'],
+      id: 'premium_plus',
+      name: 'Premium Plus',
+      price: config.premiumTiers.yearly / 12, // Approximate monthly
+      period: 'per month',
+      features: ['Neural forging unlimited', 'Daily 25 Prophy Coins', 'Direct Academic Board link', '15% Earnings from users', 'Custom AI study paths'],
+      color: 'bg-blue-600',
+      btnText: 'Select Plus',
+      isPremium: true
+    },
+    {
+      id: 'alpha_premium',
+      name: 'Alpha Premium',
+      price: (config.premiumTiers.yearly * 1.5) / 12, // Approximate monthly
+      period: 'per month',
+      features: ['Ultimate Institutional Access', 'Daily 50 Prophy Coins', '30% Earnings from users', 'Exclusive 500L Masterclasses', 'Priority Support'],
       color: 'bg-yellow-600',
-      btnText: 'Select Master',
+      btnText: 'Select Alpha',
       isPremium: true
     }
   ];

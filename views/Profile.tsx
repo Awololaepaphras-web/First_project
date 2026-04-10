@@ -197,6 +197,24 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
             </button>
           </div>
         )}
+
+        {currentUser.id === user.id && user.premiumTier && user.premiumTier !== 'none' && (
+          <div className="mt-6 p-6 bg-brand-primary/10 rounded-3xl border border-brand-primary/20">
+            <h3 className="text-lg font-black italic uppercase tracking-tighter text-brand-primary mb-2">Node Earnings</h3>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-[10px] text-brand-muted font-black uppercase tracking-widest">Total Earnings</p>
+                <p className="text-2xl font-black italic tracking-tighter text-brand-primary">₦{(user.earnings || 0).toLocaleString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-brand-muted font-black uppercase tracking-widest">Earning Rate</p>
+                <p className="text-sm font-black italic text-brand-primary">
+                  {user.premiumTier === 'premium' ? '10%' : user.premiumTier === 'premium_plus' ? '15%' : '30%'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

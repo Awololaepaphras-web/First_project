@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel, Status } from '../../types';
+import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel, Status, ChatInvite, Group, GroupMember } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -79,6 +79,16 @@ export const SupabaseService = {
     if (error) console.error('Error saving user:', error);
   },
 
+  async updateUser(user: User) {
+    const dbUser = this.toDbUser(user);
+    const { data, error } = await supabase.from('users').update(dbUser).eq('id', user.id).select().single();
+    if (error) {
+      console.error('Error updating user:', error);
+      return null;
+    }
+    return this.mapUser(data);
+  },
+
   async isNicknameAvailable(nickname: string): Promise<boolean> {
     try {
       const { data, error } = await supabase
@@ -113,6 +123,7 @@ export const SupabaseService = {
       staffPermissions: u.staff_permissions,
       isPremium: u.is_premium,
       premiumExpiry: u.premium_until,
+      premiumTier: u.premium_tier,
       referralCode: u.referral_code,
       referralStats: u.referral_stats,
       referralCount: u.referral_count,
@@ -128,6 +139,10 @@ export const SupabaseService = {
       blockedUsers: u.blocked_users || [],
       hasSeenOnboarding: u.has_seen_onboarding || false,
       status: u.status || 'active',
+      lastSeen: u.last_seen ? new Date(u.last_seen).getTime() : undefined,
+      isOnline: u.is_online,
+      badges: u.badges || [],
+      fingerprintId: u.fingerprint_id,
       createdAt: new Date(u.created_at).getTime()
     };
   },
@@ -135,10 +150,11 @@ export const SupabaseService = {
   toDbUser(user: User): any {
     const { 
       themePreference, isSugVerified, staffPermissions, isPremium, 
-      premiumExpiry, referralCode, referralStats, referralCount,
+      premiumExpiry, premiumTier, referralCode, referralStats, referralCount,
       aiAppUnlockedUntil, engagementScore, registrationIp, bankDetails, 
       gladiatorEarnings, isVerified, verificationCode, referredBy,
-      engagementStats, blockedUsers, hasSeenOnboarding, createdAt, ...rest 
+      engagementStats, blockedUsers, hasSeenOnboarding, lastSeen, isOnline,
+      badges, fingerprintId, createdAt, ...rest 
     } = user;
     
     return { 
@@ -148,6 +164,7 @@ export const SupabaseService = {
       staff_permissions: staffPermissions,
       is_premium: isPremium,
       premium_until: premiumExpiry,
+      premium_tier: premiumTier,
       referral_code: referralCode,
       referral_stats: referralStats,
       referral_count: referralCount,
@@ -162,6 +179,10 @@ export const SupabaseService = {
       engagement_stats: engagementStats,
       blocked_users: blockedUsers || [],
       has_seen_onboarding: hasSeenOnboarding || false,
+      last_seen: lastSeen ? new Date(lastSeen).toISOString() : null,
+      is_online: isOnline,
+      badges: badges || [],
+      fingerprint_id: fingerprintId,
       created_at: createdAt ? new Date(createdAt).toISOString() : undefined
     };
   },
@@ -202,6 +223,36 @@ export const SupabaseService = {
   async updateUserPoints(userId: string, points: number) {
     const { error } = await supabase.from('users').update({ points }).eq('id', userId);
     if (error) console.error('Error updating user points:', error);
+  },
+
+  async deductPoints(userId: string, amount: number) {
+    const { data: user, error: fErr } = await supabase.from('users').select('points').eq('id', userId).single();
+    if (fErr) return { success: false, error: fErr.message };
+    if ((user.points || 0) < amount) return { success: false, error: 'Insufficient points' };
+
+    const { error: uErr } = await supabase.from('users').update({ points: (user.points || 0) - amount }).eq('id', userId);
+    if (uErr) return { success: false, error: uErr.message };
+    return { success: true };
+  },
+
+  async distributeGroupRevenue(amount: number) {
+    const { data: premiumUsers, error } = await supabase
+      .from('users')
+      .select('id, points, premium_tier')
+      .neq('premium_tier', 'none');
+    
+    if (error || !premiumUsers) return;
+
+    for (const user of premiumUsers) {
+      let share = 0;
+      if (user.premium_tier === 'premium') share = amount * 0.10;
+      else if (user.premium_tier === 'premium_plus') share = amount * 0.15;
+      else if (user.premium_tier === 'alpha_premium') share = amount * 0.30;
+
+      if (share > 0) {
+        await supabase.from('users').update({ points: (user.points || 0) + share }).eq('id', user.id);
+      }
+    }
   },
 
   async transferPoints(senderId: string, receiverId: string, amount: number) {
@@ -246,6 +297,61 @@ export const SupabaseService = {
       console.error('Error in transferPoints:', error);
       return { success: false, error: error.message || error };
     }
+  },
+
+  async getChatInvites(userId: string): Promise<ChatInvite[]> {
+    const { data, error } = await supabase
+      .from('chat_invites')
+      .select('*')
+      .or(`inviter_id.eq.${userId},invitee_id.eq.${userId}`);
+    
+    if (error) throw error;
+    return (data || []).map(i => ({
+      id: i.id,
+      inviterId: i.inviter_id,
+      inviteeId: i.invitee_id,
+      targetId: i.target_id,
+      targetType: i.target_type,
+      status: i.status,
+      mutualAgreement: i.mutual_agreement || [],
+      expiresAt: new Date(i.expires_at).getTime(),
+      createdAt: new Date(i.created_at).getTime()
+    }));
+  },
+
+  async sendChatInvite(invite: Partial<ChatInvite>) {
+    const { data, error } = await supabase.from('chat_invites').insert({
+      inviter_id: invite.inviterId,
+      invitee_id: invite.inviteeId,
+      target_id: invite.targetId,
+      target_type: invite.targetType,
+      status: 'pending',
+      mutual_agreement: [invite.inviterId],
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
+      created_at: new Date().toISOString()
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async respondToChatInvite(inviteId: string, userId: string, accept: boolean) {
+    if (!accept) {
+      const { error } = await supabase.from('chat_invites').update({ status: 'rejected' }).eq('id', inviteId);
+      if (error) throw error;
+      return;
+    }
+
+    const { data: invite, error: fErr } = await supabase.from('chat_invites').select('*').eq('id', inviteId).single();
+    if (fErr) throw fErr;
+
+    const mutualAgreement = [...(invite.mutual_agreement || []), userId];
+    const status = mutualAgreement.length >= 2 ? 'accepted' : 'pending';
+
+    const { error: uErr } = await supabase.from('chat_invites').update({
+      mutual_agreement: mutualAgreement,
+      status: status
+    }).eq('id', inviteId);
+    if (uErr) throw uErr;
   },
 
   async togglePostLike(postId: string, userId: string) {
@@ -926,26 +1032,61 @@ export const SupabaseService = {
   },
 
   async getMessages(userId: string): Promise<Message[]> {
-    const { data, error } = await supabase
+    // 1. Get direct messages and group messages
+    const { data: directMsgs, error: dErr } = await supabase
       .from('messages')
       .select('*')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId},receiver_id.is.null`)
       .order('created_at', { ascending: true });
-    if (error) {
-      console.error('Error fetching messages:', error);
-      return [];
+    
+    if (dErr) {
+      console.error('Error fetching direct messages:', dErr);
     }
-    return (data || []).map(msg => ({
+
+    // 2. Get messages for conversations where user is an invited third party
+    const { data: invites, error: iErr } = await supabase
+      .from('chat_invites')
+      .select('*')
+      .eq('invitee_id', userId)
+      .eq('status', 'accepted')
+      .eq('target_type', 'conversation');
+
+    let thirdPartyMsgs: any[] = [];
+    if (!iErr && invites && invites.length > 0) {
+      for (const invite of invites) {
+        const [u1, u2] = invite.target_id.split(':');
+        const { data: msgs, error: mErr } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`and(sender_id.eq.${u1},receiver_id.eq.${u2}),and(sender_id.eq.${u2},receiver_id.eq.${u1})`)
+          .gt('created_at', invite.created_at) // Only see new messages
+          .order('created_at', { ascending: true });
+        
+        if (!mErr && msgs) {
+          thirdPartyMsgs = [...thirdPartyMsgs, ...msgs];
+        }
+      }
+    }
+
+    const allMsgs = [...(directMsgs || []), ...thirdPartyMsgs];
+    // Remove duplicates and sort
+    const uniqueMsgs = Array.from(new Map(allMsgs.map(m => [m.id, m])).values());
+    uniqueMsgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    return uniqueMsgs.map(msg => ({
       id: msg.id,
       senderId: msg.sender_id,
       receiverId: msg.receiver_id,
+      groupId: msg.group_id,
       text: msg.content,
       mediaUrl: msg.media_url,
       mediaType: msg.media_type,
       expiresAt: msg.expires_at ? new Date(msg.expires_at).getTime() : undefined,
       createdAt: new Date(msg.created_at).getTime(),
       replyTo: msg.reply_to,
-      replyToContent: msg.reply_to_content
+      replyToContent: msg.reply_to_content,
+      isSeen: msg.is_seen,
+      seenAt: msg.seen_at ? new Date(msg.seen_at).getTime() : undefined
     }));
   },
 
@@ -953,13 +1094,15 @@ export const SupabaseService = {
     const dbMsg = {
       sender_id: message.senderId,
       receiver_id: message.receiverId,
+      group_id: message.groupId,
       content: message.text,
       media_url: message.mediaUrl,
       media_type: message.mediaType,
       expires_at: message.expiresAt ? new Date(message.expiresAt).toISOString() : null,
       created_at: new Date().toISOString(),
       reply_to: message.replyTo,
-      reply_to_content: message.replyToContent
+      reply_to_content: message.replyToContent,
+      is_seen: false
     };
     const { data, error } = await supabase.from('messages').insert(dbMsg).select().single();
     if (error) {
@@ -968,7 +1111,7 @@ export const SupabaseService = {
     }
 
     // Update conversation last message
-    if (message.receiverId) {
+    if (message.receiverId && !message.groupId) {
       const convId = [message.senderId, message.receiverId].sort().join(':');
       await supabase.from('conversations').upsert({
         id: convId,
@@ -980,6 +1123,71 @@ export const SupabaseService = {
     }
 
     return data;
+  },
+
+  async markMessageAsSeen(messageId: string) {
+    const { error } = await supabase.from('messages').update({
+      is_seen: true,
+      seen_at: new Date().toISOString()
+    }).eq('id', messageId);
+    if (error) console.error('Error marking message as seen:', error);
+  },
+
+  async updateUserStatus(userId: string, isOnline: boolean) {
+    const { error } = await supabase.from('users').update({
+      is_online: isOnline,
+      last_seen: new Date().toISOString()
+    }).eq('id', userId);
+    if (error) console.error('Error updating user status:', error);
+  },
+
+  // Groups
+  async getGroups(): Promise<Group[]> {
+    const { data, error } = await supabase.from('groups').select('*');
+    if (error) throw error;
+    return (data || []).map(g => ({
+      id: g.id,
+      name: g.name,
+      description: g.description,
+      avatar: g.avatar,
+      creatorId: g.creator_id,
+      isMonetized: g.is_monetized,
+      createdAt: new Date(g.created_at).getTime()
+    }));
+  },
+
+  async createGroup(group: Partial<Group>) {
+    const { data, error } = await supabase.from('groups').insert({
+      name: group.name,
+      description: group.description,
+      avatar: group.avatar,
+      creator_id: group.creatorId,
+      is_monetized: group.isMonetized,
+      created_at: new Date().toISOString()
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async joinGroup(groupId: string, userId: string, role: 'admin' | 'member' = 'member') {
+    const { error } = await supabase.from('group_members').insert({
+      group_id: groupId,
+      user_id: userId,
+      role: role,
+      joined_at: new Date().toISOString()
+    });
+    if (error) throw error;
+  },
+
+  async getGroupMembers(groupId: string): Promise<GroupMember[]> {
+    const { data, error } = await supabase.from('group_members').select('*').eq('group_id', groupId);
+    if (error) throw error;
+    return (data || []).map(m => ({
+      groupId: m.group_id,
+      userId: m.user_id,
+      role: m.role,
+      joinedAt: new Date(m.joined_at).getTime()
+    }));
   },
 
   async getRecentConversations(userId: string): Promise<any[]> {

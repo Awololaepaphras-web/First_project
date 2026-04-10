@@ -3,14 +3,17 @@ import {
   Search, Send, Mic, Video, Image as ImageIcon, X, 
   Phone, PhoneOff, Trash2, User as UserIcon, 
   MoreVertical, Check, CheckCheck, Plus, 
-  ArrowLeft, Paperclip, Smile, Ghost, AlertCircle
+  ArrowLeft, Paperclip, Smile, Ghost, AlertCircle,
+  UserPlus, Settings as SettingsIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SupabaseService } from '../src/services/supabaseService';
-import { User, Message, SystemConfig } from '../types';
+import { User, Message, SystemConfig, ChatInvite, Group } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
+import { SoundService } from '../src/services/soundService';
 import { Shield, Clock } from 'lucide-react';
 import VideoEmbed from '../src/components/VideoEmbed';
+import { Lightbox } from '../src/components/Lightbox';
 
 interface ChatProps {
   currentUser: User;
@@ -37,6 +40,13 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   const [recentConversations, setRecentConversations] = useState<Conversation[]>([]);
   const [showNewChat, setShowNewChat] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(currentUser.phone || '');
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [invites, setInvites] = useState<ChatInvite[]>([]);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -45,6 +55,8 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
 
   useEffect(() => {
     loadRecentConversations();
+    loadGroups();
+    loadInvites();
     
     // Subscribe to conversation updates
     const sub = SupabaseService.subscribeToTable('conversations', (payload) => {
@@ -59,18 +71,30 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   }, []);
 
   useEffect(() => {
-    if (selectedUser) {
+    if (selectedUser || selectedGroup) {
       loadMessages();
+      const channel = selectedGroup ? `realtime:group_messages:${selectedGroup.id}` : `realtime:messages:${currentUser.id}`;
       const subscription = SupabaseService.subscribeToMessages(currentUser.id, (payload) => {
-        if (payload.new && (payload.new.sender_id === selectedUser.id || payload.new.receiver_id === selectedUser.id)) {
-          loadMessages();
+        if (selectedGroup) {
+          if (payload.new && payload.new.group_id === selectedGroup.id) {
+            loadMessages();
+            SoundService.playWaterDrop();
+          }
+        } else if (selectedUser) {
+          if (payload.new && (payload.new.sender_id === selectedUser.id || payload.new.receiver_id === selectedUser.id)) {
+            loadMessages();
+            SoundService.playWaterDrop();
+            if (payload.new.receiver_id === currentUser.id) {
+              SupabaseService.markMessageAsSeen(payload.new.id);
+            }
+          }
         }
       });
       return () => {
         subscription.unsubscribe();
       };
     }
-  }, [selectedUser]);
+  }, [selectedUser, selectedGroup]);
 
   useEffect(() => {
     scrollToBottom();
@@ -103,13 +127,26 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const loadGroups = async () => {
+    const data = await SupabaseService.getGroups();
+    setGroups(data);
+  };
+
+  const loadInvites = async () => {
+    const data = await SupabaseService.getChatInvites(currentUser.id);
+    setInvites(data);
+  };
+
   const loadMessages = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser && !selectedGroup) return;
     const msgs = await SupabaseService.getMessages(currentUser.id);
     const now = Date.now();
     const filtered = msgs.filter(m => {
-      const isRelevant = (m.senderId === currentUser.id && m.receiverId === selectedUser.id) ||
-                         (m.senderId === selectedUser.id && m.receiverId === currentUser.id);
+      if (selectedGroup) {
+        return m.groupId === selectedGroup.id;
+      }
+      const isRelevant = (m.senderId === currentUser.id && m.receiverId === selectedUser?.id) ||
+                         (m.senderId === selectedUser?.id && m.receiverId === currentUser.id);
       if (!isRelevant) return false;
       if (m.mediaUrl && m.expiresAt && now > m.expiresAt) return false;
       return true;
@@ -129,17 +166,41 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
   };
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || !selectedUser) return;
+    if (!inputText.trim() || (!selectedUser && !selectedGroup)) return;
+    
+    // Group coin deduction
+    if (selectedGroup) {
+      const cost = 2;
+      if ((currentUser.points || 0) < cost) {
+        alert('Insufficient Prophy coins for group chat.');
+        return;
+      }
+      // Deduct coins
+      const updatedUser = { ...currentUser, points: (currentUser.points || 0) - cost };
+      await SupabaseService.updateUser(updatedUser);
+    }
+
+    if (selectedGroup) {
+      const deduction = await SupabaseService.deductPoints(currentUser.id, 2);
+      if (!deduction.success) {
+        alert('Insufficient Prophy coins for group message (2 coins required).');
+        return;
+      }
+      await SupabaseService.distributeGroupRevenue(2);
+    }
+
     try {
       await SupabaseService.sendMessage({
         senderId: currentUser.id,
-        receiverId: selectedUser.id,
+        receiverId: selectedUser?.id || null,
+        groupId: selectedGroup?.id,
         text: inputText,
         replyTo: replyingTo?.id,
         replyToContent: replyingTo?.text || (replyingTo?.mediaType ? `Sent a ${replyingTo.mediaType}` : undefined)
       });
       setInputText('');
       setReplyingTo(null);
+      SoundService.playWaterDrop();
       loadMessages();
       loadRecentConversations();
     } catch (error) {
@@ -217,6 +278,39 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
     setIsVideoCalling(true);
   };
 
+  const handleSaveSettings = async () => {
+    const badges = [...(currentUser.badges || [])];
+    if (phoneNumber && !badges.includes('Verified Node')) {
+      badges.push('Verified Node');
+    }
+    const updatedUser = { ...currentUser, phone: phoneNumber, badges };
+    await SupabaseService.updateUser(updatedUser);
+    alert('Settings updated successfully!');
+    setShowSettings(false);
+  };
+
+  const handleInviteThirdParty = async (targetUserId: string) => {
+    if (!selectedUser) return;
+    await SupabaseService.sendChatInvite({
+      inviterId: currentUser.id,
+      inviteeId: targetUserId,
+      targetId: [currentUser.id, selectedUser.id].sort().join(':'),
+      targetType: 'conversation'
+    });
+    alert('Invite sent! Both parties must agree.');
+    setShowInviteModal(false);
+  };
+
+  const formatLastSeen = (timestamp?: number) => {
+    if (!timestamp) return 'Offline';
+    const date = new Date(timestamp);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) {
+      return `Last seen today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return `Last seen on ${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
   const formatTime = (timestamp: number | string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -260,7 +354,54 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
           </div>
         </div>
 
+        {/* Invites Section */}
+        {invites.filter(i => i.status === 'pending' && !i.mutualAgreement.includes(currentUser.id)).length > 0 && (
+          <div className="px-4 pb-4">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-proph mb-3 px-2">Pending Invites</h3>
+            <div className="space-y-2">
+              {invites.filter(i => i.status === 'pending' && !i.mutualAgreement.includes(currentUser.id)).map(invite => (
+                <div key={invite.id} className="p-3 bg-brand-proph/5 border border-brand-proph/20 rounded-2xl">
+                  <p className="text-[11px] font-bold dark:text-white mb-2">
+                    Invite to join conversation: {invite.targetId}
+                  </p>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => SupabaseService.respondToChatInvite(invite.id, currentUser.id, true).then(loadInvites)}
+                      className="flex-1 py-1.5 bg-brand-proph text-black rounded-lg font-black text-[9px] uppercase tracking-widest hover:brightness-110 transition-all"
+                    >
+                      Agree
+                    </button>
+                    <button 
+                      onClick={() => SupabaseService.respondToChatInvite(invite.id, currentUser.id, false).then(loadInvites)}
+                      className="flex-1 py-1.5 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {groups.map(group => (
+            <button
+              key={group.id}
+              onClick={() => { setSelectedGroup(group); setSelectedUser(null); }}
+              className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-brand-card transition-colors border-b border-gray-50 dark:border-brand-border/30 ${selectedGroup?.id === group.id ? 'bg-gray-100 dark:bg-brand-card' : ''}`}
+            >
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-brand-proph/20 flex items-center justify-center font-black text-brand-proph">
+                  {group.name.charAt(0)}
+                </div>
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-bold text-sm dark:text-white truncate">{group.name}</p>
+                <p className="text-xs text-gray-500 truncate">{group.description}</p>
+              </div>
+            </button>
+          ))}
           {recentConversations.length > 0 ? (
             recentConversations.map(conv => (
               <button
@@ -310,11 +451,20 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                   <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-brand-black" />
                 </div>
                 <div>
-                  <p className="font-bold dark:text-white text-sm">@{selectedUser.nickname}</p>
-                  <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Online</p>
+                  <p className="font-bold dark:text-white text-sm">
+                    {selectedGroup ? selectedGroup.name : `@${selectedUser.nickname}`}
+                  </p>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedUser?.isOnline ? 'text-green-500' : 'text-gray-500'}`}>
+                    {selectedGroup ? 'Group Chat' : (selectedUser?.isOnline ? 'Online' : formatLastSeen(selectedUser?.lastSeen))}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
+                {!selectedGroup && (
+                  <button onClick={() => setShowInviteModal(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
+                    <UserPlus className="w-5 h-5" />
+                  </button>
+                )}
                 <button onClick={startVideoCall} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full text-gray-600 dark:text-gray-400 transition-colors">
                   <Video className="w-5 h-5" />
                 </button>
@@ -369,9 +519,9 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                             {msg.mediaType === 'image' && (
                               <img 
                                 src={CloudinaryService.getOptimizedUrl(msg.mediaUrl)} 
-                                className="rounded-lg max-h-80 w-full object-cover cursor-pointer hover:brightness-90 transition-all" 
+                                className="rounded-lg max-h-80 w-full object-cover cursor-zoom-in hover:brightness-90 transition-all" 
                                 alt="" 
-                                onClick={() => window.open(msg.mediaUrl, '_blank')}
+                                onClick={() => setLightboxImage(msg.mediaUrl || null)}
                               />
                             )}
                             {msg.mediaType === 'video' && <video src={msg.mediaUrl} controls className="rounded-lg max-h-80 w-full" />}
@@ -391,10 +541,16 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
                         )}
                         <div className="flex justify-end items-center gap-1 mt-1">
                           <p className={`text-[9px] font-bold ${isOwn ? 'text-black/50' : 'text-gray-400'}`}>
-                            {formatTime(msg.createdAt)}
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
                           {isOwn && (
-                            <CheckCheck className="w-3 h-3 text-blue-500" />
+                            <div className="flex items-center">
+                              {msg.isSeen ? (
+                                <span className="text-[10px] font-black text-green-600 italic">p</span>
+                              ) : (
+                                <span className="text-[10px] font-black text-black/20 italic">p</span>
+                              )}
+                            </div>
                           )}
                         </div>
                         
@@ -413,6 +569,12 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
               })}
               <div ref={messagesEndRef} />
             </div>
+
+            <Lightbox 
+              isOpen={!!lightboxImage} 
+              imageUrl={lightboxImage || ''} 
+              onClose={() => setLightboxImage(null)} 
+            />
 
             {/* Input Area */}
             <div className="bg-[#f0f2f5] dark:bg-brand-black border-t border-gray-100 dark:border-brand-border flex flex-col">
@@ -510,6 +672,104 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
           </div>
         )}
       </div>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-brand-black w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-brand-border"
+            >
+              <div className="p-6 border-b border-brand-border flex items-center justify-between">
+                <h3 className="text-xl font-black uppercase italic text-gray-900 dark:text-white">Chat Settings</h3>
+                <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-all">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-brand-muted mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={e => setPhoneNumber(e.target.value)}
+                    placeholder="+234..."
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-brand-card rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-proph transition-all dark:text-white font-bold"
+                  />
+                </div>
+                <button 
+                  onClick={handleSaveSettings}
+                  className="w-full py-4 bg-brand-proph text-black font-black rounded-xl text-xs uppercase tracking-widest shadow-xl shadow-brand-proph/20 hover:scale-105 transition-all"
+                >
+                  Save & Verify Node
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Invite Modal */}
+      <AnimatePresence>
+        {showInviteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-brand-black w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-brand-border"
+            >
+              <div className="p-6 border-b border-brand-border flex items-center justify-between">
+                <h3 className="text-xl font-black uppercase italic text-gray-900 dark:text-white">Invite Third Party</h3>
+                <button onClick={() => setShowInviteModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-all">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-brand-muted font-medium">
+                  Invite a third party to this conversation. Both you and @{selectedUser?.nickname} must agree.
+                  The third party will only see new messages.
+                </p>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search node to invite..."
+                    value={searchQuery}
+                    onChange={handleSearch}
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-brand-card rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-proph transition-all dark:text-white font-bold"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-2">
+                  {searchResults.map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => handleInviteThirdParty(u.id)}
+                      className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-brand-card rounded-xl transition-all border border-transparent hover:border-brand-border"
+                    >
+                      <img src={CloudinaryService.getOptimizedUrl(u.avatar || `https://ui-avatars.com/api/?name=${u.nickname}`)} className="w-8 h-8 rounded-full object-cover" alt="" />
+                      <p className="font-black text-xs dark:text-white">@{u.nickname}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* New Chat Modal */}
       <AnimatePresence>

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, LogIn, AlertCircle, Phone, ShieldCheck, BookOpen, Loader2 } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Phone, ShieldCheck, BookOpen, Loader2, Fingerprint } from 'lucide-react';
 import { User } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
 
@@ -16,6 +16,30 @@ const Login: React.FC<LoginProps> = ({ onLogin, allUsers }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleFingerprintLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      // Simulate biometric check
+      // In a real app, we'd use navigator.credentials.get()
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // For demo, let's just find a user with a fingerprintId (if any)
+      // Or just show a message that it's not set up
+      const userWithFingerprint = allUsers.find(u => u.fingerprintId);
+      if (userWithFingerprint) {
+        onLogin(userWithFingerprint);
+        navigate('/');
+      } else {
+        setError('Biometric identity not established on this device.');
+      }
+    } catch (err) {
+      setError('Biometric authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +173,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, allUsers }) => {
               ) : (
                 <>Verify & Enter <LogIn className="w-5 h-5" /></>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleFingerprintLogin}
+              disabled={loading}
+              className="w-full bg-gray-800 text-white py-5 rounded-2xl font-black text-sm hover:bg-gray-700 transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 uppercase tracking-widest italic disabled:opacity-50"
+            >
+              <Fingerprint className="w-5 h-5 text-brand-proph" /> Biometric Access
             </button>
           </form>
 

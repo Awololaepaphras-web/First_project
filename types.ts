@@ -411,9 +411,9 @@ export interface SystemConfig {
   isCardPaymentEnabled: boolean;
   replyCost: number;
   premiumBenefits: {
-    premium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number };
-    premiumPlus: { dailyCoins: number; noAds: boolean; groupRevenueShare: number };
-    alphaPremium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number };
+    premium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number; price: number };
+    premiumPlus: { dailyCoins: number; noAds: boolean; groupRevenueShare: number; price: number };
+    alphaPremium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number; price: number };
   };
   appLogo?: string;
   appIcon?: string;

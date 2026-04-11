@@ -31,9 +31,9 @@ const Premium: React.FC<PremiumProps> = ({ user, config, onUpgrade }) => {
     {
       id: 'premium',
       name: 'Premium Node',
-      price: config.premiumTiers.monthly,
+      price: config.premiumBenefits.premium.price,
       period: 'per month',
-      features: ['100% Vault Unlock', 'Daily 10 Prophy Coins', 'Ad-free experience', 'Verified Creator status', '10% Earnings from users'],
+      features: ['100% Vault Unlock', `Daily ${config.premiumBenefits.premium.dailyCoins.toLocaleString()} Prophy Coins`, 'Ad-free experience', 'Verified Creator status', '10% Earnings from users'],
       color: 'bg-brand-proph',
       btnText: 'Select Premium',
       isPremium: true,
@@ -42,9 +42,9 @@ const Premium: React.FC<PremiumProps> = ({ user, config, onUpgrade }) => {
     {
       id: 'premium_plus',
       name: 'Premium Plus',
-      price: config.premiumTiers.yearly / 12, // Approximate monthly
+      price: config.premiumBenefits.premiumPlus.price,
       period: 'per month',
-      features: ['Neural forging unlimited', 'Daily 25 Prophy Coins', 'Direct Academic Board link', '15% Earnings from users', 'Custom AI study paths'],
+      features: ['Neural forging unlimited', `Daily ${config.premiumBenefits.premiumPlus.dailyCoins.toLocaleString()} Prophy Coins`, 'Direct Academic Board link', '15% Earnings from users', 'Custom AI study paths'],
       color: 'bg-blue-600',
       btnText: 'Select Plus',
       isPremium: true
@@ -52,9 +52,9 @@ const Premium: React.FC<PremiumProps> = ({ user, config, onUpgrade }) => {
     {
       id: 'alpha_premium',
       name: 'Alpha Premium',
-      price: (config.premiumTiers.yearly * 1.5) / 12, // Approximate monthly
+      price: config.premiumBenefits.alphaPremium.price,
       period: 'per month',
-      features: ['Ultimate Institutional Access', 'Daily 50 Prophy Coins', '30% Earnings from users', 'Exclusive 500L Masterclasses', 'Priority Support'],
+      features: ['Ultimate Institutional Access', `Daily ${config.premiumBenefits.alphaPremium.dailyCoins.toLocaleString()} Prophy Coins`, '30% Earnings from users', 'Exclusive 500L Masterclasses', 'Priority Support'],
       color: 'bg-yellow-600',
       btnText: 'Select Alpha',
       isPremium: true

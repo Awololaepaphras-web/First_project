@@ -45,8 +45,8 @@ export const CloudinaryService = {
   },
 
   async uploadFile(file: File | string, type: 'image' | 'video' | 'raw' | 'auto' = 'auto'): Promise<string> {
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || import.meta.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || import.meta.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'prophs_cloud';
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || (window as any).CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || (window as any).CLOUDINARY_UPLOAD_PRESET || 'prophs_cloud';
 
     if (!cloudName) {
       console.error('Cloudinary configuration missing. Please set VITE_CLOUDINARY_CLOUD_NAME or NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.');
@@ -93,8 +93,8 @@ export const CloudinaryService = {
   },
 
   async uploadStatus(file: File): Promise<string> {
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || import.meta.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = 'status_upload'; // Unsigned preset for statuses
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || (window as any).CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = (window as any).CLOUDINARY_UPLOAD_PRESET || 'status_upload'; // Unsigned preset for statuses
 
     if (!cloudName) {
       throw new Error('Cloudinary configuration missing.');

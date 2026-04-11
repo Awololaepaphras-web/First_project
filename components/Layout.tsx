@@ -87,6 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     { name: 'Wallet', path: '/withdraw', icon: <Wallet className="w-6 h-6" /> },
     { name: 'Transfer', path: '/transfer', icon: <Send className="w-6 h-6" /> },
     { name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
+    { name: 'Status', path: '/statuses', icon: <Camera className="w-6 h-6" /> },
     { name: 'Chat', path: '/chat', icon: <AtSign className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
     ...(isEligibleForMonetization ? [{ name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> }] : []),

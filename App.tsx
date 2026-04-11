@@ -90,9 +90,9 @@ const DEFAULT_CONFIG: SystemConfig = {
   appLogo: 'https://res.cloudinary.com/dovqqw06b/image/upload/v1775841226/rsslbn4l7x3gd9chcvvd.png',
   appIcon: 'https://res.cloudinary.com/dovqqw06b/image/upload/v1775841226/rsslbn4l7x3gd9chcvvd.png',
   premiumTiers: {
-    weekly: 1000,
-    monthly: 2500,
-    yearly: 20000
+    weekly: 500,
+    monthly: 1500,
+    yearly: 2000
   },
   paymentAccount: {
     bankName: 'Proph Institutional Bank',
@@ -102,9 +102,9 @@ const DEFAULT_CONFIG: SystemConfig = {
   isCardPaymentEnabled: false,
   replyCost: 30,
   premiumBenefits: {
-    premium: { dailyCoins: 10, noAds: true, groupRevenueShare: 0.10 },
-    premiumPlus: { dailyCoins: 25, noAds: true, groupRevenueShare: 0.15 },
-    alphaPremium: { dailyCoins: 50, noAds: true, groupRevenueShare: 0.30 }
+    premium: { dailyCoins: 1000, noAds: true, groupRevenueShare: 0.10, price: 500 },
+    premiumPlus: { dailyCoins: 5000, noAds: true, groupRevenueShare: 0.15, price: 1500 },
+    alphaPremium: { dailyCoins: 10000, noAds: true, groupRevenueShare: 0.30, price: 2000 }
   },
   splashScreenUrl: '',
   globalAnnouncement: {
@@ -1113,6 +1113,15 @@ const App: React.FC = () => {
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, content } : p));
     await DB.updatePost(postId, content);
   };
+
+  // Initialize Cloudinary if needed
+  useEffect(() => {
+    if (!import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) {
+      // We use the cloud name found in the user's provided URLs
+      (window as any).CLOUDINARY_CLOUD_NAME = 'dovqqw06b';
+      (window as any).CLOUDINARY_UPLOAD_PRESET = 'prophs_cloud';
+    }
+  }, []);
 
   return (
     <>

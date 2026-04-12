@@ -6,6 +6,7 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'bounty';
   createdAt: number;
   read: boolean;
+  data?: any;
 }
 
 export interface Announcement {

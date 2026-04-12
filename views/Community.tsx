@@ -133,6 +133,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [mediaFile, setMediaFile] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [tippingUser, setTippingUser] = useState<{ id: string, name: string } | null>(null);
   const [tipAmount, setTipAmount] = useState(10);
@@ -424,24 +425,26 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                 {user.profilePicture ? <img src={CloudinaryService.getOptimizedUrl(user.profilePicture)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-gray-400">{user.name.charAt(0)}</div>}
             </div>
             <div className="flex-grow pt-2">
-                <textarea 
-                    value={newPostContent}
-                    onChange={e => {
-                      // Allow alphanumeric, common punctuation, spaces, and newlines
-                      const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? \n]/g, '');
-                      setNewPostContent(val);
-                    }}
-                    onKeyDown={e => {
-                      // Ensure Enter creates a new line (default behavior for textarea)
-                      // but we can explicitly handle it if needed. 
-                      // Here we just make sure we don't prevent default unless it's a specific shortcut.
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        // Default behavior is newline, which is what the user wants.
-                      }
-                    }}
-                    placeholder="Synchronize scholarly thought..."
-                    className="w-full bg-transparent text-xl border-none outline-none resize-none min-h-[100px] placeholder:text-brand-muted text-gray-900 dark:text-white"
-                />
+                {showPreview ? (
+                  <div className="w-full bg-brand-proph/5 rounded-2xl p-4 border border-brand-proph/20 min-h-[100px] animate-in fade-in duration-300">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-brand-proph bg-brand-proph/10 px-2 py-0.5 rounded">Preview Mode</span>
+                    </div>
+                    <div className="text-xl text-gray-900 dark:text-white leading-normal whitespace-pre-wrap break-words break-all italic font-bold">
+                      {renderContentWithTags(newPostContent || "Your intellectual synchronization will appear here...")}
+                    </div>
+                  </div>
+                ) : (
+                  <textarea 
+                      value={newPostContent}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^a-zA-Z0-9$.,!? \n]/g, '');
+                        setNewPostContent(val);
+                      }}
+                      placeholder="Synchronize scholarly thought..."
+                      className="w-full bg-transparent text-xl border-none outline-none resize-none min-h-[100px] placeholder:text-brand-muted text-gray-900 dark:text-white"
+                  />
+                )}
                 {mediaFile && (
                     <div className="relative mt-3 rounded-2xl overflow-hidden border border-brand-border">
                         {mediaFile.type === 'image' ? <img src={CloudinaryService.getOptimizedUrl(mediaFile.url)} className="w-full h-auto object-cover" /> : <video src={mediaFile.url} className="w-full h-auto" controls />}
@@ -454,7 +457,19 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                     </div>
                 )}
                 <div className="flex justify-between items-center mt-4 border-t border-brand-border/30 pt-3">
-                    <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="p-2 text-brand-proph hover:bg-brand-proph/10 rounded-full disabled:opacity-50" title="Attach Media"><ImageIcon className="w-5 h-5" /></button>
+                    <div className="flex items-center gap-2">
+                      <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="p-2 text-brand-proph hover:bg-brand-proph/10 rounded-full disabled:opacity-50" title="Attach Media"><ImageIcon className="w-5 h-5" /></button>
+                      <button 
+                        onClick={() => setShowPreview(!showPreview)} 
+                        className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${showPreview ? 'bg-brand-proph text-black' : 'text-brand-muted hover:bg-black/5 dark:hover:bg-white/5'}`}
+                        title="Toggle Preview"
+                      >
+                        {showPreview ? 'Edit' : 'Preview'}
+                      </button>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${newPostContent.length > 280 ? 'text-red-500' : 'text-brand-muted'}`}>
+                        {newPostContent.length}/280
+                      </span>
+                    </div>
                     <input type="file" ref={fileInputRef} hidden accept="image/*,video/*" onChange={async (e) => {
                        const file = e.target.files?.[0];
                        if(file) {
@@ -724,6 +739,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                             <span className="text-brand-proph text-[15px] font-black italic truncate max-w-[100px]" title="Node">{post.userUniversity}</span>
                             <span className="text-brand-muted text-[15px]">•</span>
                             <span className="text-brand-muted text-[15px] whitespace-nowrap" title={new Date(post.createdAt).toLocaleString()}>{formatRelativeTime(post.createdAt)}</span>
+                            {post.isEdited && (
+                              <span className="text-brand-muted text-[10px] font-black uppercase tracking-widest ml-1 opacity-50 italic">Edited</span>
+                            )}
                             {post.userId !== user.id && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); onFollow(post.userId); }}

@@ -54,10 +54,18 @@ CREATE OR REPLACE FUNCTION create_post_v2(
 RETURNS JSONB AS $
 DECLARE
   v_user_id UUID;
+  v_user_name TEXT;
+  v_user_nickname TEXT;
+  v_user_avatar TEXT;
+  v_user_university TEXT;
   v_poster_id UUID;
   v_new_post_id UUID;
 BEGIN
   v_user_id := auth.uid();
+  
+  -- Fetch user details for the post
+  SELECT name, nickname, university INTO v_user_name, v_user_nickname, v_user_university
+  FROM users WHERE id = v_user_id;
   
   -- Deduct coins for posting (30 coins)
   IF NOT handle_post_coins(v_user_id) THEN
@@ -68,20 +76,34 @@ BEGIN
   IF p_parent_id IS NOT NULL THEN
     SELECT user_id INTO v_poster_id FROM posts WHERE id = p_parent_id;
     IF v_poster_id IS NOT NULL AND v_poster_id != v_user_id THEN
-      -- Deduct 30 from replier (already done by handle_post_coins above, but wait, the logic is different)
-      -- Actually, the user said:
-      -- "post 30 coin is deducted"
-      -- "reply 30 coin is deducted from replier and 20 point given to poster"
-      -- So both post and reply cost 30.
-      
       -- Give 20 points to poster
       UPDATE users SET points = points + 20 WHERE id = v_poster_id;
     END IF;
   END IF;
   
-  -- Insert the post
-  INSERT INTO posts (user_id, content, media_url, media_type, parent_id)
-  VALUES (v_user_id, p_content, p_media_url, p_media_type, p_parent_id)
+  -- Insert the post with all required fields
+  INSERT INTO posts (
+    user_id, 
+    user_name, 
+    user_nickname, 
+    user_university,
+    content, 
+    media_url, 
+    media_type, 
+    parent_id,
+    created_at
+  )
+  VALUES (
+    v_user_id, 
+    v_user_name, 
+    v_user_nickname, 
+    v_user_university,
+    p_content, 
+    p_media_url, 
+    p_media_type, 
+    p_parent_id,
+    (extract(epoch from now()) * 1000)::bigint
+  )
   RETURNING id INTO v_new_post_id;
   
   RETURN jsonb_build_object('success', true, 'post_id', v_new_post_id);

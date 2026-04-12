@@ -386,7 +386,8 @@ const App: React.FC = () => {
           message: n.message,
           type: n.type as any,
           createdAt: new Date(n.created_at).getTime(),
-          read: n.is_read
+          read: n.is_read,
+          data: n.data
         })));
       }
     };
@@ -575,7 +576,8 @@ const App: React.FC = () => {
           message: payload.new.message,
           type: payload.new.type as any,
           createdAt: new Date(payload.new.created_at).getTime(),
-          read: payload.new.is_read
+          read: payload.new.is_read,
+          data: payload.new.data
         };
         setNotifications(prev => [newNotif, ...prev]);
         SoundService.playWaterDrop();
@@ -927,11 +929,10 @@ const App: React.FC = () => {
     try {
       const result = await SupabaseService.createPostV2(content, mediaUrl, mediaType, parentId);
       if (result.success) {
-        // Update local wallet points and DB
+        // Update local wallet points (UI only, DB is handled by RPC)
         if (wallet) {
           const newPoints = wallet.prophy_points - 30;
           setWallet({ prophy_points: newPoints });
-          await SupabaseService.updateUserPoints(poster.id, newPoints);
           if (user && poster.id === user.id) {
             setUser({ ...user, points: newPoints });
           }

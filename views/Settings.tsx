@@ -9,6 +9,7 @@ import { User } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import { usePWA } from '../src/hooks/usePWA';
+import { SoundService, SOUNDS } from '../src/services/soundService';
 
 interface SettingsProps {
   user: User;
@@ -29,6 +30,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(localStorage.getItem('proph_notifications_sound_enabled') !== 'false');
+  const [selectedSound, setSelectedSound] = useState(localStorage.getItem('proph_notifications_sound_id') || 'wave');
   const [activeSection, setActiveSection] = useState<'main' | 'profile' | 'account' | 'privacy' | 'chats' | 'notifications' | 'help'>('main');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +78,12 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
     localStorage.setItem('proph_notifications_sound_enabled', newVal.toString());
   };
 
+  const handleSoundChange = (soundId: string) => {
+    setSelectedSound(soundId);
+    localStorage.setItem('proph_notifications_sound_id', soundId);
+    SoundService.playSound(soundId as any);
+  };
+
   const menuItems = [
     { id: 'account', label: 'Account', sub: 'Security notifications, change number', icon: <Lock className="w-5 h-5 text-gray-500" /> },
     { id: 'privacy', label: 'Privacy', sub: 'Block contacts, disappearing messages', icon: <ShieldCheck className="w-5 h-5 text-gray-500" /> },
@@ -99,8 +107,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
           <div className="bg-white dark:bg-brand-card p-6 rounded-2xl shadow-sm space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-bold text-gray-900 dark:text-white">Notification Tones</h4>
-                <p className="text-xs text-gray-500">Play wave sound for incoming signals</p>
+                <h4 className="font-bold text-gray-900 dark:text-white">Notification Sounds</h4>
+                <p className="text-xs text-gray-500">Play sound for incoming signals</p>
               </div>
               <button 
                 onClick={toggleNotifications}
@@ -109,6 +117,28 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${notificationsEnabled ? 'right-1' : 'left-1'}`} />
               </button>
             </div>
+
+            {notificationsEnabled && (
+              <div className="pt-4 border-t border-gray-100 dark:border-brand-border space-y-4">
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Select Tone</h5>
+                <div className="grid grid-cols-1 gap-2">
+                  {Object.keys(SOUNDS).map((soundId) => (
+                    <button
+                      key={soundId}
+                      onClick={() => handleSoundChange(soundId)}
+                      className={`flex items-center justify-between p-4 rounded-xl transition-all ${
+                        selectedSound === soundId 
+                          ? 'bg-brand-proph/10 border-brand-proph border' 
+                          : 'bg-gray-50 dark:bg-brand-black border border-transparent'
+                      }`}
+                    >
+                      <span className="text-sm font-bold capitalize text-gray-900 dark:text-white">{soundId}</span>
+                      {selectedSound === soundId && <div className="w-2 h-2 rounded-full bg-brand-proph" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

@@ -1,160 +1,285 @@
-import React from 'react';
-import { useRealtimeLeaderboard, useTopEngagedUsers } from '../src/hooks/useRealtimeRanking';
-import { Award, TrendingUp, Users, Loader2, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Trophy, TrendingUp, Users, ArrowLeft, 
+  DollarSign, Zap, Info, ChevronRight,
+  Wallet, Gift, Coins
+} from 'lucide-react';
+import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { SupabaseService } from '../src/services/supabaseService';
+import { Post, User } from '../types';
+import { CloudinaryService } from '../src/services/cloudinaryService';
 
 const LeaderboardView: React.FC = () => {
-  const { leaderboard, loading: leaderboardLoading, error: leaderboardError } = useRealtimeLeaderboard();
-  const { users: topUsers, loading: topUsersLoading, error: topUsersError } = useTopEngagedUsers();
+  const navigate = useNavigate();
+  const [topPosts, setTopPosts] = useState<Post[]>([]);
+  const [topReferrers, setTopReferrers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'posts' | 'referrers' | 'guide'>('posts');
 
-  const loading = leaderboardLoading || topUsersLoading;
-  const error = leaderboardError || topUsersError;
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [posts, referrers] = await Promise.all([
+        SupabaseService.getTopPosts(20),
+        SupabaseService.getTopReferrers(20)
+      ]);
+      setTopPosts(posts);
+      setTopReferrers(referrers);
+    } catch (err) {
+      console.error('Failed to load leaderboard data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getEngagementCount = (post: Post) => {
+    return (post.likes?.length || 0) + (post.comments?.length || 0) + (post.reposts?.length || 0);
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 lg:p-12 animate-fade-in">
-      <div className="max-w-4xl mx-auto space-y-16">
-        <header className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-brand-proph rounded-2xl shadow-xl shadow-brand-proph/20">
-              <Award className="w-8 h-8 text-black" />
-            </div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Engagement Hub</h1>
+    <div className="min-h-screen bg-white dark:bg-brand-black pb-20">
+      {/* Header */}
+      <div className="bg-brand-proph p-8 pt-16 text-black relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-black/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest mb-8 hover:bg-black/10 p-2 rounded-xl transition-all"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Matrix
+        </button>
+        <div className="flex items-center gap-6">
+          <div className="bg-black/10 p-4 rounded-3xl backdrop-blur-xl border border-black/10">
+            <Trophy className="w-10 h-10" />
           </div>
-          <p className="text-gray-500 font-medium italic max-w-2xl">
-            Real-time ranking of the most active scholars in the matrix.
-          </p>
-        </header>
+          <div>
+            <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none">Hall of Fame</h1>
+            <p className="font-bold opacity-80 italic text-sm mt-1">The elite nodes of the Proph network.</p>
+          </div>
+        </div>
+      </div>
 
-        {/* Top 20 All-Time Engaged (Updated Section) */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-3">
-            <Star className="w-6 h-6 text-brand-proph" />
-            <h2 className="text-2xl font-black uppercase italic tracking-tight">Top 20 All-Time Engaged</h2>
+      {/* Tabs */}
+      <div className="max-w-4xl mx-auto px-4 -mt-8 relative z-10">
+        <div className="bg-white dark:bg-brand-card p-2 rounded-[2rem] shadow-2xl border border-brand-border flex gap-2">
+          <button 
+            onClick={() => setActiveTab('posts')}
+            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'posts' ? 'bg-brand-proph text-black shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-brand-black'}`}
+          >
+            <TrendingUp className="w-4 h-4" /> Top Intel
+          </button>
+          <button 
+            onClick={() => setActiveTab('referrers')}
+            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'referrers' ? 'bg-brand-proph text-black shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-brand-black'}`}
+          >
+            <Users className="w-4 h-4" /> Top Recruiters
+          </button>
+          <button 
+            onClick={() => setActiveTab('guide')}
+            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'guide' ? 'bg-brand-proph text-black shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-brand-black'}`}
+          >
+            <Coins className="w-4 h-4" /> Earning Guide
+          </button>
+        </div>
+      </div>
+
+      <main className="max-w-4xl mx-auto px-4 py-12">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-12 h-12 border-4 border-brand-proph border-t-transparent rounded-full animate-spin" />
+            <p className="font-black text-[10px] uppercase tracking-widest text-brand-muted">Synchronizing Data...</p>
           </div>
-          
-          {topUsersLoading ? (
-            <div className="flex items-center gap-3 py-10">
-              <Loader2 className="w-6 h-6 text-brand-proph animate-spin" />
-              <span className="text-xs font-black uppercase tracking-widest text-gray-500 italic">Syncing All-Time Data...</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {topUsers.map((user, index) => (
-                <div key={user.id} className="bg-gray-900/50 border border-gray-800 p-6 rounded-3xl flex items-center justify-between group hover:border-brand-proph transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black italic ${
-                      index === 0 ? 'bg-brand-proph text-black' : 'bg-gray-800 text-gray-500'
-                    }`}>
-                      #{index + 1}
+        ) : activeTab === 'posts' ? (
+          <div className="space-y-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-muted px-4 mb-6">Top 20 High-Engagement Intel</h2>
+            {topPosts.map((post, index) => (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                key={post.id}
+                onClick={() => navigate(`/post/${post.id}`)}
+                className="w-full bg-white dark:bg-brand-card p-6 rounded-[2.5rem] border border-brand-border hover:border-brand-proph transition-all flex items-center gap-6 group text-left"
+              >
+                <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center font-black text-2xl italic text-brand-proph/30 group-hover:text-brand-proph transition-colors">
+                  #{index + 1}
+                </div>
+                <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 border border-brand-border">
+                  <img 
+                    src={CloudinaryService.getOptimizedUrl(post.userAvatar || `https://ui-avatars.com/api/?name=${post.userNickname}`)} 
+                    className="w-full h-full object-cover" 
+                    alt="" 
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm dark:text-white truncate uppercase italic">@{post.userNickname}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">{post.content}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-1.5 text-brand-proph">
+                      <Zap className="w-4 h-4" />
+                      <span className="font-black text-sm">{getEngagementCount(post)}</span>
                     </div>
-                    <div>
-                      <p className="font-black italic text-white group-hover:text-brand-proph transition-colors">{user.name}</p>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">@{user.nickname}</p>
-                    </div>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Engagement</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black italic text-brand-proph">{user.total_engagement.toLocaleString()}</p>
-                    <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Score</p>
+                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-brand-proph transition-colors" />
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        ) : activeTab === 'referrers' ? (
+          <div className="space-y-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-muted px-4 mb-6">Top 20 Elite Recruiters</h2>
+            {topReferrers.map((user, index) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                key={user.id}
+                className="bg-white dark:bg-brand-card p-6 rounded-[2.5rem] border border-brand-border flex items-center gap-6"
+              >
+                <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center font-black text-2xl italic text-brand-proph/30">
+                  #{index + 1}
+                </div>
+                <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 border border-brand-border">
+                  <img 
+                    src={CloudinaryService.getOptimizedUrl(user.profilePicture || `https://ui-avatars.com/api/?name=${user.nickname}`)} 
+                    className="w-full h-full object-cover" 
+                    alt="" 
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm dark:text-white truncate uppercase italic">@{user.nickname}</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{user.university}</p>
+                </div>
+                <div className="flex flex-col items-end">
+                  <div className="flex items-center gap-1.5 text-blue-500">
+                    <Users className="w-4 h-4" />
+                    <span className="font-black text-sm">{user.referralCount || 0}</span>
+                  </div>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Referrals</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-12">
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-12 h-12 bg-brand-proph/10 rounded-2xl flex items-center justify-center">
+                  <Coins className="w-6 h-6 text-brand-proph" />
+                </div>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter">How to Earn Prophy Coins</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-brand-border space-y-4">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <h3 className="font-black uppercase italic text-sm">Elite Recruitment</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">Invite new nodes to the matrix using your referral link. Earn massive bonuses for every verified student who joins.</p>
+                  <div className="pt-2">
+                    <span className="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">500 Coins / Referral</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
 
-        {/* 24h Leaderboard */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-6 h-6 text-brand-proph" />
-            <h2 className="text-2xl font-black uppercase italic tracking-tight">24h Matrix Pulse</h2>
-          </div>
-          
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <Loader2 className="w-12 h-12 text-brand-proph animate-spin" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 italic">Synchronizing Matrix Data...</p>
-            </div>
-          ) : error ? (
-            <div className="p-8 bg-red-600/10 border border-red-500/20 rounded-[2rem] text-center">
-              <p className="text-red-500 font-black uppercase italic">Matrix Sync Error: {error}</p>
-            </div>
-          ) : (
-            <div className="bg-gray-900 rounded-[3rem] border border-gray-800 overflow-hidden shadow-2xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-800 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    <tr>
-                      <th className="p-8">Rank</th>
-                      <th className="p-8">Scholar</th>
-                      <th className="p-8">Activity</th>
-                      <th className="p-8 text-right">Engagement</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {leaderboard.map((user, index) => (
-                      <tr key={user.id} className="hover:bg-white/5 transition-all group">
-                        <td className="p-8">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black italic text-xl ${
-                            index === 0 ? 'bg-brand-proph text-black shadow-lg shadow-brand-proph/30' :
-                            index === 1 ? 'bg-gray-300 text-black' :
-                            index === 2 ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-400'
-                          }`}>
-                            #{index + 1}
-                          </div>
-                        </td>
-                        <td className="p-8">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center font-black text-brand-proph">
-                              {user.name[0]}
-                            </div>
-                            <div>
-                              <p className="font-black italic text-lg text-white group-hover:text-brand-proph transition-colors">{user.name}</p>
-                              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">@{user.nickname}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-8">
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <TrendingUp className="w-4 h-4" />
-                            <span className="text-xs font-black uppercase">{user.post_count} Posts</span>
-                          </div>
-                        </td>
-                        <td className="p-8 text-right">
-                          <p className="text-3xl font-black italic text-brand-proph">{user.total_engagement.toLocaleString()}</p>
-                          <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Engagement Points</p>
-                        </td>
-                      </tr>
-                    ))}
-                    {leaderboard.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="p-20 text-center">
-                          <div className="space-y-4">
-                            <Users className="w-12 h-12 text-gray-800 mx-auto" />
-                            <p className="text-gray-600 font-black italic uppercase text-sm">No active nodes detected in the last 24 hours</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-brand-border space-y-4">
+                  <div className="w-10 h-10 bg-brand-proph/10 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-brand-proph" />
+                  </div>
+                  <h3 className="font-black uppercase italic text-sm">Intel Engagement</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">Post high-quality academic intel. Earn coins every time someone likes, comments, or reposts your content.</p>
+                  <div className="pt-2">
+                    <span className="bg-brand-proph/10 text-brand-proph px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Passive Earnings</span>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-brand-border space-y-4">
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <h3 className="font-black uppercase italic text-sm">Premium Dividends</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">Upgrade to Premium to receive daily coin injections and a share of the platform's group messaging revenue.</p>
+                  <div className="pt-2">
+                    <span className="bg-purple-500/10 text-purple-500 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Up to 10k Daily</span>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-brand-card p-8 rounded-[3rem] border border-brand-border space-y-4">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-green-500" />
+                  </div>
+                  <h3 className="font-black uppercase italic text-sm">Archive Contribution</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">Upload missing past questions to the vault. Earn rewards once your intel is verified by the Academic Board.</p>
+                  <div className="pt-2">
+                    <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Verified Rewards</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            </section>
 
-        <footer className="p-8 bg-gray-900/50 rounded-[2.5rem] border border-gray-800">
-          <div className="flex items-start gap-4">
-            <div className="p-2 bg-blue-600/10 rounded-xl text-blue-500">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">How it works</p>
-              <p className="text-xs text-gray-500 leading-relaxed font-medium italic">
-                The hub tracks both all-time engagement scores and real-time 24h pulse. All-time scores are cumulative, while the 24h pulse focuses on recent activity using a weighted matrix of likes, replies, and shares.
-              </p>
-            </div>
+            <section className="bg-gray-900 text-white p-10 rounded-[4rem] space-y-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-proph/10 rounded-full blur-3xl" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-brand-proph" />
+                </div>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Cashing Out to Real Fiat</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex gap-6">
+                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-black text-brand-proph shrink-0">1</div>
+                  <div>
+                    <h4 className="font-black uppercase text-xs tracking-widest mb-2">Accumulate Prophy Coins</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">Build your balance through the earning methods above. The minimum withdrawal threshold is 5,000 Prophy Coins.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-6">
+                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-black text-brand-proph shrink-0">2</div>
+                  <div>
+                    <h4 className="font-black uppercase text-xs tracking-widest mb-2">Initiate Withdrawal</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">Go to your Wallet and select "Withdraw". Enter the amount of coins you wish to convert to Naira.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-6">
+                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-black text-brand-proph shrink-0">3</div>
+                  <div>
+                    <h4 className="font-black uppercase text-xs tracking-widest mb-2">Bank Verification</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">Ensure your bank details are correctly set in your profile. Our system supports all major Nigerian banks.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-6">
+                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-black text-brand-proph shrink-0">4</div>
+                  <div>
+                    <h4 className="font-black uppercase text-xs tracking-widest mb-2">Matrix Processing</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">Withdrawals are processed within 24-48 hours. You will receive a notification once the fiat hits your account.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Info className="w-5 h-5 text-brand-proph" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Conversion Rate: 10 Coins = ₦1.00</p>
+                </div>
+                <button onClick={() => navigate('/withdraw')} className="px-6 py-3 bg-brand-proph text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all">
+                  Go to Wallet
+                </button>
+              </div>
+            </section>
           </div>
-        </footer>
-      </div>
+        )}
+      </main>
     </div>
   );
 };

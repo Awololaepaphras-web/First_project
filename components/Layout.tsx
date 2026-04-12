@@ -7,7 +7,7 @@ import {
   BookOpen, Compass, PlusCircle, Wallet, MessageSquare,
   Search, Bell, User, Users, Send, MoreHorizontal, Home, Tv, Library, Star,
   Sun, Moon, Megaphone, ListChecks, AtSign, Swords, BarChart2,
-  Award, Camera, DollarSign, TrendingUp
+  Award, Camera, DollarSign, TrendingUp, Trophy
 } from 'lucide-react';
 import StudyTimer from './StudyTimer';
 import { Notification, User as UserType, SystemConfig } from '../types';
@@ -53,6 +53,19 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     }
   };
 
+  const handleNotificationClick = async (notif: Notification) => {
+    setShowNotifs(false);
+    if (!notif.read) {
+      await SupabaseService.markNotificationAsRead(notif.id);
+    }
+    
+    if (notif.data?.postId) {
+      navigate(`/community?post=${notif.data.postId}`);
+    } else if (notif.data?.authorId) {
+      navigate(`/profile/${notif.data.authorId}`);
+    }
+  };
+
   const [showNotifs, setShowNotifs] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -86,8 +99,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     { name: 'Memory Bank', path: '/memory-bank', icon: <Library className="w-6 h-6" /> },
     { name: 'Wallet', path: '/withdraw', icon: <Wallet className="w-6 h-6" /> },
     { name: 'Transfer', path: '/transfer', icon: <Send className="w-6 h-6" /> },
-    { name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
-    { name: 'Status', path: '/statuses', icon: <Camera className="w-6 h-6" /> },
+    {name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
+    {name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-6 h-6" /> },
+    {name: 'Status', path: '/statuses', icon: <Camera className="w-6 h-6" /> },
     { name: 'Chat', path: '/chat', icon: <AtSign className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
     ...(isEligibleForMonetization ? [{ name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> }] : []),
@@ -350,7 +364,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
                   <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                     {notifications.length > 0 ? (
                       notifications.map(notif => (
-                        <div key={notif.id} className={`p-4 border-b border-brand-border/30 hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer ${!notif.read ? 'bg-brand-proph/5' : ''}`}>
+                        <div 
+                          key={notif.id} 
+                          onClick={() => handleNotificationClick(notif)}
+                          className={`p-4 border-b border-brand-border/30 hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer ${!notif.read ? 'bg-brand-proph/5' : ''}`}
+                        >
                           <h4 className="font-black text-sm italic">{notif.title}</h4>
                           <p className="text-xs text-brand-muted mt-1">{notif.message}</p>
                           <span className="text-[10px] text-brand-muted mt-2 block font-bold">{new Date(notif.createdAt).toLocaleTimeString()}</span>

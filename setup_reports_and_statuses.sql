@@ -119,26 +119,30 @@ BEGIN
 
     -- Create the reply post
     INSERT INTO posts (
-        id,
         user_id,
+        user_name,
+        user_nickname,
+        user_university,
         content,
         media_url,
         media_type,
         parent_id,
         visibility,
-        status,
         created_at
-    ) VALUES (
-        gen_random_uuid(),
+    ) 
+    SELECT 
         v_replier_id,
+        name,
+        nickname,
+        university,
         p_reply_content,
         p_media_url,
         p_media_type,
         p_post_id,
         'public',
-        'approved',
-        now()
-    ) RETURNING id INTO v_new_post_id;
+        (extract(epoch from now()) * 1000)::bigint
+    FROM users WHERE id = v_replier_id
+    RETURNING id INTO v_new_post_id;
 
     RETURN jsonb_build_object(
         'success', true, 

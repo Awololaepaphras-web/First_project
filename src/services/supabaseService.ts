@@ -484,6 +484,43 @@ export const SupabaseService = {
     }
   },
 
+  async getTopPosts(limit: number = 20): Promise<Post[]> {
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false }) // Initial sort, we'll sort by engagement in JS or via a better query
+      .limit(100); // Fetch more to calculate engagement
+    
+    if (error) {
+      console.error('Error fetching top posts:', error);
+      return [];
+    }
+
+    const posts = (data || []).map(p => this.mapPost(p));
+    return posts
+      .sort((a, b) => {
+        const aEng = (a.likes?.length || 0) + (a.comments?.length || 0) + (a.reposts?.length || 0);
+        const bEng = (b.likes?.length || 0) + (b.comments?.length || 0) + (b.reposts?.length || 0);
+        return bEng - aEng;
+      })
+      .slice(0, limit);
+  },
+
+  async getTopReferrers(limit: number = 20): Promise<User[]> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('referral_count', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error('Error fetching top referrers:', error);
+      return [];
+    }
+    return (data || []).map(u => this.mapUser(u));
+  },
+
   // Feed
   async getFeed(limit: number = 20, offset: number = 0): Promise<Post[]> {
     try {
@@ -598,7 +635,10 @@ export const SupabaseService = {
   },
 
   async updatePost(postId: string, content: string) {
-    const { error } = await supabase.from('posts').update({ content }).eq('id', postId);
+    const { error } = await supabase.from('posts').update({ 
+      content,
+      is_edited: true 
+    }).eq('id', postId);
     if (error) console.error('Error updating post:', error);
   },
 

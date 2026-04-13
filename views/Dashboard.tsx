@@ -75,11 +75,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       {/* Metrics (Slidable on Mobile) */}
       <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-6 overflow-x-auto no-scrollbar snap-x p-1">
          {[
+           { label: 'Daily Allowance', val: user.dailyPoints || 0, icon: <Zap className="w-6 h-6" />, color: 'text-brand-proph' },
            { label: 'Purse Balance', val: user.points || 0, icon: <Coins className="w-6 h-6" />, color: 'text-brand-proph' },
            { label: 'Monetization Prophy Coins', val: user.monetization?.pointsEarned || 0, icon: <Star className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Global Standing', val: '#422', icon: <Trophy className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Archived Assets', val: filteredQuestions.length, icon: <Database className="w-6 h-6" />, color: 'text-brand-primary' },
-           { label: 'Study Minutes', val: user.lifetimeMinutes || 0, icon: <Clock className="w-6 h-6" />, color: 'text-orange-500' },
          ].map(s => (
            <div key={s.label} className="bg-white dark:bg-brand-card border border-brand-border p-8 rounded-[2.5rem] flex items-center gap-6 shadow-xl group hover:border-brand-proph/50 transition-all flex-shrink-0 w-[85vw] sm:w-auto snap-center">
               <div className="bg-brand-border/30 dark:bg-brand-border p-4 rounded-2xl group-hover:scale-110 transition-transform">{React.cloneElement(s.icon, { className: `${s.color} w-7 h-7` })}</div>

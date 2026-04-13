@@ -57,13 +57,15 @@ export const SupabaseService = {
 
   async getUsers(): Promise<User[]> {
     try {
-      const { data, error } = await supabase.from('users').select('*');
+      const { data, error } = await supabase.from('profiles').select('*');
       if (error) {
-        if (error.message.includes('relation "public.users" does not exist')) {
-          console.error('CRITICAL: Supabase "users" table not found. Please run the setup SQL script.');
-        } else {
-          console.error('Error fetching users:', error);
+        if (error.message.includes('relation "public.profiles" does not exist')) {
+          // Fallback to users if view not yet created
+          const { data: uData, error: uErr } = await supabase.from('users').select('*');
+          if (uErr) return [];
+          return (uData || []).map(u => this.mapUser(u));
         }
+        console.error('Error fetching users:', error);
         return [];
       }
       return (data || []).map(u => this.mapUser(u));
@@ -132,6 +134,8 @@ export const SupabaseService = {
       registrationIp: u.registration_ip,
       bankDetails: u.bank_details,
       gladiatorEarnings: u.gladiator_earnings,
+      dailyPoints: u.daily_points,
+      lastPointsReset: u.last_points_reset ? new Date(u.last_points_reset).getTime() : undefined,
       isVerified: u.is_verified,
       verificationCode: u.verification_code,
       referredBy: u.referred_by,
@@ -152,7 +156,7 @@ export const SupabaseService = {
       themePreference, isSugVerified, staffPermissions, isPremium, 
       premiumExpiry, premiumTier, referralCode, referralStats, referralCount,
       aiAppUnlockedUntil, engagementScore, registrationIp, bankDetails, 
-      gladiatorEarnings, isVerified, verificationCode, referredBy,
+      gladiatorEarnings, dailyPoints, lastPointsReset, isVerified, verificationCode, referredBy,
       engagementStats, blockedUsers, hasSeenOnboarding, lastSeen, isOnline,
       badges, fingerprintId, createdAt, ...rest 
     } = user;
@@ -165,6 +169,8 @@ export const SupabaseService = {
       is_premium: isPremium,
       premium_until: premiumExpiry,
       premium_tier: premiumTier,
+      daily_points: dailyPoints,
+      last_points_reset: lastPointsReset ? new Date(lastPointsReset).toISOString() : null,
       referral_code: referralCode,
       referral_stats: referralStats,
       referral_count: referralCount,
@@ -201,6 +207,19 @@ export const SupabaseService = {
     }
   },
 
+  async resetDailyPoints(userId: string) {
+    try {
+      const { error } = await supabase.rpc('reset_daily_points', {
+        u_id: userId
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error in resetDailyPoints:', error);
+      return { success: false, error };
+    }
+  },
+
   async unfollowUser(followerId: string, followingId: string) {
     try {
       const { data, error } = await supabase.rpc('unfollow_user', {
@@ -221,18 +240,32 @@ export const SupabaseService = {
   },
 
   async updateUserPoints(userId: string, points: number) {
-    const { error } = await supabase.from('users').update({ points }).eq('id', userId);
-    if (error) console.error('Error updating user points:', error);
+    // This is now blocked by RLS for non-admins. 
+    // For rewards, use rewardEngagement instead which uses a secure RPC.
+    if (await this.is_admin()) {
+      const { error } = await supabase.from('users').update({ points }).eq('id', userId);
+      if (error) console.error('Error updating user points:', error);
+    } else {
+      console.warn('Direct point updates are restricted. Use secure RPCs.');
+    }
+  },
+
+  async is_admin(): Promise<boolean> {
+    const { data } = await supabase.rpc('is_admin');
+    return !!data;
   },
 
   async deductPoints(userId: string, amount: number) {
-    const { data: user, error: fErr } = await supabase.from('users').select('points').eq('id', userId).single();
-    if (fErr) return { success: false, error: fErr.message };
-    if ((user.points || 0) < amount) return { success: false, error: 'Insufficient points' };
-
-    const { error: uErr } = await supabase.from('users').update({ points: (user.points || 0) - amount }).eq('id', userId);
-    if (uErr) return { success: false, error: uErr.message };
-    return { success: true };
+    try {
+      const { data, error } = await supabase.rpc('deduct_points_secure', {
+        p_amount: amount
+      });
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      console.error('Error in deductPoints:', error);
+      return { success: false, error: error.message };
+    }
   },
 
   async distributeGroupRevenue(amount: number) {
@@ -427,27 +460,15 @@ export const SupabaseService = {
 
   async rewardEngagement(authorId: string, type: 'like' | 'comment' | 'repost' | 'link' | 'profile' | 'media') {
     try {
-      const config = await this.getConfig();
-      if (!config) return;
-
-      // Points mapping from config or defaults
-      const pointsMap = {
-        like: config.earnRates.likeReward || 0.1,
-        comment: 20, // 20 points for the author when someone replies
-        repost: config.earnRates.repostReward || 1.0,
-        link: 0.05,
-        profile: 0.05,
-        media: 0.05
-      };
-      const pointsToAdd = pointsMap[type];
-
-      const { data: user, error: fErr } = await supabase.from('users').select('points').eq('id', authorId).single();
-      if (fErr) throw fErr;
-
-      const newPoints = (user.points || 0) + pointsToAdd;
-      await supabase.from('users').update({ points: newPoints }).eq('id', authorId);
+      const { data, error } = await supabase.rpc('reward_engagement_secure', {
+        p_author_id: authorId,
+        p_engagement_type: type
+      });
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error rewarding engagement:', error);
+      return { success: false, error };
     }
   },
 
@@ -466,15 +487,7 @@ export const SupabaseService = {
 
       // Reward author for engagement
       if (post.user_id !== userId) {
-        if (type === 'ad_click') {
-          const config = await this.getConfig();
-          if (config) {
-            const rewardPoints = config.earnRates.adClick / 100;
-            await this.updateUserPoints(post.user_id, rewardPoints);
-          }
-        } else {
-          await this.rewardEngagement(post.user_id, type as any);
-        }
+        await this.rewardEngagement(post.user_id, type as any);
       }
 
       return { success: true };
@@ -640,6 +653,19 @@ export const SupabaseService = {
       is_edited: true 
     }).eq('id', postId);
     if (error) console.error('Error updating post:', error);
+  },
+
+  async renewPost(postId: string, cost: number) {
+    const { data, error } = await supabase.rpc('renew_post', {
+      p_post_id: postId,
+      p_cost: cost
+    });
+
+    if (error) {
+      console.error('Error renewing post:', error);
+      return { success: false, error: error.message };
+    }
+    return data;
   },
 
   // Documents
@@ -1315,13 +1341,14 @@ export const SupabaseService = {
 
   async searchUsersByNickname(query: string): Promise<User[]> {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .ilike('nickname', `%${query}%`)
       .limit(10);
     if (error) {
-      console.error('Error searching users:', error);
-      return [];
+      // Fallback to users
+      const { data: uData } = await supabase.from('users').select('*').ilike('nickname', `%${query}%`).limit(10);
+      return (uData || []).map(u => this.mapUser(u));
     }
     return (data || []).map(u => this.mapUser(u));
   },
@@ -1473,16 +1500,11 @@ export const SupabaseService = {
 
   async saveStatusPanelItem(userId: string, url: string) {
     try {
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      const { error } = await supabase.from('statuses').insert({
-        user_id: userId,
-        url: url,
-        expires_at: expiresAt,
-        renewal_count: 0,
-        view_count: 0
+      const { data, error } = await supabase.rpc('handle_status_update', {
+        p_url: url
       });
       if (error) throw error;
-      return { success: true };
+      return data;
     } catch (error) {
       console.error('Error saving status panel item:', error);
       return { success: false, error };
@@ -1614,9 +1636,19 @@ export const SupabaseService = {
   },
 
   async saveWithdrawalRequest(req: WithdrawalRequest) {
-    const dbReq = this.toDbWithdrawal(req);
-    const { error } = await supabase.from('withdrawal_requests').upsert(dbReq);
-    if (error) console.error('Error saving withdrawal request:', error);
+    try {
+      const { data, error } = await supabase.rpc('create_withdrawal_request', {
+        p_amount: req.amount,
+        p_bank_name: req.bankDetails.bankName,
+        p_account_number: req.bankDetails.accountNumber,
+        p_account_name: req.bankDetails.accountName
+      });
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      console.error('Error saving withdrawal request:', error);
+      return { success: false, error: error.message };
+    }
   },
 
   async updateWithdrawalStatus(id: string, status: string) {

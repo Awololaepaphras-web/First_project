@@ -29,8 +29,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser, onLogout }) => 
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(localStorage.getItem('proph_notifications_sound_enabled') !== 'false');
-  const [selectedSound, setSelectedSound] = useState(localStorage.getItem('proph_notifications_sound_id') || 'wave');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(localStorage.getItem('proph_notifications_sound_enabled') === 'true');
+  const [selectedSound, setSelectedSound] = useState(localStorage.getItem('proph_notifications_sound_id') || 'waterdrop');
   const [activeSection, setActiveSection] = useState<'main' | 'profile' | 'account' | 'privacy' | 'chats' | 'notifications' | 'help'>('main');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

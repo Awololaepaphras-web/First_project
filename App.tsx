@@ -101,6 +101,9 @@ const DEFAULT_CONFIG: SystemConfig = {
   },
   isCardPaymentEnabled: false,
   replyCost: 30,
+  postCost: 30,
+  statusCost: 50,
+  renewPostCost: 50,
   premiumBenefits: {
     premium: { dailyCoins: 1000, noAds: true, groupRevenueShare: 0.10, price: 500 },
     premiumPlus: { dailyCoins: 5000, noAds: true, groupRevenueShare: 0.15, price: 1500 },
@@ -159,7 +162,7 @@ const SplashScreen: React.FC<{ logo: string; splashUrl?: string; onComplete: () 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [wallet, setWallet] = useState<{ prophy_points: number } | null>(null);
+  const [wallet, setWallet] = useState<{ points: number; daily_points: number } | null>(null);
   const [isWalletLoading, setIsWalletLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [questions, setQuestions] = useState<PastQuestion[]>(MOCK_QUESTIONS);
@@ -280,6 +283,22 @@ const App: React.FC = () => {
       }
 
       if (savedUser) {
+        // Daily points reset logic
+        const lastReset = savedUser.lastPointsReset ? new Date(savedUser.lastPointsReset) : new Date(0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (lastReset < today) {
+          await SupabaseService.resetDailyPoints(savedUser.id);
+          // Refresh user data after reset
+          const users = await SupabaseService.getUsers();
+          const refreshedUser = users.find(u => u.id === savedUser.id);
+          if (refreshedUser) {
+            savedUser = refreshedUser;
+            DB.saveSession(refreshedUser);
+          }
+        }
+
         // Check premium expiry
         if (savedUser.isPremium && savedUser.premiumExpiry && savedUser.premiumExpiry < Date.now()) {
           savedUser = { ...savedUser, isPremium: false };
@@ -293,6 +312,9 @@ const App: React.FC = () => {
         try {
           const walletData = await SupabaseService.getMyWallet();
           setWallet(walletData);
+          if (walletData) {
+            setUser(prev => prev ? { ...prev, points: walletData.points, dailyPoints: walletData.daily_points } : null);
+          }
         } catch (err) {
           console.error("Failed to fetch wallet", err);
         }
@@ -920,22 +942,24 @@ const App: React.FC = () => {
     if (!user && !customUser) return;
     const poster = customUser || user;
     
-    // Check wallet for both posts and replies
-    if (wallet && wallet.prophy_points < 30) {
-      alert('Insufficient Prophy Points! Each action costs 30 coins.');
+    // Check combined wallet for both posts and replies
+    const totalPoints = (poster.dailyPoints || 0) + (poster.points || 0);
+    const cost = config.postCost || 30;
+    if (totalPoints < cost) {
+      alert(`Insufficient Prophy Points! Each action costs ${cost} coins.`);
       return;
     }
 
     try {
       const result = await SupabaseService.createPostV2(content, mediaUrl, mediaType, parentId);
       if (result.success) {
-        // Update local wallet points (UI only, DB is handled by RPC)
-        if (wallet) {
-          const newPoints = wallet.prophy_points - 30;
-          setWallet({ prophy_points: newPoints });
-          if (user && poster.id === user.id) {
-            setUser({ ...user, points: newPoints });
-          }
+        // Update local user points (UI only, DB is handled by RPC)
+        if (user && poster.id === user.id) {
+          const newDailyPoints = Math.max(0, (user.dailyPoints || 0) - cost);
+          const remainingCost = Math.max(0, cost - (user.dailyPoints || 0));
+          const newPoints = (user.points || 0) - remainingCost;
+          setUser({ ...user, dailyPoints: newDailyPoints, points: newPoints });
+          setWallet({ points: newPoints, daily_points: newDailyPoints });
         }
         SoundService.playWaterDrop();
         // Realtime hook will handle adding the post to the list
@@ -987,8 +1011,10 @@ const App: React.FC = () => {
       await SupabaseService.togglePostRepost(postId, user.id);
     } else if (type === 'reply' && text) {
       // Check points
-      if (wallet && wallet.prophy_points < 30) {
-        alert('Insufficient Prophy Points! Each reply costs 30 coins.');
+      const totalPoints = (user.dailyPoints || 0) + (user.points || 0);
+      const cost = config.replyCost || 30;
+      if (totalPoints < cost) {
+        alert(`Insufficient Prophy Points! Each reply costs ${cost} coins.`);
         return;
       }
 
@@ -1002,13 +1028,12 @@ const App: React.FC = () => {
       };
       await SupabaseService.addPostComment(postId, newComment);
 
-      // Deduct coins
-      if (wallet) {
-        const newPoints = wallet.prophy_points - 30;
-        setWallet({ prophy_points: newPoints });
-        await SupabaseService.updateUserPoints(user.id, newPoints);
-        setUser({ ...user, points: newPoints });
-      }
+      // Deduct coins locally
+      const newDailyPoints = Math.max(0, (user.dailyPoints || 0) - cost);
+      const remainingCost = Math.max(0, cost - (user.dailyPoints || 0));
+      const newPoints = (user.points || 0) - remainingCost;
+      setUser({ ...user, dailyPoints: newDailyPoints, points: newPoints });
+      setWallet({ points: newPoints, daily_points: newDailyPoints });
     } else if (['link', 'profile', 'media', 'ad_click'].includes(type)) {
       await SupabaseService.trackPostEngagement(postId, type as any, user.id);
     }
@@ -1175,7 +1200,16 @@ const App: React.FC = () => {
           
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={visibleAds} config={config} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} /> : <Navigate to="/login" />} />
+          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} config={config} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} onRenewPost={async (id) => {
+            const cost = config.renewPostCost || 50;
+            const result = await SupabaseService.renewPost(id, cost);
+            if (result.success) {
+              setPosts(prev => prev.map(p => p.id === id ? { ...p, createdAt: Date.now(), renewedCount: (p.renewedCount || 0) + 1 } : p));
+              alert('Post intellectual synchronization renewed! Bumping to top of feed.');
+            } else {
+              alert(result.error || 'Failed to renew post');
+            }
+          }} /> : <Navigate to="/login" />} />
           <Route path="/university-feed" element={user ? <UniversityFeed user={user} globalAds={visibleAds} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={user ? <Messages user={user} allUsers={allUsers} messages={messages} config={config} onSendMessage={async (t, r) => {
             const receiverId = r === '' ? null : r;
@@ -1196,7 +1230,7 @@ const App: React.FC = () => {
             }]);
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
-          <Route path="/chat" element={user ? <Chat currentUser={user} config={config} /> : <Navigate to="/login" />} />
+          <Route path="/chat" element={user ? <Chat currentUser={user} config={config} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
           <Route path="/ai-assistant" element={user ? <AIAssistant user={user} /> : <Navigate to="/login" />} />
           <Route path="/memory-bank" element={user ? <MemoryBank user={user} questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
           <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} globalAds={visibleAds} /> : <Navigate to="/login" />} />

@@ -19,6 +19,7 @@ import { Lightbox } from '../src/components/Lightbox';
 interface ChatProps {
   currentUser: User;
   config: SystemConfig;
+  onUpdateUser?: (user: User) => void;
 }
 
 interface Conversation {
@@ -28,7 +29,7 @@ interface Conversation {
   lastMessageAt: string;
 }
 
-const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
+const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -205,11 +206,26 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config }) => {
     
     // Group coin deduction (2 coins required)
     if (selectedGroup) {
+      const totalPoints = (currentUser.dailyPoints || 0) + (currentUser.points || 0);
+      if (totalPoints < 2) {
+        alert('Insufficient Prophy coins for group message (2 coins required).');
+        return;
+      }
+      
       const deduction = await SupabaseService.deductPoints(currentUser.id, 2);
       if (!deduction.success) {
         alert('Insufficient Prophy coins for group message (2 coins required).');
         return;
       }
+      
+      // Update local state
+      if (onUpdateUser) {
+        const newDailyPoints = Math.max(0, (currentUser.dailyPoints || 0) - 2);
+        const remainingCost = Math.max(0, 2 - (currentUser.dailyPoints || 0));
+        const newPoints = (currentUser.points || 0) - remainingCost;
+        onUpdateUser({ ...currentUser, dailyPoints: newDailyPoints, points: newPoints });
+      }
+      
       await SupabaseService.distributeGroupRevenue(2);
     }
 

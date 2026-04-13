@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   User as UserIcon, MapPin, GraduationCap, Calendar, 
   ShieldCheck, ArrowLeft, MessageSquare, UserPlus, UserMinus,
-  Grid, Users, Heart, BarChart2, Coins, X
+  Grid, Users, Heart, BarChart2, Coins, X,
+  Award, Crown, Gem, CheckCircle2
 } from 'lucide-react';
 import { User, Post } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
@@ -140,7 +141,20 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black italic tracking-tighter uppercase text-gray-900 dark:text-white">{user.name}</h1>
-            <ShieldCheck className="w-6 h-6 text-brand-proph" />
+            <div className="flex items-center gap-1">
+              {(user.isVerified || user.isSugVerified) && (
+                <CheckCircle2 className="w-6 h-6 text-brand-proph" title="Verified Scholar" />
+              )}
+              {user.premiumTier === 'premium' && (
+                <Award className="w-6 h-6 text-brand-muted" title="Premium Node" />
+              )}
+              {user.premiumTier === 'premium_plus' && (
+                <Crown className="w-6 h-6 text-yellow-500" title="Premium+ Node" />
+              )}
+              {user.premiumTier === 'alpha_premium' && (
+                <Gem className="w-6 h-6 text-blue-400" title="Alpha Premium Node" />
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <p className="text-brand-muted font-black uppercase tracking-widest text-xs">@{user.nickname}</p>

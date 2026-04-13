@@ -5,6 +5,7 @@ import { ShieldCheck, AlertCircle, Mail, BookOpen, GraduationCap, ChevronRight, 
 import { UNIVERSITIES } from '../constants';
 import { User as UserType } from '../types';
 import { SupabaseService } from '../src/services/supabaseService';
+import PolicyModal from '../src/components/PolicyModal';
 
 interface SignupProps {
   onSignup: (user: UserType) => void;
@@ -28,6 +29,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
   const [loading, setLoading] = useState(false);
   const [checkingNickname, setCheckingNickname] = useState(false);
   const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'available' | 'taken'>('idle');
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   
   const referralCode = searchParams.get('ref');
 
@@ -231,9 +234,23 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
                 <input required type="password" className="w-full pl-12 pr-4 py-4 bg-gray-900 border border-brand-border rounded-2xl focus:ring-1 focus:ring-brand-proph outline-none font-bold text-white" placeholder="Verify Passphrase" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} />
               </div>
             </div>
+
+            <div className="flex items-start gap-3 p-2">
+              <input 
+                type="checkbox" 
+                id="policy-agree"
+                checked={agreedToPolicy}
+                onChange={(e) => setAgreedToPolicy(e.target.checked)}
+                className="mt-1 w-4 h-4 rounded border-brand-border bg-gray-900 text-brand-proph focus:ring-brand-proph cursor-pointer"
+              />
+              <label htmlFor="policy-agree" className="text-[10px] font-bold text-brand-muted uppercase tracking-widest leading-relaxed cursor-pointer">
+                I have read and agree to the <button type="button" onClick={() => setIsPolicyModalOpen(true)} className="text-brand-proph hover:underline font-black">Protocol & Privacy Policy</button> of the Federal Node Sync.
+              </label>
+            </div>
+
             <button 
               type="submit" 
-              disabled={loading || checkingNickname || nicknameStatus === 'taken'}
+              disabled={loading || checkingNickname || nicknameStatus === 'taken' || !agreedToPolicy}
               className="w-full bg-brand-proph text-black py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -246,6 +263,11 @@ const Signup: React.FC<SignupProps> = ({ onSignup, allUsers, onReferralClick }) 
           <p className="mt-8 text-center text-brand-muted font-medium text-xs uppercase tracking-widest italic">Already archived? <Link to="/login" className="text-brand-proph font-black hover:underline">Verify Identity</Link></p>
         </div>
       </div>
+      
+      <PolicyModal 
+        isOpen={isPolicyModalOpen} 
+        onClose={() => setIsPolicyModalOpen(false)} 
+      />
     </div>
   );
 };

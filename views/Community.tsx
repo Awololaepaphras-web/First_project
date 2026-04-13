@@ -5,10 +5,11 @@ import {
   MessageCircle, Heart, Share2, ShieldCheck, 
   MoreHorizontal, Repeat2, X, Trash2, Loader2, 
   BarChart, Image as ImageIcon, Twitter, Facebook, Instagram, Ghost, MessageSquare,
-  Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone, ExternalLink, Coins
+  Search, Edit3, Check, AlertCircle, TrendingUp, Megaphone, ExternalLink, Coins,
+  RefreshCw, Crown, Gem, Award, CheckCircle2, Zap
 } from 'lucide-react';
 import VideoEmbed from '../src/components/VideoEmbed';
-import { User, Post, PostComment, Advertisement, Report } from '../types';
+import { User, Post, PostComment, Advertisement, Report, SystemConfig } from '../types';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import { SupabaseService } from '../src/services/supabaseService';
 import { useRealtimeFeed } from '../src/services/useRealtimeFeed';
@@ -20,6 +21,7 @@ interface CommunityProps {
   posts: Post[];
   wallet?: { prophy_points: number } | null;
   globalAds?: Advertisement[];
+  config: SystemConfig;
   onPost: (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string) => void;
   onLike: (postId: string) => void;
   onRepost: (postId: string) => void;
@@ -29,6 +31,7 @@ interface CommunityProps {
   onDeletePost: (postId: string) => void;
   onEditPost: (postId: string, content: string) => void;
   onShare: (postId: string) => void;
+  onRenewPost: (postId: string) => void;
 }
 
 const formatRelativeTime = (timestamp: number) => {
@@ -119,7 +122,7 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
   </div>
 );
 
-const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPosts, wallet, globalAds = [], onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost, onShare }) => {
+const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPosts, wallet, globalAds = [], config, onPost, onLike, onRepost, onComment, onLikeComment, onFollow, onDeletePost, onEditPost, onShare, onRenewPost }) => {
   const { posts, setPosts } = useRealtimeFeed(initialPosts);
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'all' | 'following' | 'trends' | 'node'>('all');
@@ -380,10 +383,15 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
               <div className="flex items-center gap-1.5 px-3 py-1 bg-brand-proph/10 border border-brand-proph/20 rounded-full">
                 <Coins className="w-3.5 h-3.5 text-brand-proph" />
                 <span className="text-[11px] font-black text-brand-proph uppercase tracking-tighter">
-                  {wallet?.prophy_points?.toLocaleString() || '0'}
+                  {((user?.dailyPoints || 0) + (user?.points || 0)).toLocaleString()}
                 </span>
               </div>
-              <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-1">Prophy Points</span>
+              {(user?.dailyPoints || 0) > 0 && (
+                <span className="text-[7px] font-black text-brand-proph uppercase tracking-widest mt-0.5">
+                  +{user.dailyPoints} Daily
+                </span>
+              )}
+              <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Prophy Points</span>
             </div>
          </div>
       </div>
@@ -733,7 +741,23 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1 min-w-0">
                             <span className="font-black text-[15px] truncate text-gray-900 dark:text-white hover:underline cursor-pointer" title="View Node">{post.userName}</span>
-                            <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
+                            
+                            {/* Badges */}
+                            <div className="flex items-center gap-0.5 flex-shrink-0">
+                              {(post.userIsVerified || post.userIsSugVerified) && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-brand-proph" title="Verified Scholar" />
+                              )}
+                              {post.userPremiumTier === 'premium' && (
+                                <Award className="w-3.5 h-3.5 text-brand-muted" title="Premium Node" />
+                              )}
+                              {post.userPremiumTier === 'premium_plus' && (
+                                <Crown className="w-3.5 h-3.5 text-yellow-500" title="Premium+ Node" />
+                              )}
+                              {post.userPremiumTier === 'alpha_premium' && (
+                                <Gem className="w-3.5 h-3.5 text-blue-400" title="Alpha Premium Node" />
+                              )}
+                            </div>
+
                             <span className="text-brand-muted text-[15px] truncate">@{post.userNickname}</span>
                             <span className="text-brand-muted text-[15px]">•</span>
                             <span className="text-brand-proph text-[15px] font-black italic truncate max-w-[100px]" title="Node">{post.userUniversity}</span>
@@ -778,6 +802,12 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                                     className="w-full flex items-center gap-3 p-3 hover:bg-red-500/10 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
                                   >
                                     <Trash2 className="w-4 h-4" /> Delete Post
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); onRenewPost(post.id); setShowOptions(null); }}
+                                    className="w-full flex items-center gap-3 p-3 hover:bg-brand-proph/10 text-brand-proph rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
+                                  >
+                                    <RefreshCw className="w-4 h-4" /> Renew Post ({config.renewPostCost || 50})
                                   </button>
                                 </>
                               ) : (

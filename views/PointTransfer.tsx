@@ -109,19 +109,26 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                    <Coins className="w-6 h-6 text-brand-proph" />
+                    <Zap className="w-6 h-6 text-brand-proph" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Your Vault</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Daily Allowance</span>
                 </div>
                 <div>
-                  <p className="text-5xl font-black italic tracking-tighter text-white">{(user.points || 0).toLocaleString()}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph mt-1">Available Prophy Coins</p>
+                  <p className="text-3xl font-black italic tracking-tighter text-white">{(user.dailyPoints || 0).toLocaleString()}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-proph mt-1">Renewable Daily</p>
                 </div>
+                
                 <div className="pt-6 border-t border-white/10">
-                   <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
-                      <span>Node Status</span>
-                      <span className="text-green-500">Active</span>
-                   </div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
+                      <Coins className="w-6 h-6 text-yellow-500" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Purse Balance</span>
+                  </div>
+                  <div>
+                    <p className="text-5xl font-black italic tracking-tighter text-white">{(user.points || 0).toLocaleString()}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-yellow-500 mt-1">Transferable Earnings</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -135,8 +142,9 @@ const PointTransfer: React.FC<PointTransferProps> = ({ user }) => {
                   {[
                     'Transfers are irreversible once confirmed',
                     'Minimum transfer amount is 5,000 Prophy Coins',
-                    'Recipient must be a verified node',
-                    'Zero transaction fees applied'
+                    'Only Purse Balance (Earnings) can be transferred',
+                    'Daily Allowance is for in-app actions only',
+                    'Recipient must be a verified node'
                   ].map((text, i) => (
                     <li key={i} className="flex items-start gap-3 text-xs text-gray-500 dark:text-brand-muted font-medium italic">
                        <div className="w-1.5 h-1.5 rounded-full bg-brand-proph mt-1.5 flex-shrink-0" />

@@ -8,28 +8,45 @@ export const SOUNDS = {
 
 export const SoundService = {
   playNotification: () => {
-    const isEnabled = localStorage.getItem('proph_notifications_sound_enabled') !== 'false';
+    const isEnabled = localStorage.getItem('proph_notifications_sound_enabled') === 'true';
     if (!isEnabled) return;
     
-    const selectedSound = localStorage.getItem('proph_notifications_sound_id') || 'wave';
-    const soundUrl = SOUNDS[selectedSound as keyof typeof SOUNDS] || SOUNDS.wave;
+    const selectedSound = localStorage.getItem('proph_notifications_sound_id') || 'waterdrop';
+    const soundUrl = SOUNDS[selectedSound as keyof typeof SOUNDS] || SOUNDS.waterdrop;
     
     const audio = new Audio(soundUrl);
     audio.volume = 0.2;
+    // Make waterdrop high pitched as requested
+    if (selectedSound === 'waterdrop') {
+      audio.playbackRate = 1.5;
+    }
     audio.play().catch(() => {});
   },
   playSound: (soundId: keyof typeof SOUNDS) => {
+    const isEnabled = localStorage.getItem('proph_notifications_sound_enabled') === 'true';
+    if (!isEnabled) return;
+
     const soundUrl = SOUNDS[soundId];
     const audio = new Audio(soundUrl);
     audio.volume = 0.2;
+    if (soundId === 'waterdrop') {
+      audio.playbackRate = 1.5;
+    }
     audio.play().catch(() => {});
   },
   playWaterDrop: () => {
+    const isEnabled = localStorage.getItem('proph_notifications_sound_enabled') === 'true';
+    if (!isEnabled) return;
+
     const audio = new Audio(SOUNDS.waterdrop);
     audio.volume = 0.3;
+    audio.playbackRate = 1.5; // High pitch
     audio.play().catch(() => {});
   },
   playWave: () => {
+    const isEnabled = localStorage.getItem('proph_notifications_sound_enabled') === 'true';
+    if (!isEnabled) return;
+
     const audio = new Audio(SOUNDS.wave);
     audio.volume = 0.2;
     audio.play().catch(() => {});

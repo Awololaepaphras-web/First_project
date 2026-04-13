@@ -11,7 +11,7 @@ import {
   Zap, Building2, BookOpen, Layers, PlusCircle, X, 
   PlayCircle, Monitor, Upload, Clock, CreditCard,
   FileCheck, AlertCircle, ChevronRight, Menu, Image as ImageIcon,
-  Star, BarChart3, Target, Wallet, Coins,
+  Star, BarChart3, Target, Wallet, Coins, Gift,
   Palette, Download, Tv, Award, ShieldCheck, MessageSquare, RefreshCw, Globe, Loader2
 } from 'lucide-react';
 import { CloudinaryService } from '../src/services/cloudinaryService';
@@ -538,6 +538,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onChange={e => handleUpdateConfig({ nairaPerPoint: parseFloat(e.target.value) || 0 })} 
                            />
                         </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Post Cost (Coins)</label>
+                           <input 
+                            type="number"
+                            className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                            value={config.postCost} 
+                            onChange={e => handleUpdateConfig({ postCost: parseInt(e.target.value) || 0 })} 
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Reply Cost (Coins)</label>
+                           <input 
+                            type="number"
+                            className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                            value={config.replyCost} 
+                            onChange={e => handleUpdateConfig({ replyCost: parseInt(e.target.value) || 0 })} 
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Status Cost (Coins)</label>
+                           <input 
+                            type="number"
+                            className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                            value={config.statusCost} 
+                            onChange={e => handleUpdateConfig({ statusCost: parseInt(e.target.value) || 0 })} 
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Renew Post Cost (Coins)</label>
+                           <input 
+                            type="number"
+                            className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                            value={config.renewPostCost} 
+                            onChange={e => handleUpdateConfig({ renewPostCost: parseInt(e.target.value) || 0 })} 
+                           />
+                        </div>
                    </div>
                 </div>
 
@@ -559,6 +595,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    </div>
                 </div>
 
+                {/* Premium Benefits Section */}
+                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
+                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Gift className="w-5 h-5 text-pink-500" /> Premium Benefits</h3>
+                   <div className="space-y-6">
+                      {Object.entries(config.premiumBenefits).map(([tier, benefits]: [string, any]) => (
+                        <div key={tier} className="p-4 bg-gray-950/50 rounded-2xl border border-gray-800 space-y-4">
+                           <h4 className="text-xs font-black uppercase text-pink-400 tracking-widest">{tier}</h4>
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[8px] font-black uppercase text-gray-500 ml-1">Daily Coins</label>
+                                 <input 
+                                  type="number"
+                                  className="w-full bg-gray-950 border border-gray-800 p-3 rounded-xl text-xs text-white" 
+                                  value={benefits.dailyCoins} 
+                                  onChange={e => handleUpdateConfig({ 
+                                    premiumBenefits: { 
+                                      ...config.premiumBenefits, 
+                                      [tier]: { ...benefits, dailyCoins: parseInt(e.target.value) || 0 } 
+                                    } 
+                                  })} 
+                                 />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[8px] font-black uppercase text-gray-500 ml-1">Revenue Share (%)</label>
+                                 <input 
+                                  type="number" step="0.01"
+                                  className="w-full bg-gray-950 border border-gray-800 p-3 rounded-xl text-xs text-white" 
+                                  value={benefits.groupRevenueShare * 100} 
+                                  onChange={e => handleUpdateConfig({ 
+                                    premiumBenefits: { 
+                                      ...config.premiumBenefits, 
+                                      [tier]: { ...benefits, groupRevenueShare: (parseFloat(e.target.value) || 0) / 100 } 
+                                    } 
+                                  })} 
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+
                 {/* Advert Pricing Section */}
                 <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
                    <h3 className="text-xl font-black text-white flex items-center gap-3"><Tv className="w-5 h-5 text-green-500" /> Advert Pricing (₦)</h3>
@@ -574,6 +652,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                            />
                         </div>
                       ))}
+                   </div>
+                </div>
+
+                {/* Branding & Assets Section */}
+                <div className="bg-gray-900/50 p-8 rounded-[3rem] border border-gray-800 space-y-6">
+                   <h3 className="text-xl font-black text-white flex items-center gap-3"><Palette className="w-5 h-5 text-brand-proph" /> Branding & Assets</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">App Logo URL</label>
+                         <input 
+                          type="text"
+                          className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                          value={config.appLogo || ''} 
+                          onChange={e => handleUpdateConfig({ appLogo: e.target.value })} 
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">App Icon URL</label>
+                         <input 
+                          type="text"
+                          className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                          value={config.appIcon || ''} 
+                          onChange={e => handleUpdateConfig({ appIcon: e.target.value })} 
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[9px] font-black uppercase text-gray-500 ml-2">Splash Screen URL</label>
+                         <input 
+                          type="text"
+                          className="w-full bg-gray-950 border border-gray-800 p-4 rounded-xl text-sm text-white" 
+                          value={config.splashScreenUrl || ''} 
+                          onChange={e => handleUpdateConfig({ splashScreenUrl: e.target.value })} 
+                         />
+                      </div>
                    </div>
                 </div>
 

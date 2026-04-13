@@ -49,6 +49,10 @@ export interface Post {
   userName: string;
   userNickname: string;
   userUniversity: string;
+  userAvatar?: string;
+  userPremiumTier?: string;
+  userIsVerified?: boolean;
+  userIsSugVerified?: boolean;
   content: string;
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
@@ -59,6 +63,7 @@ export interface Post {
   tags?: string[];
   visibility?: 'public' | 'node_only' | 'private';
   isEdited?: boolean;
+  renewedCount?: number;
   adId?: string;
   createdAt: number;
   stats: {
@@ -93,6 +98,8 @@ export interface User {
   role: 'student' | 'admin' | 'moderator' | 'sub-admin' | 'staff';
   status?: 'active' | 'suspended';
   points?: number;
+  dailyPoints?: number;
+  lastPointsReset?: number;
   earnings?: number;
   premiumTier?: PremiumTier;
   isPremium?: boolean;
@@ -411,6 +418,9 @@ export interface SystemConfig {
   };
   isCardPaymentEnabled: boolean;
   replyCost: number;
+  postCost: number;
+  statusCost: number;
+  renewPostCost: number;
   premiumBenefits: {
     premium: { dailyCoins: number; noAds: boolean; groupRevenueShare: number; price: number };
     premiumPlus: { dailyCoins: number; noAds: boolean; groupRevenueShare: number; price: number };

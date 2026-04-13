@@ -210,10 +210,15 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
     try {
       await SupabaseService.savePost(newPost);
       
-      // Deduct coins
-      const newPoints = (user.points || 0) - 30;
-      await SupabaseService.updateUserPoints(user.id, newPoints);
-      onUpdateUser({ ...user, points: newPoints });
+      // Deduct coins securely
+      const result = await SupabaseService.deductPoints(user.id, 30);
+      
+      if (result.success) {
+        // Update local state with new balance if returned, otherwise estimate
+        const newPoints = result.new_points !== undefined ? result.new_points : (user.points || 0) - 30;
+        const newDailyPoints = result.new_daily_points !== undefined ? result.new_daily_points : (user.dailyPoints || 0);
+        onUpdateUser({ ...user, points: newPoints, dailyPoints: newDailyPoints });
+      }
 
       setContent("");
       setImage(null);
@@ -301,10 +306,13 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
     };
     await SupabaseService.addPostComment(replyingTo.id, comment);
     
-    // Deduct coins
-    const newPoints = (user.points || 0) - 30;
-    await SupabaseService.updateUserPoints(user.id, newPoints);
-    onUpdateUser({ ...user, points: newPoints });
+    // Deduct coins securely
+    const result = await SupabaseService.deductPoints(user.id, 30);
+    if (result.success) {
+      const newPoints = result.new_points !== undefined ? result.new_points : (user.points || 0) - 30;
+      const newDailyPoints = result.new_daily_points !== undefined ? result.new_daily_points : (user.dailyPoints || 0);
+      onUpdateUser({ ...user, points: newPoints, dailyPoints: newDailyPoints });
+    }
 
     if (replyingTo.userId !== user.id) {
       SupabaseService.sendNotification(replyingTo.userId, {

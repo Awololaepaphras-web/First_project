@@ -615,7 +615,8 @@ export const SupabaseService = {
       user_id: userId,
       user_name: userName,
       user_nickname: userNickname,
-      user_university: userUniversity, // Keep as user_university but we'll also handle the query
+      user_university: userUniversity,
+      university: userUniversity, // Ensure university column is set for filtering
       user_avatar: userAvatar,
       media_url: mediaUrl,
       media_type: mediaType,
@@ -624,7 +625,7 @@ export const SupabaseService = {
       is_edited: isEdited || false,
       ad_id: adId,
       stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
-      created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
+      created_at: createdAt || Date.now()
     };
   },
 

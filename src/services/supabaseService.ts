@@ -604,7 +604,7 @@ export const SupabaseService = {
       isEdited: p.is_edited,
       adId: p.ad_id,
       stats: p.stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
-      createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now()
+      createdAt: p.created_at ? (typeof p.created_at === 'number' ? p.created_at : (isNaN(Number(p.created_at)) ? new Date(p.created_at).getTime() : Number(p.created_at))) : Date.now()
     };
   },
 

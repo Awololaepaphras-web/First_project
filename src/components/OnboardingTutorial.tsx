@@ -61,11 +61,37 @@ const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({ onComplete, onS
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ 
+              x: Math.random() * window.innerWidth, 
+              y: window.innerHeight + 100,
+              scale: Math.random() * 0.5 + 0.5,
+              opacity: Math.random() * 0.3 + 0.1
+            }}
+            animate={{ 
+              y: -100,
+              x: (Math.random() - 0.5) * 200 + (Math.random() * window.innerWidth)
+            }}
+            transition={{ 
+              duration: Math.random() * 10 + 10, 
+              repeat: Infinity, 
+              ease: "linear",
+              delay: Math.random() * 10
+            }}
+            className="absolute w-4 h-4 bg-brand-proph/20 rounded-full blur-sm"
+          />
+        ))}
+      </div>
+
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white dark:bg-brand-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative border border-brand-border"
+        className="bg-white dark:bg-brand-card w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative border border-brand-border z-10"
       >
         <button 
           onClick={onSkip}

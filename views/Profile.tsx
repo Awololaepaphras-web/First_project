@@ -19,6 +19,18 @@ interface ProfileProps {
   onFollow: (userId: string) => void;
 }
 
+const formatRelativeTime = (timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+};
+
 const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollow }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -271,6 +283,8 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
                       <span className="font-black text-[15px] truncate text-gray-900 dark:text-white">{user.name}</span>
                       <ShieldCheck className="w-4 h-4 text-brand-proph flex-shrink-0" />
                       <span className="text-brand-muted text-[15px] truncate">@{user.nickname}</span>
+                      <span className="text-brand-muted text-[15px]">·</span>
+                      <span className="text-brand-muted text-[15px]">{formatRelativeTime(post.createdAt)}</span>
                     </div>
                     <div className="mt-1 text-[15px] text-gray-900 dark:text-white leading-normal whitespace-pre-wrap">
                       {post.content}

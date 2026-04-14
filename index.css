@@ -24,13 +24,27 @@
     color: #1d1d1f;
     background-image: 
       radial-gradient(circle at 50% -20%, #e6f3ff 0%, transparent 50%),
-      radial-gradient(circle at 0% 100%, #f0f7ff 0%, transparent 50%);
+      radial-gradient(circle at 0% 100%, #f0f7ff 0%, transparent 50%),
+      radial-gradient(circle at 100% 0%, #e0f0ff 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, #d9edff 0%, transparent 50%);
     background-attachment: fixed;
     background-size: 200% 200%;
-    animation: water-flow 20s ease infinite;
+    animation: water-flow 30s ease-in-out infinite;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.3s, color 0.3s;
     -webkit-tap-highlight-color: transparent;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: url("https://www.transparenttextures.com/patterns/cubes.png");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: -1;
   }
 
   .dark body {
@@ -39,10 +53,11 @@
     background-image: 
       radial-gradient(circle at 50% -20%, #003366 0%, transparent 50%),
       radial-gradient(circle at 0% 100%, #001a33 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, #002b4d 0%, transparent 50%);
+      radial-gradient(circle at 100% 100%, #002b4d 0%, transparent 50%),
+      radial-gradient(circle at 20% 40%, #001f3f 0%, transparent 40%);
     background-attachment: fixed;
     background-size: 200% 200%;
-    animation: water-flow 25s ease infinite;
+    animation: water-flow 40s ease-in-out infinite;
   }
 
   button, .btn {

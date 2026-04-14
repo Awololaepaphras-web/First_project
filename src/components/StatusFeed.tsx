@@ -12,6 +12,18 @@ interface StatusFeedProps {
   onStatusAdded: () => void;
 }
 
+const formatRelativeTime = (timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+};
+
 const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<Status | null>(null);
@@ -136,7 +148,9 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
                 />
                 <div>
                   <p className="text-sm font-black text-white italic uppercase tracking-tighter">{selectedStatus.userName}</p>
-                  <p className="text-[9px] text-gray-400 font-mono uppercase">{new Date(selectedStatus.createdAt).toLocaleTimeString()}</p>
+                  <p className="text-[9px] text-gray-400 font-mono uppercase">
+                    {formatRelativeTime(selectedStatus.createdAt)} ago · {new Date(selectedStatus.createdAt).toLocaleTimeString()}
+                  </p>
                 </div>
               </div>
               <button onClick={() => setSelectedStatus(null)} className="p-2 text-white/60 hover:text-white"><X className="w-6 h-6" /></button>

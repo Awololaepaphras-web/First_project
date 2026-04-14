@@ -87,6 +87,18 @@ const NativeAd: React.FC<{ ad: Advertisement }> = ({ ad }) => (
   </div>
 );
 
+const formatRelativeTime = (timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+};
+
 export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: UniversityFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState("");
@@ -490,7 +502,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
                     <ShieldCheck className="w-4 h-4 text-brand-proph" />
                     <span className="text-gray-500">@{post.userNickname}</span>
                     <span className="text-gray-500">·</span>
-                    <span className="text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</span>
+                    <span className="text-gray-500">{formatRelativeTime(post.createdAt)}</span>
                     
                     <div className="ml-auto relative">
                       <button 

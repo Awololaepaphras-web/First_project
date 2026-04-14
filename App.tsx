@@ -230,7 +230,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (user && !user.hasSeenOnboarding) {
-      setShowOnboarding(true);
+      // Small delay to let the app settle before showing tutorial
+      const timer = setTimeout(() => setShowOnboarding(true), 1500);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 
@@ -261,8 +263,9 @@ const App: React.FC = () => {
   const [hasShownInitialAd, setHasShownInitialAd] = useState(false);
 
   useEffect(() => {
-    if (user && !localStorage.getItem(`proph_tutorial_shown_${user.id}`)) {
-      localStorage.setItem(`proph_tutorial_shown_${user.id}`, 'true');
+    // Analytics and other side effects
+    if (user) {
+      setLoginTime(Date.now());
     }
   }, [user]);
 

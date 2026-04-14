@@ -756,6 +756,9 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                               {post.userPremiumTier === 'alpha_premium' && (
                                 <Gem className="w-3.5 h-3.5 text-blue-400" title="Alpha Premium Node" />
                               )}
+                              {post.userNickname && post.userUniversity && (
+                                <ShieldCheck className="w-3.5 h-3.5 text-green-500" title="Registration Complete" />
+                              )}
                             </div>
 
                             <span className="text-brand-muted text-[15px] truncate">@{post.userNickname}</span>

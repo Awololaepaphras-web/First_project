@@ -6,18 +6,17 @@ interface Ripple {
   id: number;
   x: number;
   y: number;
-  type: 'drop' | 'wave' | 'bubble';
+  type: 'drop' | 'bubble';
 }
 
 export const WaterEffect: React.FC = () => {
   const [ripples, setRipples] = useState<Ripple[]>([]);
 
-  const addRipple = useCallback((x: number, y: number, type: 'drop' | 'wave' | 'bubble') => {
+  const addRipple = useCallback((x: number, y: number, type: 'drop' | 'bubble') => {
     const id = Date.now() + Math.random();
     setRipples(prev => [...prev, { id, x, y, type }]);
     
     if (type === 'drop') SoundService.playWaterDrop();
-    if (type === 'wave') SoundService.playWave();
     
     setTimeout(() => {
       setRipples(prev => prev.filter(r => r.id !== id));
@@ -40,7 +39,7 @@ export const WaterEffect: React.FC = () => {
       const touch = e.touches[0];
       const dist = Math.hypot(touch.clientX - lastX, touch.clientY - lastY);
       if (dist > 50) {
-        addRipple(touch.clientX, touch.clientY, 'wave');
+        addRipple(touch.clientX, touch.clientY, 'drop');
         lastX = touch.clientX;
         lastY = touch.clientY;
       }
@@ -92,7 +91,7 @@ export const WaterEffect: React.FC = () => {
               marginLeft: ripple.type === 'bubble' ? -10 : -20,
               marginTop: ripple.type === 'bubble' ? -10 : -20,
               borderRadius: '50%',
-              border: ripple.type === 'wave' ? '2px solid rgba(0, 186, 124, 0.3)' : '1px solid rgba(0, 186, 124, 0.5)',
+              border: '1px solid rgba(0, 186, 124, 0.5)',
               background: ripple.type === 'drop' ? 'radial-gradient(circle, rgba(0,186,124,0.2) 0%, transparent 70%)' : 
                          ripple.type === 'bubble' ? 'rgba(255,255,255,0.4)' : 'transparent',
               boxShadow: ripple.type === 'bubble' ? '0 0 10px rgba(255,255,255,0.5)' : 'none'

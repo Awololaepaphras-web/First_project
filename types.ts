@@ -65,6 +65,7 @@ export interface Post {
   isEdited?: boolean;
   renewedCount?: number;
   adId?: string;
+  poll?: Poll;
   createdAt: number;
   stats: {
     linkClicks: number;
@@ -73,6 +74,18 @@ export interface Post {
     detailsExpanded: number;
     impressions: number;
   }
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: string[];
+}
+
+export interface Poll {
+  question: string;
+  options: PollOption[];
+  expiresAt: number;
 }
 
 export interface PostComment {

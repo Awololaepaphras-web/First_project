@@ -15,6 +15,7 @@ import Community from './views/Community';
 import UniversityFeed from './src/views/UniversityFeed';
 import UniversityList from './views/UniversityList';
 import UniversityDetail from './views/UniversityDetail';
+import PostDetail from './views/PostDetail';
 import AdminDashboard from './views/AdminDashboard';
 import AdminLogin from './views/AdminLogin';
 import Profile from './views/Profile';
@@ -1154,7 +1155,6 @@ const App: React.FC = () => {
 
   return (
     <>
-      <WaterEffect />
       <AnimatePresence>
         {isOffline && (
           <motion.div
@@ -1202,6 +1202,7 @@ const App: React.FC = () => {
           } />
           
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={visibleAds} config={config} /> : <Navigate to="/login" />} />
+          <Route path="/post/:id" element={user ? <PostDetail user={user} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onFollow={handleFollow} config={config} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
           <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} config={config} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} onRenewPost={async (id) => {
             const cost = config.renewPostCost || 50;

@@ -101,7 +101,57 @@ const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({ onComplete, onS
         </button>
 
         <div className="p-8 pt-12">
-          <AnimatePresence mode="wait">
+          {/* Floating Alive Elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ 
+              x: Math.random() * window.innerWidth, 
+              y: window.innerHeight + 100,
+              scale: Math.random() * 0.5 + 0.5,
+              opacity: 0
+            }}
+            animate={{ 
+              y: -100,
+              opacity: [0, 0.3, 0],
+              x: (Math.random() - 0.5) * 200 + (Math.random() * window.innerWidth)
+            }}
+            transition={{ 
+              duration: Math.random() * 10 + 10, 
+              repeat: Infinity, 
+              ease: "linear",
+              delay: Math.random() * 10
+            }}
+            className="absolute w-24 h-24 bg-brand-proph/10 rounded-full blur-2xl"
+          />
+        ))}
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={`bubble-${i}`}
+            initial={{ 
+              x: Math.random() * window.innerWidth, 
+              y: window.innerHeight + 20,
+              scale: Math.random() * 0.3 + 0.1,
+              opacity: 0
+            }}
+            animate={{ 
+              y: -50,
+              opacity: [0, 0.5, 0],
+              x: (Math.random() - 0.5) * 100 + (Math.random() * window.innerWidth)
+            }}
+            transition={{ 
+              duration: Math.random() * 5 + 5, 
+              repeat: Infinity, 
+              ease: "easeOut",
+              delay: Math.random() * 5
+            }}
+            className="absolute w-4 h-4 border border-brand-proph/30 rounded-full"
+          />
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
               initial={{ opacity: 0, x: 20 }}

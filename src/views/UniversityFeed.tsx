@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
 import { SupabaseService } from '../services/supabaseService';
-import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send } from 'lucide-react';
-import { User, Advertisement, AdTimeFrame, Post, PostComment, Report } from '../../types';
+import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send, BarChart2, Plus, Trash2 } from 'lucide-react';
+import { User, Advertisement, AdTimeFrame, Post, PostComment, Report, Poll, PollOption } from '../../types';
 
 interface UniversityFeedProps {
   user: User;
@@ -105,6 +105,11 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+
+  // Poll state
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
 
   // Reporting state
   const [reportingPost, setReportingPost] = useState<Post | null>(null);
@@ -212,6 +217,15 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
       content,
       mediaUrl: imageUrl || undefined,
       mediaType: image ? 'image' : undefined,
+      poll: showPollCreator && pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2 ? {
+        question: pollQuestion,
+        options: pollOptions.filter(o => o.trim()).map(o => ({
+          id: Math.random().toString(36).substr(2, 9),
+          text: o,
+          votes: []
+        })),
+        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours default
+      } : undefined,
       likes: [],
       comments: [],
       reposts: [],
@@ -234,6 +248,9 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
 
       setContent("");
       setImage(null);
+      setShowPollCreator(false);
+      setPollQuestion("");
+      setPollOptions(["", ""]);
       // Real-time listener will handle the update
     } catch (error: any) {
       console.error("Post failed", error);
@@ -384,6 +401,13 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
     setTipping(false);
   };
 
+  const handleVote = async (postId: string, optionId: string) => {
+    const result = await SupabaseService.voteOnPoll(postId, optionId, user.id);
+    if (!result.success) {
+      alert(result.error instanceof Error ? result.error.message : 'Failed to vote');
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto border-x border-gray-200 dark:border-brand-border min-h-screen bg-white dark:bg-brand-black text-black dark:text-white">
       {/* Backend Status Indicator */}
@@ -441,11 +465,71 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
                 </button>
               </div>
             )}
+
+            {showPollCreator && (
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-brand-card rounded-2xl border border-brand-border animate-in slide-in-from-top-2 duration-200">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-proph">Create Poll</span>
+                  <button onClick={() => setShowPollCreator(false)} className="text-gray-500 hover:text-red-500 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ask a question..."
+                  className="w-full bg-white dark:bg-brand-black border border-brand-border rounded-xl p-3 mb-3 outline-none focus:border-brand-proph transition-colors text-sm"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                />
+                <div className="space-y-2">
+                  {pollOptions.map((option, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Option ${idx + 1}`}
+                        className="flex-grow bg-white dark:bg-brand-black border border-brand-border rounded-xl p-3 outline-none focus:border-brand-proph transition-colors text-sm"
+                        value={option}
+                        onChange={(e) => {
+                          const newOptions = [...pollOptions];
+                          newOptions[idx] = e.target.value;
+                          setPollOptions(newOptions);
+                        }}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button 
+                          onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))}
+                          className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {pollOptions.length < 4 && (
+                  <button 
+                    onClick={() => setPollOptions([...pollOptions, ""])}
+                    className="mt-3 flex items-center gap-2 text-xs font-bold text-brand-proph hover:bg-brand-proph/10 px-3 py-2 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Add Option
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100 dark:border-brand-border/30">
-              <label className="cursor-pointer text-brand-proph hover:bg-brand-proph/10 p-2 rounded-full transition-colors">
-                <ImageIcon className="w-5 h-5" />
-                <input type="file" hidden onChange={(e) => setImage(e.target.files?.[0] || null)} />
-              </label>
+              <div className="flex gap-2">
+                <label className="cursor-pointer text-brand-proph hover:bg-brand-proph/10 p-2 rounded-full transition-colors">
+                  <ImageIcon className="w-5 h-5" />
+                  <input type="file" hidden onChange={(e) => setImage(e.target.files?.[0] || null)} />
+                </label>
+                <button 
+                  onClick={() => setShowPollCreator(!showPollCreator)}
+                  className={`p-2 rounded-full transition-colors ${showPollCreator ? 'bg-brand-proph text-white' : 'text-brand-proph hover:bg-brand-proph/10'}`}
+                >
+                  <BarChart2 className="w-5 h-5" />
+                </button>
+              </div>
               <button
                 onClick={handlePost}
                 disabled={uploading || (!content.trim() && !image)}
@@ -544,6 +628,54 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
                     </div>
                   </div>
                   <div className="mt-1 text-[15px] leading-normal">{post.content}</div>
+                  
+                  {post.poll && (
+                    <div className="mt-4 p-4 bg-gray-50 dark:bg-brand-card rounded-2xl border border-brand-border">
+                      <h4 className="font-bold text-sm mb-4">{post.poll.question}</h4>
+                      <div className="space-y-3">
+                        {post.poll.options.map((option) => {
+                          const totalVotes = post.poll?.options.reduce((acc, opt) => acc + opt.votes.length, 0) || 0;
+                          const percentage = totalVotes > 0 ? Math.round((option.votes.length / totalVotes) * 100) : 0;
+                          const hasVoted = post.poll?.options.some(opt => opt.votes.includes(user.id));
+                          const isSelected = option.votes.includes(user.id);
+
+                          return (
+                            <button
+                              key={option.id}
+                              disabled={hasVoted}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleVote(post.id, option.id);
+                              }}
+                              className="w-full relative h-12 rounded-xl border border-brand-border overflow-hidden group transition-all hover:border-brand-proph/50 disabled:cursor-default"
+                            >
+                              {hasVoted && (
+                                <div 
+                                  className="absolute inset-y-0 left-0 bg-brand-proph/20 transition-all duration-1000"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              )}
+                              <div className="absolute inset-0 px-4 flex items-center justify-between">
+                                <span className={`text-sm font-bold ${isSelected ? 'text-brand-proph' : ''}`}>
+                                  {option.text}
+                                  {isSelected && <ShieldCheck className="w-3 h-3 inline ml-2" />}
+                                </span>
+                                {hasVoted && (
+                                  <span className="text-xs font-black text-brand-proph">{percentage}%</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-brand-muted">
+                        <span>{post.poll.options.reduce((acc, opt) => acc + opt.votes.length, 0)} votes</span>
+                        <span>·</span>
+                        <span>{formatRelativeTime(post.poll.expiresAt)} left</span>
+                      </div>
+                    </div>
+                  )}
+
                   {post.mediaUrl && (
                     <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
                       <img src={post.mediaUrl} className="w-full h-auto max-h-96 object-cover" />

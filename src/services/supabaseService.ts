@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase';
-import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel, Status, ChatInvite, Group, GroupMember } from '../../types';
+import { User, Post, PostComment, PastQuestion, SystemConfig, PaymentVerification, WithdrawalRequest, University, Advertisement, Message, EarnTask as Task, StudyDocument as Document, ArchiveIntel, Status, ChatInvite, Group, GroupMember, Poll } from '../../types';
 
 export const SupabaseService = {
   // Auth
@@ -124,7 +124,7 @@ export const SupabaseService = {
       isSugVerified: u.is_sug_verified,
       staffPermissions: u.staff_permissions,
       isPremium: u.is_premium,
-      premiumExpiry: u.premium_until,
+      premiumExpiry: u.premium_until ? new Date(u.premium_until).getTime() : undefined,
       premiumTier: u.premium_tier,
       referralCode: u.referral_code,
       referralStats: u.referral_stats,
@@ -167,7 +167,7 @@ export const SupabaseService = {
       is_sug_verified: isSugVerified,
       staff_permissions: staffPermissions,
       is_premium: isPremium,
-      premium_until: premiumExpiry,
+      premium_until: premiumExpiry ? new Date(premiumExpiry).toISOString() : null,
       premium_tier: premiumTier,
       daily_points: dailyPoints,
       last_points_reset: lastPointsReset ? new Date(lastPointsReset).toISOString() : null,
@@ -387,6 +387,35 @@ export const SupabaseService = {
     if (uErr) throw uErr;
   },
 
+  async voteOnPoll(postId: string, optionId: string, userId: string) {
+    try {
+      const { data: post, error: fErr } = await supabase.from('posts').select('poll').eq('id', postId).single();
+      if (fErr) throw fErr;
+      if (!post.poll) throw new Error('Post has no poll');
+
+      const poll = post.poll as Poll;
+      
+      // Check if user already voted
+      const alreadyVoted = poll.options.some(opt => opt.votes.includes(userId));
+      if (alreadyVoted) throw new Error('User already voted');
+
+      const newOptions = poll.options.map(opt => {
+        if (opt.id === optionId) {
+          return { ...opt, votes: [...opt.votes, userId] };
+        }
+        return opt;
+      });
+
+      const { error: uErr } = await supabase.from('posts').update({ poll: { ...poll, options: newOptions } }).eq('id', postId);
+      if (uErr) throw uErr;
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error voting on poll:', error);
+      return { success: false, error };
+    }
+  },
+
   async togglePostLike(postId: string, userId: string) {
     try {
       const { data: post, error: fErr } = await supabase.from('posts').select('likes, user_id').eq('id', postId).single();
@@ -520,6 +549,21 @@ export const SupabaseService = {
       .slice(0, limit);
   },
 
+  async getPostById(id: string): Promise<Post | null> {
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*, users(name, nickname, profile_picture, university, premium_tier, is_verified, is_sug_verified)')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching post by id:', error);
+      return null;
+    }
+
+    return this.mapPost(data);
+  },
+
   async getTopReferrers(limit: number = 20): Promise<User[]> {
     const { data, error } = await supabase
       .from('users')
@@ -603,13 +647,14 @@ export const SupabaseService = {
       visibility: p.visibility,
       isEdited: p.is_edited,
       adId: p.ad_id,
+      poll: p.poll,
       stats: p.stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
       createdAt: p.created_at ? (typeof p.created_at === 'number' ? p.created_at : (isNaN(Number(p.created_at)) ? new Date(p.created_at).getTime() : Number(p.created_at))) : Date.now()
     };
   },
 
   toDbPost(post: Post): any {
-    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, stats, createdAt, ...rest } = post as any;
+    const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, poll, stats, createdAt, ...rest } = post as any;
     return {
       ...rest,
       user_id: userId,
@@ -624,8 +669,9 @@ export const SupabaseService = {
       visibility: visibility || 'public',
       is_edited: isEdited || false,
       ad_id: adId,
+      poll: poll || null,
       stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
-      created_at: createdAt || Date.now()
+      created_at: (createdAt ? (isNaN(Number(createdAt)) ? new Date(createdAt) : new Date(Number(createdAt))) : new Date()).toISOString()
     };
   },
 
@@ -945,7 +991,7 @@ export const SupabaseService = {
   },
 
   async saveAd(ad: any) {
-    const { userId, mediaUrl, type, adType, adTypes, placement, placements, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, isSponsored, expiryDate, analytics, ...rest } = ad;
+    const { userId, mediaUrl, type, adType, adTypes, placement, placements, targetLocation, campaignDuration, campaignUnit, timesPerDay, targetReach, timeFrames, isSponsored, expiryDate, createdAt, analytics, ...rest } = ad;
     const dbAd = {
       ...rest,
       user_id: userId,
@@ -959,7 +1005,8 @@ export const SupabaseService = {
       times_per_day: timesPerDay,
       target_reach: targetReach,
       time_frames: timeFrames,
-      expiry_date: expiryDate,
+      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+      created_at: (createdAt ? (isNaN(Number(createdAt)) ? new Date(createdAt) : new Date(Number(createdAt))) : new Date()).toISOString(),
       is_sponsored: isSponsored !== undefined ? isSponsored : true,
       analytics: analytics || []
     };
@@ -1005,7 +1052,7 @@ export const SupabaseService = {
       user_id: userId,
       user_name: userName,
       user_email: userEmail,
-      created_at: new Date(createdAt).toISOString()
+      created_at: (createdAt ? (isNaN(Number(createdAt)) ? new Date(createdAt) : new Date(Number(createdAt))) : new Date()).toISOString()
     };
   },
 
@@ -1623,7 +1670,7 @@ export const SupabaseService = {
       bank_name: bankDetails.bankName,
       account_number: bankDetails.accountNumber,
       account_name: bankDetails.accountName,
-      created_at: new Date(createdAt).toISOString()
+      created_at: (createdAt ? (isNaN(Number(createdAt)) ? new Date(createdAt) : new Date(Number(createdAt))) : new Date()).toISOString()
     };
   },
 
@@ -1696,11 +1743,12 @@ export const SupabaseService = {
   },
 
   toDbTask(task: any): any {
-    const { completedBy, expiryDate, ...rest } = task;
+    const { completedBy, expiryDate, createdAt, ...rest } = task;
     return {
       ...rest,
       completed_by: completedBy,
-      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null
+      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+      created_at: (createdAt ? (isNaN(Number(createdAt)) ? new Date(createdAt) : new Date(Number(createdAt))) : new Date()).toISOString()
     };
   },
 

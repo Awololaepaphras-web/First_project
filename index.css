@@ -29,7 +29,7 @@
       radial-gradient(circle at 80% 80%, #d9edff 0%, transparent 50%);
     background-attachment: fixed;
     background-size: 200% 200%;
-    animation: water-flow 30s ease-in-out infinite;
+    animation: water-flow 60s ease-in-out infinite;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.3s, color 0.3s;
     -webkit-tap-highlight-color: transparent;
@@ -57,7 +57,7 @@
       radial-gradient(circle at 20% 40%, #001f3f 0%, transparent 40%);
     background-attachment: fixed;
     background-size: 200% 200%;
-    animation: water-flow 40s ease-in-out infinite;
+    animation: water-flow 80s ease-in-out infinite;
   }
 
   button, .btn {

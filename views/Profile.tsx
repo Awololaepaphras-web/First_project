@@ -166,6 +166,9 @@ const Profile: React.FC<ProfileProps> = ({ currentUser, allUsers, posts, onFollo
               {user.premiumTier === 'alpha_premium' && (
                 <Gem className="w-6 h-6 text-blue-400" title="Alpha Premium Node" />
               )}
+              {user.nickname && user.university && user.level && (
+                <ShieldCheck className="w-6 h-6 text-green-500" title="Registration Complete" />
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">

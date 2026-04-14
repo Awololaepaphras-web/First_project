@@ -14,11 +14,39 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     sessionStorage.setItem('has_visited_home', 'true');
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      window.alert('PWA Installation is not available on this browser. Try using Chrome or Edge, or use the "Add to Home Screen" option in your browser menu.');
+      return;
+    }
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    // We've used the prompt, and can't use it again, throw it away
+    setDeferredPrompt(null);
+  };
 
   const filteredUnis = UNIVERSITIES.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -51,18 +79,10 @@ const Home: React.FC<HomeProps> = ({ user }) => {
             </div>
             
             <button 
-              onClick={() => {
-                const link = document.createElement('a');
-                link.href = '#';
-                link.download = 'ProphCore_Alpha_Node.apk';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.alert('Initializing Academic Node Download... Please check your downloads folder.');
-              }}
+              onClick={handleInstallClick}
               className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all active:scale-95 shadow-lg"
             >
-              <Download className="w-3 h-3" /> Download Mobile App
+              <Download className="w-3 h-3" /> Install Web App (PWA)
             </button>
           </div>
           

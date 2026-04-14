@@ -56,6 +56,21 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notifications') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'messages') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'statuses') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.statuses;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'documents') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.documents;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'conversations') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
+    END IF;
+
+    -- Ensure full row data (including poll column) is sent on updates
+    ALTER TABLE public.posts REPLICA IDENTITY FULL;
 END $$;
 
 -- ===============================================================

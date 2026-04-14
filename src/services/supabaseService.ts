@@ -389,27 +389,14 @@ export const SupabaseService = {
 
   async voteOnPoll(postId: string, optionId: string, userId: string) {
     try {
-      const { data: post, error: fErr } = await supabase.from('posts').select('poll').eq('id', postId).single();
-      if (fErr) throw fErr;
-      if (!post.poll) throw new Error('Post has no poll');
-
-      const poll = post.poll as Poll;
-      
-      // Check if user already voted
-      const alreadyVoted = poll.options.some(opt => opt.votes.includes(userId));
-      if (alreadyVoted) throw new Error('User already voted');
-
-      const newOptions = poll.options.map(opt => {
-        if (opt.id === optionId) {
-          return { ...opt, votes: [...opt.votes, userId] };
-        }
-        return opt;
+      const { data, error } = await supabase.rpc('vote_on_poll', {
+        p_post_id: postId,
+        p_option_id: optionId,
+        p_user_id: userId
       });
-
-      const { error: uErr } = await supabase.from('posts').update({ poll: { ...poll, options: newOptions } }).eq('id', postId);
-      if (uErr) throw uErr;
-
-      return { success: true };
+      
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error voting on poll:', error);
       return { success: false, error };
@@ -587,9 +574,6 @@ export const SupabaseService = {
       });
       
       if (error) {
-        if (error.message.includes('429')) {
-          throw new Error('Rate limit exceeded. Please wait a minute.');
-        }
         console.error('Error fetching secure feed:', error);
         // Fallback to standard fetch if RPC fails (e.g. during migration)
         const { data: fallbackData, error: fallbackError } = await supabase
@@ -608,7 +592,39 @@ export const SupabaseService = {
       return (data || []).map((p: any) => this.mapPost(p));
     } catch (err: any) {
       console.error('Fatal error fetching feed:', err);
-      throw err;
+      return [];
+    }
+  },
+
+  async getUniversityFeed(university: string, limit: number = 20, offset: number = 0): Promise<Post[]> {
+    try {
+      const { data, error } = await supabase.rpc('fetch_university_feed', {
+        p_university: university,
+        limit_count: limit,
+        offset_count: offset
+      });
+
+      if (error) {
+        console.error('Error fetching university feed:', error);
+        // Fallback
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('posts')
+          .select('*')
+          .or(`university.eq.${university},user_university.eq.${university}`)
+          .or('visibility.eq.public,visibility.eq.node_only')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .limit(limit)
+          .range(offset, offset + limit - 1);
+
+        if (fallbackError) throw fallbackError;
+        return (fallbackData || []).map(p => this.mapPost(p));
+      }
+
+      return (data || []).map((p: any) => this.mapPost(p));
+    } catch (err) {
+      console.error('Fatal error fetching university feed:', err);
+      return [];
     }
   },
 
@@ -649,7 +665,7 @@ export const SupabaseService = {
       adId: p.ad_id,
       poll: p.poll,
       stats: p.stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
-      createdAt: p.created_at ? (typeof p.created_at === 'number' ? p.created_at : (isNaN(Number(p.created_at)) ? new Date(p.created_at).getTime() : Number(p.created_at))) : Date.now()
+      createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now()
     };
   },
 
@@ -671,7 +687,7 @@ export const SupabaseService = {
       ad_id: adId,
       poll: poll || null,
       stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
-      created_at: (createdAt ? (isNaN(Number(createdAt)) ? new Date(createdAt) : new Date(Number(createdAt))) : new Date()).toISOString()
+      created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
     };
   },
 

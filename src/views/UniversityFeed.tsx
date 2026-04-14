@@ -125,32 +125,10 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
     // Initial Load: Sort by Newest, Filtered by University
     const fetchPosts = async () => {
       try {
-        // Try 'university' first as it's more standard, fallback to 'user_university' if needed
-        let { data, error } = await supabase
-          .from('posts')
-          .select('*')
-          .eq('university', user.university)
-          .order('created_at', { ascending: false });
-        
-        if (error && error.code === '42703') {
-          // If 'university' column doesn't exist, try 'user_university'
-          const retry = await supabase
-            .from('posts')
-            .select('*')
-            .eq('user_university', user.university)
-            .order('created_at', { ascending: false });
-          data = retry.data;
-          error = retry.error;
-        }
-        
-        if (error) {
-          console.error('Error fetching university posts:', error);
-          setConnectionStatus('error');
-        } else {
-          console.log('Fetched university posts:', data?.length);
-          if (data) setPosts(data.map(p => SupabaseService.mapPost(p)));
-          setConnectionStatus('connected');
-        }
+        const data = await SupabaseService.getUniversityFeed(user.university);
+        console.log('Fetched university posts:', data?.length);
+        setPosts(data);
+        setConnectionStatus('connected');
       } catch (err) {
         console.error('Unexpected error fetching posts:', err);
         setConnectionStatus('error');

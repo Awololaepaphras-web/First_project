@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Posts Table (Updated with Poll and Status)
 CREATE TABLE IF NOT EXISTS public.posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    user_name TEXT NOT NULL,
-    user_nickname TEXT NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_name TEXT,
+    user_nickname TEXT,
     user_avatar TEXT,
     user_university TEXT,
     content TEXT NOT NULL,
@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS public.statuses (
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     user_name TEXT NOT NULL,
     user_nickname TEXT NOT NULL,
+    university TEXT,
     media_url TEXT NOT NULL,
     media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'gif')),
     caption TEXT,

@@ -806,12 +806,17 @@ export const SupabaseService = {
     }));
   },
 
-  async getStatuses(): Promise<Status[]> {
-    const { data, error } = await supabase
+  async getStatuses(university?: string): Promise<Status[]> {
+    let query = supabase
       .from('statuses')
       .select('*, users(name, nickname, profile_picture)')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false });
+      .gt('expires_at', new Date().toISOString());
+    
+    if (university) {
+      query = query.eq('university', university);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching statuses:', error);
@@ -834,18 +839,13 @@ export const SupabaseService = {
 
   async saveStatus(status: any) {
     try {
-      const { error } = await supabase.from('statuses').insert({
-        user_id: status.userId,
-        user_name: status.userName,
-        user_avatar: status.userAvatar,
-        image_url: status.mediaUrl,
-        media_type: status.mediaType || 'image',
-        caption: status.caption,
-        expires_at: new Date(status.expiresAt || (Date.now() + 24 * 60 * 60 * 1000)).toISOString(),
-        renewal_count: 0
+      const { data, error } = await supabase.rpc('handle_status_update', {
+        p_media_url: status.mediaUrl,
+        p_media_type: status.mediaType || 'image',
+        p_caption: status.caption
       });
       if (error) throw error;
-      return { success: true };
+      return data;
     } catch (error) {
       console.error('Error saving status:', error);
       return { success: false, error };

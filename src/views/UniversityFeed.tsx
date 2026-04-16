@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
 import { SupabaseService } from '../services/supabaseService';
-import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send, BarChart2, Plus, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send, BarChart2, Plus, Trash2, Edit3, Clock } from 'lucide-react';
 import { User, Advertisement, AdTimeFrame, Post, PostComment, Report, Poll, PollOption } from '../../types';
 
 interface UniversityFeedProps {
@@ -117,6 +117,9 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
   const [reportDetails, setReportDetails] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
   const [showPostOptions, setShowPostOptions] = useState<string | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [mediaFile, setMediaFile] = useState<{ file: File; type: 'image' | 'video' } | null>(null);
 
   // --- THE UNIVERSITY ALGORITHM: LOAD & LISTEN ---
   useEffect(() => {
@@ -167,7 +170,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
 
   // --- ACTIONS ---
   const handlePost = async () => {
-    if (!content.trim() && !image) return;
+    if (!content.trim() && !mediaFile) return;
 
     // Check points
     if ((user.points || 0) < 30) {
@@ -177,10 +180,12 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
 
     setUploading(true);
 
-    let imageUrl = null;
-    if (image) {
+    let mediaUrl = undefined;
+    let mediaType = undefined;
+    if (mediaFile) {
       try {
-        imageUrl = await CloudinaryService.uploadFile(image, 'image');
+        mediaUrl = await CloudinaryService.uploadFile(mediaFile.file, mediaFile.type);
+        mediaType = mediaFile.type;
       } catch (err) {
         console.error("Upload failed", err);
       }
@@ -193,8 +198,8 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
       userNickname: user.nickname || user.name,
       userUniversity: user.university,
       content,
-      mediaUrl: imageUrl || undefined,
-      mediaType: image ? 'image' : undefined,
+      mediaUrl,
+      mediaType,
       poll: showPollCreator && pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2 ? {
         question: pollQuestion,
         options: pollOptions.filter(o => o.trim()).map(o => ({
@@ -225,7 +230,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
       }
 
       setContent("");
-      setImage(null);
+      setMediaFile(null);
       setShowPollCreator(false);
       setPollQuestion("");
       setPollOptions(["", ""]);
@@ -235,6 +240,18 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
       alert("Failed to broadcast intel: " + error.message);
     }
     setUploading(false);
+  };
+
+  const handleEditPost = async (postId: string) => {
+    if (!editContent.trim()) return;
+    try {
+      await SupabaseService.updatePost(postId, editContent);
+      setEditingPostId(null);
+      setEditContent('');
+    } catch (err) {
+      console.error('Failed to edit post:', err);
+      alert('Failed to update post');
+    }
   };
 
   const handleBlockUser = async (targetUserId: string) => {
@@ -435,10 +452,14 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
                 }
               }}
             />
-            {image && (
+            {mediaFile && (
               <div className="relative mt-2">
-                <img src={URL.createObjectURL(image)} className="rounded-2xl max-h-80 w-full object-cover" />
-                <button onClick={() => setImage(null)} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white">
+                {mediaFile.type === 'image' ? (
+                  <img src={URL.createObjectURL(mediaFile.file)} className="rounded-2xl max-h-80 w-full object-cover" />
+                ) : (
+                  <video src={URL.createObjectURL(mediaFile.file)} className="rounded-2xl max-h-80 w-full object-cover" controls />
+                )}
+                <button onClick={() => setMediaFile(null)} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -499,7 +520,27 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
               <div className="flex gap-2">
                 <label className="cursor-pointer text-brand-proph hover:bg-brand-proph/10 p-2 rounded-full transition-colors">
                   <ImageIcon className="w-5 h-5" />
-                  <input type="file" hidden onChange={(e) => setImage(e.target.files?.[0] || null)} />
+                  <input type="file" hidden accept="image/*,video/*" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const type = file.type.startsWith('video') ? 'video' : 'image';
+                      if (type === 'video') {
+                        const video = document.createElement('video');
+                        video.preload = 'metadata';
+                        video.onloadedmetadata = () => {
+                          window.URL.revokeObjectURL(video.src);
+                          if (video.duration > 30.5) {
+                            alert('Video must be 30 seconds or less');
+                          } else {
+                            setMediaFile({ file, type });
+                          }
+                        };
+                        video.src = URL.createObjectURL(file);
+                      } else {
+                        setMediaFile({ file, type });
+                      }
+                    }
+                  }} />
                 </label>
                 <button 
                   onClick={() => setShowPollCreator(!showPollCreator)}
@@ -510,7 +551,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
               </div>
               <button
                 onClick={handlePost}
-                disabled={uploading || (!content.trim() && !image)}
+                disabled={uploading || (!content.trim() && !mediaFile)}
                 className="bg-brand-proph hover:bg-brand-proph/90 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full transition-colors"
               >
                 {uploading ? "Posting..." : "Post"}
@@ -579,6 +620,19 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
                       
                       {showPostOptions === post.id && (
                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-brand-card rounded-2xl shadow-2xl border border-gray-100 dark:border-brand-border z-50 overflow-hidden py-2">
+                          {post.userId === user.id && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingPostId(post.id);
+                                setEditContent(post.content);
+                                setShowPostOptions(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm font-bold text-brand-proph hover:bg-brand-proph/10 flex items-center gap-2"
+                            >
+                              <Edit3 className="w-4 h-4" /> Edit Intel
+                            </button>
+                          )}
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -605,7 +659,24 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
                       )}
                     </div>
                   </div>
-                  <div className="mt-1 text-[15px] leading-normal">{post.content}</div>
+                  <div className="mt-1 text-[15px] leading-normal">
+                    {editingPostId === post.id ? (
+                      <div className="space-y-2 mt-2">
+                        <textarea 
+                          value={editContent}
+                          onChange={e => setEditContent(e.target.value)}
+                          className="w-full bg-gray-50 dark:bg-brand-black border border-brand-border rounded-xl p-3 text-sm outline-none focus:border-brand-proph"
+                          rows={3}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => setEditingPostId(null)} className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5">Cancel</button>
+                          <button onClick={() => handleEditPost(post.id)} className="px-4 py-1.5 bg-brand-proph text-black rounded-full text-[10px] font-black uppercase tracking-widest">Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      post.content
+                    )}
+                  </div>
                   
                   {post.poll && (
                     <div className="mt-4 p-4 bg-gray-50 dark:bg-brand-card rounded-2xl border border-brand-border">
@@ -656,7 +727,11 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
 
                   {post.mediaUrl && (
                     <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                      <img src={post.mediaUrl} className="w-full h-auto max-h-96 object-cover" />
+                      {post.mediaType === 'video' ? (
+                        <video src={post.mediaUrl} className="w-full h-auto max-h-96 object-cover" controls />
+                      ) : (
+                        <img src={post.mediaUrl} className="w-full h-auto max-h-96 object-cover" />
+                      )}
                     </div>
                   )}
                   <div className="flex justify-between mt-3 max-w-md text-gray-500">

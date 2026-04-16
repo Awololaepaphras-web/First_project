@@ -36,10 +36,28 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setNewStatusFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreviewUrl(reader.result as string);
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('video')) {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+          window.URL.revokeObjectURL(video.src);
+          if (video.duration > 30.5) {
+            alert('Video must be 30 seconds or less');
+            setNewStatusFile(null);
+            setPreviewUrl(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          } else {
+            setNewStatusFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+          }
+        };
+        video.src = URL.createObjectURL(file);
+      } else {
+        setNewStatusFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setPreviewUrl(reader.result as string);
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -47,13 +65,16 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
     if (!newStatusFile || !user) return;
     setIsUploading(true);
     try {
-      const imageUrl = await CloudinaryService.uploadFile(newStatusFile);
+      const mediaType = newStatusFile.type.startsWith('video') ? 'video' : 'image';
+      const mediaUrl = await CloudinaryService.uploadFile(newStatusFile, mediaType);
       await SupabaseService.saveStatus({
         userId: user.id,
         userName: user.name,
+        userNickname: user.nickname,
+        university: user.university,
         userAvatar: user.profilePicture,
-        mediaUrl: imageUrl,
-        mediaType: 'image',
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
         caption: newStatusCaption
       });
       onStatusAdded();
@@ -88,7 +109,12 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
     return acc;
   }, {} as Record<string, Status[]>);
 
-  const uniqueUsers = Array.from(new Set(statuses.map(s => s.userId)));
+  const uniqueUsers = Array.from(new Set(statuses.map(s => s.userId)))
+    .sort((a, b) => {
+      if (a === user?.id) return -1;
+      if (b === user?.id) return 1;
+      return 0;
+    });
 
   return (
     <div className="relative">
@@ -157,12 +183,22 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
             </div>
 
             <div className="flex-1 flex items-center justify-center relative">
-              <img 
-                src={CloudinaryService.getStatusHDRestore(selectedStatus.mediaUrl, false)} 
-                className="max-w-full max-h-full object-contain"
-                alt=""
-                referrerPolicy="no-referrer"
-              />
+              {selectedStatus.mediaType === 'video' ? (
+                <video 
+                  src={selectedStatus.mediaUrl} 
+                  className="max-w-full max-h-full object-contain"
+                  autoPlay
+                  controls
+                  playsInline
+                />
+              ) : (
+                <img 
+                  src={CloudinaryService.getStatusHDRestore(selectedStatus.mediaUrl, false)} 
+                  className="max-w-full max-h-full object-contain"
+                  alt=""
+                  referrerPolicy="no-referrer"
+                />
+              )}
               
               {selectedStatus.caption && (
                 <div className="absolute bottom-24 left-0 right-0 p-8 text-center bg-gradient-to-t from-black/80 to-transparent">
@@ -211,12 +247,16 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
                     className="w-full aspect-square rounded-[2rem] border-2 border-dashed border-gray-800 flex flex-col items-center justify-center gap-4 hover:bg-gray-800/50 transition-all"
                   >
                     <Plus className="w-12 h-12 text-gray-600" />
-                    <p className="text-xs font-black uppercase text-gray-500 tracking-widest">Select Media Node</p>
+                    <p className="text-xs font-black uppercase text-gray-500 tracking-widest">Select Media Node (30s Video/Image)</p>
                   </button>
                 ) : (
-                  <div className="relative aspect-square rounded-[2rem] overflow-hidden border border-gray-800">
-                    <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
-                    <button onClick={() => { setNewStatusFile(null); setPreviewUrl(null); }} className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-black"><X className="w-4 h-4" /></button>
+                  <div className="relative aspect-square rounded-[2rem] overflow-hidden border border-gray-800 bg-black">
+                    {newStatusFile?.type.startsWith('video') ? (
+                      <video src={previewUrl} className="w-full h-full object-cover" controls />
+                    ) : (
+                      <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
+                    )}
+                    <button onClick={() => { setNewStatusFile(null); setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-black"><X className="w-4 h-4" /></button>
                   </div>
                 )}
 
@@ -224,7 +264,7 @@ const StatusFeed: React.FC<StatusFeedProps> = ({ user, statuses, onStatusAdded }
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
-                  accept="image/*" 
+                  accept="image/*,video/*" 
                   className="hidden" 
                 />
 

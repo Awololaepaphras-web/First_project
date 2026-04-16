@@ -220,15 +220,23 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 7. Secure RPC: Handle Status Update
 CREATE OR REPLACE FUNCTION public.handle_status_update(
-    p_url TEXT,
+    p_media_url TEXT,
+    p_media_type TEXT DEFAULT 'image',
     p_caption TEXT DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID := auth.uid();
+    v_user_name TEXT;
+    v_user_nickname TEXT;
+    v_user_uni TEXT;
     v_cost INTEGER;
     v_deduction_result JSONB;
 BEGIN
+    -- Get user info
+    SELECT name, nickname, university INTO v_user_name, v_user_nickname, v_user_uni
+    FROM public.users WHERE id = v_user_id;
+
     -- Get cost from config
     SELECT (config->>'statusCost')::INTEGER INTO v_cost FROM public.system_config WHERE id = 'default';
     v_cost := COALESCE(v_cost, 50);
@@ -241,9 +249,9 @@ BEGIN
 
     -- Create status
     INSERT INTO public.statuses (
-        user_id, url, caption, expires_at, renewal_count, view_count
+        user_id, user_name, user_nickname, university, media_url, media_type, caption, expires_at, renewed_count
     ) VALUES (
-        v_user_id, p_url, p_caption, now() + interval '24 hours', 0, 0
+        v_user_id, v_user_name, v_user_nickname, v_user_uni, p_media_url, p_media_type, p_caption, now() + interval '24 hours', 0
     );
 
     RETURN jsonb_build_object('success', true);

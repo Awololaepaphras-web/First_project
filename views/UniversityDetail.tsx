@@ -40,8 +40,10 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
   }, []);
 
   const fetchStatuses = async () => {
-    const data = await SupabaseService.getStatuses();
-    setStatuses(data);
+    if (university) {
+      const data = await SupabaseService.getStatuses(university.acronym);
+      setStatuses(data);
+    }
   };
 
   const university = universities.find(u => u.id === id);
@@ -151,19 +153,6 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
           </div>
         </div>
       </div>
-
-      {user && (
-        <div className="mb-12">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-brand-proph" /> Student Status
-          </h3>
-          <StatusFeed 
-            user={user} 
-            statuses={statuses} 
-            onStatusAdded={fetchStatuses} 
-          />
-        </div>
-      )}
 
       {approvedAds.length > 0 && (
         <div className="mb-12">
@@ -285,6 +274,19 @@ const UniversityDetail: React.FC<UniversityDetailProps> = ({ questions, user, un
           </div>
         </main>
       </div>
+
+      {user && (
+        <div className="mt-20 pt-10 border-t border-brand-border">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-brand-proph" /> Student Status
+          </h3>
+          <StatusFeed 
+            user={user} 
+            statuses={statuses} 
+            onStatusAdded={fetchStatuses} 
+          />
+        </div>
+      )}
     </div>
   );
 };

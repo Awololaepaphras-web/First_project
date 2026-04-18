@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 import { CloudinaryService } from '../services/cloudinaryService';
 import { SupabaseService } from '../services/supabaseService';
 import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send, BarChart2, Plus, Trash2, Edit3, Clock } from 'lucide-react';
-import { User, Advertisement, AdTimeFrame, Post, PostComment, Report, Poll, PollOption } from '../../types';
+import { User, Advertisement, AdTimeFrame, Post, PostComment, Report, Poll, PollOption, Status } from '../../types';
+import StatusFeed from '../components/StatusFeed';
 
 interface UniversityFeedProps {
   user: User;
@@ -120,6 +121,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [mediaFile, setMediaFile] = useState<{ file: File; type: 'image' | 'video' } | null>(null);
+  const [statuses, setStatuses] = useState<Status[]>([]);
 
   // --- THE UNIVERSITY ALGORITHM: LOAD & LISTEN ---
   useEffect(() => {
@@ -137,7 +139,18 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
         setConnectionStatus('error');
       }
     };
+
+    const fetchStatuses = async () => {
+      try {
+        const data = await SupabaseService.getStatuses(user.university);
+        setStatuses(data);
+      } catch (err) {
+        console.error('Error fetching university statuses:', err);
+      }
+    };
+
     fetchPosts();
+    fetchStatuses();
 
     // Real-time Subscription
     const channel = SupabaseService.subscribeToTable('posts', (payload: any) => {
@@ -163,8 +176,20 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
 
     setConnectionStatus('connected');
 
+    // Subscribe to Statuses
+    const statusChannel = SupabaseService.subscribeToTable('statuses', (payload) => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+        const fetchStatuses = async () => {
+          const data = await SupabaseService.getStatuses(user.university);
+          setStatuses(data);
+        };
+        fetchStatuses();
+      }
+    });
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(statusChannel);
     };
   }, [user.university]);
 
@@ -428,6 +453,21 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
           <h1 className="text-xl font-bold">University Feed</h1>
           <p className="text-xs text-brand-proph font-black uppercase tracking-widest">{user.university}</p>
         </div>
+      </div>
+
+      {/* University Stories */}
+      <div className="border-b border-gray-200 dark:border-brand-border h-40 overflow-hidden bg-gray-50/50 dark:bg-brand-black">
+        <StatusFeed 
+          user={user} 
+          statuses={statuses} 
+          onStatusAdded={() => {
+            const fetchStatuses = async () => {
+              const data = await SupabaseService.getStatuses(user.university);
+              setStatuses(data);
+            };
+            fetchStatuses();
+          }} 
+        />
       </div>
 
       {/* Post Box */}

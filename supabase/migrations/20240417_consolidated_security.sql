@@ -155,13 +155,20 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to handle status update with coin deduction
-CREATE OR REPLACE FUNCTION public.handle_status_update(p_media_url TEXT, p_media_type TEXT, p_caption TEXT, p_expires_at TIMESTAMP WITH TIME ZONE)
+CREATE OR REPLACE FUNCTION public.handle_status_update(
+    p_media_url TEXT, 
+    p_media_type TEXT DEFAULT 'image', 
+    p_caption TEXT DEFAULT NULL, 
+    p_expires_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
+)
 RETURNS JSONB AS $$
 DECLARE
     v_cost INTEGER;
     v_config JSONB;
     v_user_name TEXT;
     v_user_nickname TEXT;
+    v_user_uni TEXT;
+    v_expires_at TIMESTAMP WITH TIME ZONE;
 BEGIN
     SELECT config INTO v_config FROM public.system_config WHERE id = 'default';
     v_cost := COALESCE((v_config->>'statusCost')::INTEGER, 50);
@@ -172,11 +179,14 @@ BEGIN
     END IF;
 
     -- Get user info
-    SELECT name, nickname INTO v_user_name, v_user_nickname FROM public.users WHERE id = auth.uid();
+    SELECT name, nickname, university INTO v_user_name, v_user_nickname, v_user_uni 
+    FROM public.users WHERE id = auth.uid();
+
+    v_expires_at := COALESCE(p_expires_at, now() + interval '24 hours');
 
     -- Insert status
-    INSERT INTO public.statuses (user_id, user_name, user_nickname, media_url, media_type, caption, expires_at)
-    VALUES (auth.uid(), v_user_name, v_user_nickname, p_media_url, p_media_type, p_caption, p_expires_at);
+    INSERT INTO public.statuses (user_id, user_name, user_nickname, university, media_url, media_type, caption, expires_at)
+    VALUES (auth.uid(), v_user_name, v_user_nickname, v_user_uni, p_media_url, p_media_type, p_caption, v_expires_at);
 
     RETURN jsonb_build_object('success', true);
 END;

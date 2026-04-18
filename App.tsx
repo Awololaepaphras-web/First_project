@@ -375,6 +375,20 @@ const App: React.FC = () => {
       if (savedUnis.length > 0) setUniversities(savedUnis);
 
       // Load academic structure from Supabase
+      const initialPosts = await SupabaseService.getFeed(50);
+      if (initialPosts.length > 0) setPosts(initialPosts);
+
+      const initialDocs = await SupabaseService.getDocuments();
+      const initialStudentDocs = await SupabaseService.getStudentPastQuestions();
+      const combinedDocs = [...initialDocs, ...initialStudentDocs].sort((a, b) => b.createdAt - a.createdAt);
+      if (combinedDocs.length > 0) setQuestions(combinedDocs);
+
+      const initialAds = await SupabaseService.getAdvertisements();
+      if (initialAds.length > 0) setGlobalAds(initialAds);
+
+      const initialTasks = await SupabaseService.getTasks();
+      if (initialTasks.length > 0) setTasks(initialTasks);
+
       const loadAcademicStructure = async () => {
         const colleges = await SupabaseService.getColleges();
         if (colleges.length > 0) {
@@ -508,6 +522,27 @@ const App: React.FC = () => {
       if (payload.eventType === 'DELETE') setQuestions(prev => prev.filter(q => q.id === payload.old.id));
     });
 
+    const studentDocsSub = SupabaseService.subscribeToTable('student_past_questions', (payload: any) => {
+      if (payload.new) {
+        const mappedDoc = SupabaseService.mapDocument(payload.new);
+        if (payload.eventType === 'INSERT') {
+          setQuestions(prev => [mappedDoc, ...prev]);
+          if (mappedDoc.visibility === 'public' || !mappedDoc.visibility) {
+            setNotifications(prev => [{
+              id: Math.random().toString(36).substr(2, 9),
+              title: 'New Student Contribution',
+              message: `${mappedDoc.courseCode} - ${mappedDoc.courseTitle} uploaded by ${mappedDoc.userName || 'a peer'}.`,
+              type: 'success',
+              createdAt: Date.now(),
+              read: false
+            }, ...prev]);
+          }
+        }
+        if (payload.eventType === 'UPDATE') setQuestions(prev => prev.map(item => item.id === mappedDoc.id ? mappedDoc : item));
+      }
+      if (payload.eventType === 'DELETE') setQuestions(prev => prev.filter(q => q.id === payload.old.id));
+    });
+
     const paymentsSub = SupabaseService.subscribeToTable('payment_verifications', (payload: any) => {
       if (payload.new) {
         const mappedPayment = SupabaseService.mapPayment(payload.new);
@@ -582,6 +617,7 @@ const App: React.FC = () => {
       supabase.removeChannel(withdrawalsSub);
       supabase.removeChannel(configSub);
       supabase.removeChannel(docsSub);
+      supabase.removeChannel(studentDocsSub);
       supabase.removeChannel(paymentsSub);
       supabase.removeChannel(unisSub);
       supabase.removeChannel(usersSub);
@@ -1250,13 +1286,13 @@ const App: React.FC = () => {
           <Route path="/withdraw" element={user ? <Withdrawal user={user} isEnabled={config.isWithdrawalEnabled} conversionRate={config.nairaPerPoint} onAddRequest={req => setWithdrawalRequests([req, ...withdrawalRequests])} requests={withdrawalRequests} /> : <Navigate to="/login" />} />
           <Route path="/upload" element={user ? <UserUpload user={user} isEnabled={config.isPastQuestionContributionEnabled} onUpload={q => { 
             setQuestions([q, ...questions]); 
-            DB.saveDocument(q);
+            SupabaseService.saveStudentPastQuestion(q);
             // Forceful visibility: Post to community feed
             handlePost(`I just contributed a new past question: ${q.courseCode} - ${q.courseTitle}! Check it out in the Study Hub.`, q.fileUrl, q.type === 'image' ? 'image' : undefined);
           }} onToggleCompletion={()=>{}} universityColleges={universityColleges} collegeDepartments={collegeDepartments} /> : <Navigate to="/login" />} />
           <Route path="/anonymous-upload" element={<AnonymousUpload isEnabled={config.isUploadEnabled} onUpload={q => { 
             setQuestions([q, ...questions]); 
-            DB.saveDocument(q);
+            SupabaseService.saveStudentPastQuestion(q);
             // Forceful visibility: Post to community feed
             handlePost(`A new past question was contributed anonymously: ${q.courseCode} - ${q.courseTitle}! Check it out in the Study Hub.`, q.fileUrl, q.type === 'image' ? 'image' : undefined, undefined, { id: 'anonymous', name: 'Anonymous Contributor', nickname: 'Ghost', university: 'Global' });
           }} universityColleges={universityColleges} collegeDepartments={collegeDepartments} />} />

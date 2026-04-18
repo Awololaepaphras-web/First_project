@@ -47,7 +47,7 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
 
   const loadStatuses = async () => {
     setLoading(true);
-    const data = await SupabaseService.getStatusPanelData();
+    const data = await SupabaseService.getStatusPanelData(currentUser.university);
     setStatuses(data);
     setLoading(false);
   };

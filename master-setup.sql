@@ -97,9 +97,15 @@ CREATE TABLE IF NOT EXISTS public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     receiver_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    university TEXT, -- Added for university-specific filtering
     content TEXT,
     media_url TEXT,
-    media_type TEXT CHECK (media_type IN ('image', 'video', 'audio')),
+    media_type TEXT CHECK (media_type IN ('image', 'video', 'audio', 'voice')),
+    group_id UUID, 
+    reply_to UUID,
+    reply_to_content TEXT,
+    is_seen BOOLEAN DEFAULT false,
+    seen_at TIMESTAMP WITH TIME ZONE,
     expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

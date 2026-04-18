@@ -50,27 +50,27 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
   const [invites, setInvites] = useState<ChatInvite[]>([]);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupDesc, setNewGroupDesc] = useState('');
+  const [showCreateSquad, setShowCreateSquad] = useState(false);
+  const [newSquadName, setNewSquadName] = useState('');
+  const [newSquadDesc, setNewSquadDesc] = useState('');
   
-  const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) return;
+  const handleCreateSquad = async () => {
+    if (!newSquadName.trim()) return;
     try {
       const isPremium = currentUser.premiumTier && currentUser.premiumTier !== 'none';
       await SupabaseService.createGroup({
-        name: newGroupName,
-        description: newGroupDesc,
+        name: newSquadName,
+        description: newSquadDesc,
         creatorId: currentUser.id,
         isMonetized: !!isPremium // Only earn if premium
       });
-      setNewGroupName('');
-      setNewGroupDesc('');
-      setShowCreateGroup(false);
+      setNewSquadName('');
+      setNewSquadDesc('');
+      setShowCreateSquad(false);
       loadGroups();
-      alert(isPremium ? 'Monetized group created!' : 'Group created! (Earning disabled - Upgrade to Premium to earn from groups)');
+      alert(isPremium ? 'Monetized squad created!' : 'Squad created! (Earning disabled - Upgrade to Premium to earn from squads)');
     } catch (err) {
-      console.error('Failed to create group:', err);
+      console.error('Failed to create squad:', err);
     }
   };
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -208,13 +208,13 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
     if (selectedGroup) {
       const totalPoints = (currentUser.dailyPoints || 0) + (currentUser.points || 0);
       if (totalPoints < 2) {
-        alert('Insufficient Prophy coins for group message (2 coins required).');
+        alert('Insufficient Prophy coins for squad message (2 coins required).');
         return;
       }
       
       const deduction = await SupabaseService.deductPoints(currentUser.id, 2);
       if (!deduction.success) {
-        alert('Insufficient Prophy coins for group message (2 coins required).');
+        alert('Insufficient Prophy coins for squad message (2 coins required).');
         return;
       }
       
@@ -283,7 +283,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
   };
 
   const uploadMedia = async (blob: Blob | File, type: 'image' | 'video' | 'audio') => {
-    if (!selectedUser) return;
+    if (!selectedUser && !selectedGroup) return;
     setIsUploading(true);
     try {
       const file = blob instanceof File ? blob : new File([blob], `media_${Date.now()}`, { type: blob.type });
@@ -292,7 +292,8 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
 
       await SupabaseService.sendMessage({
         senderId: currentUser.id,
-        receiverId: selectedUser.id,
+        receiverId: selectedUser?.id || null,
+        groupId: selectedGroup?.id,
         mediaUrl: url,
         mediaType: type,
         expiresAt
@@ -308,7 +309,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedUser) return;
+    if (!file || (!selectedUser && !selectedGroup)) return;
     const type = file.type.startsWith('image/') ? 'image' : 
                  file.type.startsWith('video/') ? 'video' : 'audio';
     await uploadMedia(file, type as any);
@@ -367,15 +368,15 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
               className="w-10 h-10 rounded-full object-cover border border-brand-border" 
               alt="" 
             />
-            <h2 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">Chats</h2>
+            <h2 className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">Network</h2>
           </div>
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => setShowCreateGroup(true)}
+              onClick={() => setShowCreateSquad(true)}
               className="p-2 hover:bg-gray-200 dark:hover:bg-brand-card rounded-full transition-all text-gray-600 dark:text-gray-400"
-              title="New Group"
+              title="New Squad"
             >
-              <UserPlus className="w-5 h-5" />
+              <Users className="w-5 h-5" />
             </button>
             <button 
               onClick={() => setShowNewChat(true)}
@@ -510,7 +511,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
                     {selectedGroup ? selectedGroup.name : `@${selectedUser?.nickname}`}
                   </p>
                   <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedUser?.isOnline ? 'text-green-500' : 'text-gray-500'}`}>
-                    {selectedGroup ? 'Group Chat' : (selectedUser?.isOnline ? 'Online' : formatLastSeen(selectedUser?.lastSeen))}
+                    {selectedGroup ? 'Squad Chat' : (selectedUser?.isOnline ? 'Online' : formatLastSeen(selectedUser?.lastSeen))}
                   </p>
                 </div>
               </div>
@@ -825,9 +826,9 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
         )}
       </AnimatePresence>
 
-      {/* Create Group Modal */}
+      {/* Create Squad Modal */}
       <AnimatePresence>
-        {showCreateGroup && (
+        {showCreateSquad && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -841,36 +842,36 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
               className="bg-white dark:bg-brand-black w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-brand-border"
             >
               <div className="p-6 border-b border-brand-border flex items-center justify-between">
-                <h3 className="text-xl font-black uppercase italic text-gray-900 dark:text-white">Create Group</h3>
-                <button onClick={() => setShowCreateGroup(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-all">
+                <h3 className="text-xl font-black uppercase italic text-gray-900 dark:text-white">Create Squad</h3>
+                <button onClick={() => setShowCreateSquad(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-brand-card rounded-full transition-all">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
               <div className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-gray-500 ml-4">Group Name</label>
+                  <label className="text-[10px] font-black uppercase text-gray-500 ml-4">Squad Name</label>
                   <input 
                     type="text" 
-                    value={newGroupName}
-                    onChange={e => setNewGroupName(e.target.value)}
-                    placeholder="Enter group name..."
+                    value={newSquadName}
+                    onChange={e => setNewSquadName(e.target.value)}
+                    placeholder="Enter squad name..."
                     className="w-full bg-gray-50 dark:bg-brand-card border border-brand-border p-4 rounded-2xl text-sm text-gray-900 dark:text-white focus:border-brand-proph outline-none transition-all font-bold"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase text-gray-500 ml-4">Description</label>
                   <textarea 
-                    value={newGroupDesc}
-                    onChange={e => setNewGroupDesc(e.target.value)}
-                    placeholder="What is this group about?"
+                    value={newSquadDesc}
+                    onChange={e => setNewSquadDesc(e.target.value)}
+                    placeholder="What is this squad about?"
                     className="w-full bg-gray-50 dark:bg-brand-card border border-brand-border p-4 rounded-2xl text-sm text-gray-900 dark:text-white focus:border-brand-proph outline-none transition-all font-bold h-24 resize-none"
                   />
                 </div>
                 <button 
-                  onClick={handleCreateGroup}
+                  onClick={handleCreateSquad}
                   className="w-full bg-brand-proph py-4 rounded-2xl font-black uppercase text-xs tracking-widest text-black shadow-xl shadow-brand-proph/20 hover:scale-[1.02] transition-all"
                 >
-                  Initialize Group Node
+                  Initialize Squad Node
                 </button>
               </div>
             </motion.div>

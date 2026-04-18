@@ -36,6 +36,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
 
   const services = [
     { name: 'AI Study Buddy', icon: <Brain className="w-5 h-5" />, path: '/ai-assistant', color: 'bg-emerald-500', desc: 'Neural synthesis' },
+    { name: 'Squads', icon: <Users className="w-5 h-5" />, path: '/messages', color: 'bg-brand-proph', desc: 'Secure squad nodes' },
     { name: 'Study Hub', icon: <Zap className="w-5 h-5" />, path: '/study-hub', color: 'bg-green-600', desc: 'Exam prep' },
     { name: 'Gladiator Hub', icon: <Swords className="w-5 h-5" />, path: '/gladiator-hub', color: 'bg-green-600', desc: 'Arena challenges' },
     { name: 'Bounty Forge', icon: <ListChecks className="w-5 h-5" />, path: '/tasks', color: 'bg-yellow-500', desc: 'Earn rewards' },
@@ -75,8 +76,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       {/* Metrics (Slidable on Mobile) */}
       <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-6 overflow-x-auto no-scrollbar snap-x p-1">
          {[
-           { label: 'Daily Allowance', val: user.dailyPoints || 0, icon: <Zap className="w-6 h-6" />, color: 'text-brand-proph' },
-           { label: 'Purse Balance', val: user.points || 0, icon: <Coins className="w-6 h-6" />, color: 'text-brand-proph' },
+           { label: 'Daily Allowance', val: user.dailyPoints || 0, icon: <Zap className="w-6 h-6" />, color: 'text-brand-proph', sub: 'Renews 24h' },
+           { label: 'Purse Balance', val: user.points || 0, icon: <Coins className="w-6 h-6" />, color: 'text-brand-proph', sub: 'Total Vault' },
            { label: 'Monetization Prophy Coins', val: user.monetization?.pointsEarned || 0, icon: <Star className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Global Standing', val: '#422', icon: <Trophy className="w-6 h-6" />, color: 'text-yellow-500' },
            { label: 'Archived Assets', val: filteredQuestions.length, icon: <Database className="w-6 h-6" />, color: 'text-brand-primary' },
@@ -86,6 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
               <div>
                  <p className="text-[10px] font-black text-brand-muted uppercase tracking-[0.2em]">{s.label}</p>
                  <p className="text-3xl font-black italic tracking-tighter text-gray-900 dark:text-white">{s.val}</p>
+                 {(s as any).sub && <p className="text-[8px] font-black uppercase text-brand-proph mt-1 italic tracking-widest leading-none">{(s as any).sub}</p>}
               </div>
            </div>
          ))}

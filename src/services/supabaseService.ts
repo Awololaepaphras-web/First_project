@@ -671,7 +671,7 @@ export const SupabaseService = {
 
   toDbPost(post: Post): any {
     const { userId, userName, userNickname, userUniversity, userAvatar, mediaUrl, mediaType, tags, visibility, isEdited, adId, poll, stats, createdAt, ...rest } = post as any;
-    return {
+    const dbPost: any = {
       ...rest,
       user_id: userId,
       user_name: userName,
@@ -686,18 +686,37 @@ export const SupabaseService = {
       is_edited: isEdited || false,
       ad_id: adId,
       poll: poll || null,
-      stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 },
-      created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
+      stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 }
     };
+
+    // Only set created_at if explicitly provided and we really need to override DB default
+    if (createdAt) {
+      dbPost.created_at = typeof createdAt === 'number' ? new Date(createdAt).toISOString() : createdAt;
+    }
+
+    return dbPost;
   },
 
   async savePost(post: Post) {
     try {
       const dbPost = this.toDbPost(post);
-      const { error } = await supabase.from('posts').upsert(dbPost);
+      
+      // The database will handle the timestamp automatically for inserts
+      delete dbPost.created_at;
+      
+      const { error } = await supabase.from('posts').insert([dbPost]);
+      
       if (error) {
-        console.error('Error saving post:', error);
-        throw error;
+        // If it's a conflict (ID already exists), use update for what changed
+        if (error.code === '23505') {
+          const updateData = { ...dbPost };
+          delete updateData.id; // Don't try to update the ID
+          const { error: updateErr } = await supabase.from('posts').update(updateData).eq('id', post.id);
+          if (updateErr) throw updateErr;
+        } else {
+          console.error('Error saving post:', error);
+          throw error;
+        }
       }
     } catch (err) {
       console.error('Fatal error saving post:', err);
@@ -1162,48 +1181,17 @@ export const SupabaseService = {
   },
 
   async getMessages(userId: string): Promise<Message[]> {
-    // 1. Get direct messages and group messages
-    const { data: directMsgs, error: dErr } = await supabase
+    const { data: msgs, error: err } = await supabase
       .from('messages')
       .select('*')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId},receiver_id.is.null`)
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId},group_id.not.is.null`)
       .order('created_at', { ascending: true });
     
-    if (dErr) {
-      console.error('Error fetching direct messages:', dErr);
+    if (err) {
+      console.error('Error fetching messages:', err);
     }
 
-    // 2. Get messages for conversations where user is an invited third party
-    const { data: invites, error: iErr } = await supabase
-      .from('chat_invites')
-      .select('*')
-      .eq('invitee_id', userId)
-      .eq('status', 'accepted')
-      .eq('target_type', 'conversation');
-
-    let thirdPartyMsgs: any[] = [];
-    if (!iErr && invites && invites.length > 0) {
-      for (const invite of invites) {
-        const [u1, u2] = invite.target_id.split(':');
-        const { data: msgs, error: mErr } = await supabase
-          .from('messages')
-          .select('*')
-          .or(`and(sender_id.eq.${u1},receiver_id.eq.${u2}),and(sender_id.eq.${u2},receiver_id.eq.${u1})`)
-          .gt('created_at', invite.created_at) // Only see new messages
-          .order('created_at', { ascending: true });
-        
-        if (!mErr && msgs) {
-          thirdPartyMsgs = [...thirdPartyMsgs, ...msgs];
-        }
-      }
-    }
-
-    const allMsgs = [...(directMsgs || []), ...thirdPartyMsgs];
-    // Remove duplicates and sort
-    const uniqueMsgs = Array.from(new Map(allMsgs.map(m => [m.id, m])).values());
-    uniqueMsgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-    return uniqueMsgs.map(msg => ({
+    return (msgs || []).map(msg => ({
       id: msg.id,
       senderId: msg.sender_id,
       receiverId: msg.receiver_id,
@@ -1213,10 +1201,10 @@ export const SupabaseService = {
       mediaType: msg.media_type,
       expiresAt: msg.expires_at ? new Date(msg.expires_at).getTime() : undefined,
       createdAt: new Date(msg.created_at).getTime(),
-      replyTo: msg.reply_to,
-      replyToContent: msg.reply_to_content,
       isSeen: msg.is_seen,
-      seenAt: msg.seen_at ? new Date(msg.seen_at).getTime() : undefined
+      seenAt: msg.seen_at ? new Date(msg.seen_at).getTime() : undefined,
+      replyTo: msg.reply_to,
+      replyToContent: msg.reply_to_content
     }));
   },
 
@@ -1425,16 +1413,7 @@ export const SupabaseService = {
         schema: 'public', 
         table: 'messages'
       }, (payload) => {
-        const msg = payload.new;
-        if (msg && (msg.sender_id === userId || msg.receiver_id === userId || msg.receiver_id === null)) {
-          callback({
-            id: msg.id,
-            senderId: msg.sender_id,
-            receiverId: msg.receiver_id,
-            content: msg.content,
-            createdAt: msg.created_at
-          });
-        }
+        callback(payload);
       })
       .subscribe();
   },

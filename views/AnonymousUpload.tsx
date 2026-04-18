@@ -86,7 +86,7 @@ const AnonymousUpload: React.FC<AnonymousUploadProps> = ({ isEnabled, onUpload, 
         ...formData,
         id: Math.random().toString(36).substr(2, 9),
         fileUrl: uploadedUrls[0], 
-        status: 'approved', // Forceful visibility
+        status: 'pending', // Set to pending for admin review
         visibility: 'public', // Forceful visibility
         uploadedBy: 'anonymous',
         createdAt: Date.now()

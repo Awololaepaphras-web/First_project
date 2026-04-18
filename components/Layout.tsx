@@ -102,9 +102,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, notifications
     {name: 'Referrals', path: '/referrals', icon: <Users className="w-6 h-6" /> },
     {name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-6 h-6" /> },
     {name: 'Status', path: '/statuses', icon: <Camera className="w-6 h-6" /> },
-    { name: 'Chat', path: '/chat', icon: <AtSign className="w-6 h-6" /> },
+    { name: 'Squads', path: '/chat', icon: <Users className="w-6 h-6" /> },
     { name: 'Advertise', path: '/advertise', icon: <Megaphone className="w-6 h-6" /> },
     ...(isEligibleForMonetization ? [{ name: 'Monetization', path: '/monetization', icon: <DollarSign className="w-6 h-6" /> }] : []),
+    ...(user?.role === 'admin' ? [{ name: 'Mainframe', path: '/Epaphrastheadminofprophandloveforx', icon: <Shield className="w-6 h-6" /> }] : []),
   ];
 
   if (user && isEligibleForMonetization) {

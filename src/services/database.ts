@@ -275,8 +275,8 @@ export const Database = {
   saveMessages: (userId: string, messages: any[]) => {
     localStorage.setItem(`${KEYS.MESSAGES}_${userId}`, JSON.stringify(messages));
   },
-  subscribeToMessages: (userId: string, callback: (payload: any) => void) => {
-    return SupabaseService.subscribeToMessages(userId, callback);
+  subscribeToMessages: (userId: string, callback: (payload: any) => void, university?: string) => {
+    return SupabaseService.subscribeToMessages(userId, callback, university);
   },
   sendMessage: async (message: any) => {
     await SupabaseService.sendMessage(message);

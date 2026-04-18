@@ -195,6 +195,7 @@ export interface PastQuestion {
   type: 'document' | 'image';
   status: 'pending' | 'approved' | 'rejected' | 'archived';
   uploadedBy: string;
+  userName?: string;
   createdAt: number;
   reviews?: { userId: string; rating: number; comment: string; createdAt: number }[];
   intelData?: any;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Send, Mic, Video, Image as ImageIcon, X, 
   Phone, PhoneOff, Trash2, User as UserIcon, 
-  MoreVertical, Check, CheckCheck, Plus, 
+  MoreVertical, Check, CheckCheck, Plus, Users,
   ArrowLeft, Paperclip, Smile, Ghost, AlertCircle,
   UserPlus, Settings as SettingsIcon
 } from 'lucide-react';

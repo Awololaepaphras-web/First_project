@@ -845,12 +845,14 @@ export const SupabaseService = {
     return (data || []).map(s => ({
       id: s.id,
       userId: s.user_id,
-      userName: s.users?.name || 'Unknown',
-      userAvatar: s.users?.profile_picture,
-      mediaUrl: s.image_url,
-      mediaType: 'image',
+      userName: s.users?.name || s.user_name || 'Unknown',
+      userAvatar: s.users?.profile_picture || s.user_avatar,
+      userNickname: s.user_nickname,
+      university: s.university,
+      mediaUrl: s.media_url,
+      mediaType: s.media_type || 'image',
       caption: s.caption,
-      renewed: s.renewal_count > 0,
+      renewed: (s.renewed_count || 0) > 0,
       expiresAt: new Date(s.expires_at).getTime(),
       createdAt: new Date(s.created_at).getTime()
     }));
@@ -1405,17 +1407,55 @@ export const SupabaseService = {
     return (data || []).map(u => this.mapUser(u));
   },
 
-  subscribeToMessages(userId: string, callback: (payload: any) => void) {
+  subscribeToMessages(userId: string, callback: (payload: any) => void, university?: string) {
+    const channelName = university ? `realtime:messages:${university}:${userId}` : `realtime:messages:${userId}`;
     return supabase
-      .channel(`realtime:messages:${userId}`)
+      .channel(channelName)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'messages'
       }, (payload) => {
+        // If university specified, filter by receiver_id or sender_id's uni (already handled by RLS, but for client state:)
         callback(payload);
       })
       .subscribe();
+  },
+
+  async getAdvertisements(): Promise<Advertisement[]> {
+    const { data, error } = await supabase.from('ads').select('*').eq('status', 'active');
+    if (error) return [];
+    return (data || []).map(ad => ({
+      id: ad.id,
+      title: ad.title,
+      type: ad.type,
+      adTypes: ad.ad_types || [ad.ad_type],
+      placements: ad.placements || [ad.placement],
+      mediaUrl: ad.media_url,
+      duration: ad.duration,
+      link: ad.link,
+      targetLocation: ad.target_location,
+      status: ad.status,
+      createdAt: new Date(ad.created_at).getTime()
+    } as any));
+  },
+
+  async getTasks(): Promise<EarnTask[]> {
+    const { data, error } = await supabase.from('earn_tasks').select('*');
+    if (error) return [];
+    return data || [];
+  },
+
+  async getColleges(): Promise<any[]> {
+    const { data, error } = await supabase.from('colleges').select('*');
+    if (error) return [];
+    return data || [];
+  },
+
+  async getUniversities(): Promise<University[]> {
+    const { data, error } = await supabase.from('universities').select('*');
+    if (error) return [];
+    return data || [];
   },
 
   // Blocking & Reporting
@@ -1507,9 +1547,9 @@ export const SupabaseService = {
     if (error) console.error('Error deleting status:', error);
   },
 
-  async getStatusPanelData() {
+  async getStatusPanelData(university?: string) {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('statuses')
         .select(`
           *,
@@ -1519,8 +1559,13 @@ export const SupabaseService = {
             nickname,
             profile_picture
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      if (university) {
+        query = query.eq('university', university);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       return (data || []).map(s => ({

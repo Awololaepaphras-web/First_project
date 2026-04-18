@@ -147,6 +147,8 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
+  const [nodePosts, setNodePosts] = useState<Post[]>([]);
+  const [loadingNode, setLoadingNode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -173,9 +175,24 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
       };
       fetchTopChats();
     }
-  }, [activeTab]);
+    
+    if (activeTab === 'node') {
+      const fetchNodeFeed = async () => {
+        setLoadingNode(true);
+        try {
+          const data = await SupabaseService.getUniversityFeed(user.university);
+          setNodePosts(data);
+        } catch (err) {
+          console.error("Failed to fetch node feed:", err);
+        } finally {
+          setLoadingNode(false);
+        }
+      };
+      fetchNodeFeed();
+    }
+  }, [activeTab, user.university]);
 
-  const filteredPosts = posts.filter(p => {
+  const filteredPosts = (activeTab === 'node' ? nodePosts : posts).filter(p => {
     const matchesSearch = p.userName.toLowerCase().includes(searchQuery.toLowerCase()) || 
       p.userNickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.content.toLowerCase().includes(searchQuery.toLowerCase());
@@ -190,9 +207,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
     if (activeTab === 'following') {
       return matchesSearch && matchesTrend && user.following?.includes(p.userId);
     }
-    if (activeTab === 'node') {
-      return matchesSearch && matchesTrend && p.userUniversity === user.university;
-    }
+    // No longer need local filtering for node as we fetch it explicitly
     return matchesSearch && matchesTrend;
   });
 
@@ -426,6 +441,13 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
           {activeTab === 'trends' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
       </div>
+
+      {loadingNode && (
+        <div className="p-4 border-b border-brand-border flex items-center justify-center gap-2">
+          <Loader2 className="w-4 h-4 text-brand-proph animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted italic">Synchronizing Node Feed...</span>
+        </div>
+      )}
 
       <div className="p-4 border-b border-brand-border">
         <div className="flex gap-4">

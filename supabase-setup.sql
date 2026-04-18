@@ -482,10 +482,16 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Posts Policies
-CREATE POLICY "Posts are viewable by university node" ON public.posts FOR SELECT 
+CREATE POLICY "Strict University Isolation" ON public.posts FOR SELECT 
 USING (
-  visibility = 'public' OR 
-  (visibility = 'node_only' AND user_university = (SELECT university FROM public.users WHERE id = auth.uid()))
+  (visibility = 'public' AND university IS NULL) -- Global public posts
+  OR
+  (
+    (university = (SELECT u.university FROM public.users u WHERE u.id = auth.uid())) -- Matches caller's uni
+    OR
+    (user_university = (SELECT u.university FROM public.users u WHERE u.id = auth.uid())) -- Matches caller's uni
+  )
+  OR is_admin()
 );
 CREATE POLICY "Authenticated users can create posts" ON public.posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Users can update their own posts" ON public.posts FOR UPDATE USING (auth.uid() = user_id OR is_admin());
@@ -497,7 +503,16 @@ CREATE POLICY "Authenticated users can upload documents" ON public.documents FOR
 CREATE POLICY "Admins can manage documents" ON public.documents FOR ALL USING (is_admin());
 
 -- Messages Policies
-CREATE POLICY "Users can view their own messages" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id OR is_admin());
+CREATE POLICY "Messages Access Control" ON public.messages FOR SELECT 
+USING (
+  auth.uid() = sender_id 
+  OR 
+  auth.uid() = receiver_id 
+  OR 
+  (group_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.group_members WHERE group_id = public.messages.group_id AND user_id = auth.uid()))
+  OR 
+  is_admin()
+);
 CREATE POLICY "Users can send messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
 
 -- Withdrawal Requests Policies

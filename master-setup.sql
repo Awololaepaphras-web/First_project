@@ -177,6 +177,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- B. Global Feed RPC
 DROP FUNCTION IF EXISTS public.fetch_secure_feed(INTEGER, INTEGER);
+-- Function to fetch a secure, personalized feed
 CREATE OR REPLACE FUNCTION public.fetch_secure_feed(limit_count INTEGER, offset_count INTEGER)
 RETURNS SETOF public.posts AS $$
 BEGIN
@@ -184,6 +185,7 @@ BEGIN
     SELECT *
     FROM public.posts
     WHERE visibility = 'public'
+    AND university IS NULL -- EXCLUDE university-specific posts from global feed
     AND status IN ('approved', 'active')
     ORDER BY created_at DESC
     LIMIT limit_count
@@ -195,7 +197,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP FUNCTION IF EXISTS public.fetch_university_feed(TEXT, INTEGER, INTEGER);
 CREATE OR REPLACE FUNCTION public.fetch_university_feed(p_university TEXT, limit_count INTEGER, offset_count INTEGER)
 RETURNS SETOF public.posts AS $$
+DECLARE
+    user_uni TEXT;
 BEGIN
+    -- Get caller's university safely
+    SELECT u.university INTO user_uni FROM public.users u WHERE u.id = auth.uid();
+    
+    -- Strict isolation check: caller must belong to the university they are requesting
+    IF user_uni != p_university AND NOT public.is_admin() THEN
+        RAISE EXCEPTION 'Access Denied: You do not belong to this university node.';
+    END IF;
+
     RETURN QUERY
     SELECT *
     FROM public.posts

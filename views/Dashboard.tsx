@@ -67,6 +67,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
            <button onClick={() => navigate('/community')} className="bg-gray-900 dark:bg-white dark:text-black text-white font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:brightness-110 transition-all shadow-xl">
              <MessageSquareCode className="w-4 h-4" /> Peer Link
            </button>
+           <button onClick={() => navigate('/university-feed')} className="bg-brand-proph text-black font-black px-8 py-3 rounded-full text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-brand-proph/20">
+             <GraduationCap className="w-4 h-4" /> Campus Node
+           </button>
         </div>
       </div>
 

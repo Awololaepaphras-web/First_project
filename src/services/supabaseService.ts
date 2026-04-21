@@ -598,7 +598,7 @@ export const SupabaseService = {
 
   async getUniversityFeed(university: string, limit: number = 20, offset: number = 0): Promise<Post[]> {
     try {
-      const { data, error } = await supabase.rpc('fetch_university_feed', {
+      const { data, error } = await supabase.rpc('fetch_university_exclusive_feed', {
         p_university: university,
         limit_count: limit,
         offset_count: offset

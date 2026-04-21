@@ -14,6 +14,7 @@ import { CloudinaryService } from '../src/services/cloudinaryService';
 import { SupabaseService } from '../src/services/supabaseService';
 import { useRealtimeFeed } from '../src/services/useRealtimeFeed';
 import { Lightbox } from '../src/components/Lightbox';
+import StatusPanel from '../src/components/StatusPanel';
 
 interface CommunityProps {
   user: User;
@@ -410,6 +411,8 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
             </div>
          </div>
       </div>
+      
+      <StatusPanel currentUser={user} />
 
       <div className="flex border-b border-brand-border sticky top-[73px] lg:top-[81px] z-30 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md">
         <button 

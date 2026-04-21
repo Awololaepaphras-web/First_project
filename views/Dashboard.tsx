@@ -5,23 +5,31 @@ import {
   ChevronDown, Info, Layers, BookOpen, ExternalLink, Megaphone,
   Trophy, Star, Award, Clock, Brain, Upload, Users, Lock, ChevronRight,
   GraduationCap, Zap, LayoutGrid, List, Plus, Wallet, Database,
-  Swords, Shield, Heart, Activity, Camera, Book, ListChecks, Coins, Flame
+  Swords, Shield, Heart, Activity, Camera, Book, ListChecks, Coins, Flame, Repeat2
 } from 'lucide-react';
-import { User, PastQuestion, Announcement, Badge, Advertisement, SystemConfig } from '../types';
+import { User, PastQuestion, Announcement, Badge, Advertisement, SystemConfig, Post } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
 import { CloudinaryService } from '../src/services/cloudinaryService';
 import StatusPanel from '../src/components/StatusPanel';
+import { motion } from 'motion/react';
 
 interface DashboardProps {
   user: User;
   questions: PastQuestion[];
+  posts: Post[];
   announcements?: Announcement[];
   activeBadges: Badge[];
   globalAds: Advertisement[];
   config: SystemConfig;
+  onLike: (id: string) => void;
+  onRepost: (id: string) => void;
+  onComment: (id: string, text: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = [], activeBadges = [], globalAds, config }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+  user, questions, posts, announcements = [], activeBadges = [], 
+  globalAds, config, onLike, onRepost, onComment 
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -74,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
       </div>
 
       {/* Retention Status Panel */}
-      <StatusPanel currentUser={user} />
+      <StatusPanel currentUser={user} hideUpload={true} />
 
       {/* Metrics (Slidable on Mobile) */}
        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-6 overflow-x-auto no-scrollbar snap-x p-1">
@@ -152,6 +160,46 @@ const Dashboard: React.FC<DashboardProps> = ({ user, questions, announcements = 
           </div>
         </div>
       )}
+
+      {/* Parallel Universe Stream */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-1">
+            <h2 className="text-xl font-black italic uppercase tracking-widest flex items-center gap-2 text-gray-900 dark:text-white">
+               <Activity className="w-5 h-5 text-brand-proph" /> Parallel Universe Stream
+            </h2>
+            <Link to="/community" className="text-[10px] font-black uppercase text-brand-proph hover:underline tracking-widest italic">View Infinite Stream &rarr;</Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {posts
+            .filter(p => !p.university || p.university === 'Global')
+            .slice(0, 4)
+            .map(post => (
+              <div key={post.id} className="bg-white dark:bg-brand-card border border-brand-border p-6 rounded-[2rem] shadow-xl hover:border-brand-proph/30 transition-all group">
+                <div className="flex items-center gap-3 mb-4">
+                  <img src={post.userAvatar || `https://picsum.photos/seed/${post.userName}/200`} className="w-10 h-10 rounded-full border border-brand-border" alt="" referrerPolicy="no-referrer" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-gray-900 dark:text-white leading-none truncate">{post.userName}</p>
+                    <p className="text-[10px] font-medium text-brand-muted mt-1 lowercase truncate">@{post.userNickname}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 mb-4 italic leading-relaxed">"{post.content}"</p>
+                <div className="flex items-center gap-6 pt-4 border-t border-brand-border">
+                  <button onClick={() => onLike(post.id)} className="flex items-center gap-1.5 text-brand-muted hover:text-brand-proph transition-colors group/btn">
+                    <Heart className={`w-4 h-4 ${(post.likes || []).includes(user.id) ? 'fill-brand-proph text-brand-proph' : ''} group-hover/btn:scale-110 transition-transform`} />
+                    <span className="text-[10px] font-black tracking-widest">{(post.likes || []).length}</span>
+                  </button>
+                  <button onClick={() => navigate(`/post/${post.id}`)} className="flex items-center gap-1.5 text-brand-muted hover:text-brand-proph transition-colors group/btn">
+                    <MessageSquareCode className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                    <span className="text-[10px] font-black tracking-widest">{(post.comments || []).length}</span>
+                  </button>
+                  <button onClick={() => onRepost(post.id)} className="flex items-center gap-1.5 text-brand-muted hover:text-brand-proph transition-colors group/btn">
+                    <Repeat2 className={`w-4 h-4 ${(post.reposts || []).includes(user.id) ? 'text-brand-proph stroke-[3px]' : ''} group-hover/btn:scale-110 transition-transform`} />
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
 
       <div className="flex items-center justify-between border-b border-brand-border pb-6 mt-12">
          <div className="flex items-center gap-4">

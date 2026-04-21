@@ -5,7 +5,7 @@ import { CloudinaryService } from '../services/cloudinaryService';
 import { SupabaseService } from '../services/supabaseService';
 import { Heart, MessageCircle, Repeat2, Share2, Image as ImageIcon, Loader2, ShieldCheck, MoreHorizontal, X, Coins, Send, BarChart2, Plus, Trash2, Edit3, Clock } from 'lucide-react';
 import { User, Advertisement, AdTimeFrame, Post, PostComment, Report, Poll, PollOption, Status } from '../../types';
-import StatusFeed from '../components/StatusFeed';
+import StatusPanel from '../components/StatusPanel';
 
 interface UniversityFeedProps {
   user: User;
@@ -456,19 +456,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
       </div>
 
       {/* University Stories */}
-      <div className="border-b border-gray-200 dark:border-brand-border h-40 overflow-hidden bg-gray-50/50 dark:bg-brand-black">
-        <StatusFeed 
-          user={user} 
-          statuses={statuses} 
-          onStatusAdded={() => {
-            const fetchStatuses = async () => {
-              const data = await SupabaseService.getStatuses(user.university);
-              setStatuses(data);
-            };
-            fetchStatuses();
-          }} 
-        />
-      </div>
+      <StatusPanel currentUser={user} />
 
       {/* Post Box */}
       <div className="p-4 border-b border-gray-200 dark:border-brand-border">

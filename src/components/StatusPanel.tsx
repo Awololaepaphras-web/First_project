@@ -33,9 +33,10 @@ interface StatusItem {
 
 interface StatusPanelProps {
   currentUser: User;
+  hideUpload?: boolean;
 }
 
-const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
+const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser, hideUpload = false }) => {
   const [statuses, setStatuses] = useState<StatusItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState<StatusItem | null>(null);
@@ -126,39 +127,41 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
     <div className="w-full bg-white dark:bg-brand-black p-4 rounded-3xl border border-gray-100 dark:border-brand-border shadow-sm overflow-hidden">
       <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-2">
         {/* Add Status Button */}
-        <div className="flex flex-col items-center gap-2 flex-shrink-0">
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="w-16 h-16 rounded-full border-2 border-dashed border-brand-proph flex items-center justify-center cursor-pointer hover:bg-brand-proph/5 transition-all relative group"
-          >
-            {isUploading ? (
-              <RefreshCw className="w-6 h-6 text-brand-proph animate-spin" />
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-brand-card">
-                  {currentUser.profilePicture ? (
-                    <img src={currentUser.profilePicture} className="w-full h-full object-cover" alt="" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center font-black text-brand-muted">
-                      {currentUser.name.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="absolute bottom-0 right-0 w-6 h-6 bg-brand-proph rounded-full flex items-center justify-center border-2 border-white dark:border-brand-black group-hover:scale-110 transition-transform">
-                  <Plus className="w-4 h-4 text-black" />
-                </div>
-              </>
-            )}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*,video/*" 
-              onChange={handleFileSelect}
-            />
+        {!hideUpload && (
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-16 h-16 rounded-full border-2 border-dashed border-brand-proph flex items-center justify-center cursor-pointer hover:bg-brand-proph/5 transition-all relative group"
+            >
+              {isUploading ? (
+                <RefreshCw className="w-6 h-6 text-brand-proph animate-spin" />
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-brand-card">
+                    {currentUser.profilePicture ? (
+                      <img src={currentUser.profilePicture} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-black text-brand-muted">
+                        {currentUser.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-brand-proph rounded-full flex items-center justify-center border-2 border-white dark:border-brand-black group-hover:scale-110 transition-transform">
+                    <Plus className="w-4 h-4 text-black" />
+                  </div>
+                </>
+              )}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*,video/*" 
+                onChange={handleFileSelect}
+              />
+            </div>
+            <span className="text-[10px] font-black uppercase italic tracking-tighter text-brand-muted">Post</span>
           </div>
-          <span className="text-[10px] font-black uppercase italic tracking-tighter text-brand-muted">Post</span>
-        </div>
+        )}
 
         {/* Status List */}
         {sortedUserIds.map(userId => {

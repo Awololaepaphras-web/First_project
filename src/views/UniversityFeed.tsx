@@ -450,7 +450,7 @@ export default function UniversityFeed({ user, globalAds = [], onUpdateUser }: U
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md p-4 border-b border-gray-200 dark:border-brand-border">
         <div className="flex flex-col">
-          <h1 className="text-xl font-bold">University Feed</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white uppercase italic tracking-tighter">University Parallel Universe</h1>
           <p className="text-xs text-brand-proph font-black uppercase tracking-widest">{user.university}</p>
         </div>
       </div>

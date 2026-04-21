@@ -11,7 +11,8 @@ import {
   ChevronRight, 
   X,
   RefreshCw,
-  Lock
+  Lock,
+  Send
 } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
 import { CloudinaryService } from '../services/cloudinaryService';
@@ -39,6 +40,8 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState<StatusItem | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<{ file: File, url: string, type: 'image' | 'video' } | null>(null);
+  const [statusCaption, setStatusCaption] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,14 +55,23 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
     setLoading(false);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const type = file.type.startsWith('video') ? 'video' : 'image';
+    const url = URL.createObjectURL(file);
+    setPendingStatus({ file, url, type });
+  };
+
+  const handleFileUpload = async () => {
+    if (!pendingStatus) return;
 
     setIsUploading(true);
     try {
-      const url = await CloudinaryService.uploadStatus(file);
-      await SupabaseService.saveStatusPanelItem(currentUser.id, url);
+      const url = await CloudinaryService.uploadStatus(pendingStatus.file);
+      await SupabaseService.saveStatusPanelItem(currentUser.id, url, pendingStatus.type, statusCaption);
+      setPendingStatus(null);
+      setStatusCaption('');
       await loadStatuses();
     } catch (error) {
       console.error('Upload failed:', error);
@@ -142,7 +154,7 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
               ref={fileInputRef} 
               className="hidden" 
               accept="image/*,video/*" 
-              onChange={handleFileUpload}
+              onChange={handleFileSelect}
             />
           </div>
           <span className="text-[10px] font-black uppercase italic tracking-tighter text-brand-muted">Post</span>
@@ -312,6 +324,74 @@ const StatusPanel: React.FC<StatusPanelProps> = ({ currentUser }) => {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Upload Preview Modal (WhatsApp Style) */}
+      <AnimatePresence>
+        {pendingStatus && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4"
+          >
+            <div className="relative w-full max-w-lg h-[85vh] bg-gray-900 rounded-[3rem] overflow-hidden shadow-2xl flex flex-col">
+              <div className="absolute top-6 left-6 right-6 z-10 flex justify-between items-center">
+                <button 
+                  onClick={() => setPendingStatus(null)}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <span className="text-[10px] font-black uppercase text-white/40 tracking-[0.3em] font-mono">Status Preview</span>
+                <div className="w-12 h-12" /> {/* Spacer */}
+              </div>
+
+              <div className="flex-grow flex items-center justify-center p-4">
+                {pendingStatus.type === 'video' ? (
+                  <video src={pendingStatus.url} className="max-w-full max-h-[60vh] rounded-2xl" autoPlay muted loop />
+                ) : (
+                  <img src={pendingStatus.url} className="max-w-full max-h-[60vh] rounded-2xl object-contain shadow-2xl" alt="" />
+                )}
+              </div>
+
+              <div className="p-8 bg-gradient-to-t from-black to-transparent">
+                <div className="flex flex-col gap-6">
+                  <div className="relative group">
+                    <input 
+                      type="text"
+                      placeholder="Add a caption..."
+                      value={statusCaption}
+                      onChange={(e) => setStatusCaption(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 focus:border-brand-proph/50 rounded-2xl px-6 py-4 text-white text-lg outline-none transition-all placeholder:text-white/20"
+                    />
+                    <div className="absolute inset-0 rounded-2xl bg-brand-proph/5 blur-xl group-focus-within:opacity-100 opacity-0 transition-opacity pointer-events-none" />
+                  </div>
+
+                  <button 
+                    onClick={handleFileUpload}
+                    disabled={isUploading}
+                    className="w-full bg-brand-proph text-black h-16 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-xl shadow-brand-proph/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                  >
+                    {isUploading ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        Synchronizing Brain...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        Share Intel
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <p className="mt-8 text-brand-muted font-black uppercase tracking-[0.4em] text-[10px] animate-pulse">Encrypted End-to-End Persistence</p>
           </motion.div>
         )}
       </AnimatePresence>

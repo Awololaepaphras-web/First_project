@@ -16,32 +16,67 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
-
-  // Monetization Constants
-  const ELIGIBILITY = {
-    POINTS_FOLLOWERS: 700,
-    MONETIZATION_FOLLOWERS: 1000,
-    IMPRESSIONS_3_MONTHS: 2500000, // 2.5M (Half of 5M)
-  };
-
-  const RATES = {
-    CPM_NGN: 450, // 450 Naira per 1000 impressions
-    ENGAGEMENT_MULTIPLIER: 5.0, // Base multiplier for engagement
+  // Global fallbacks for linter safety (populated dynamically in routes)
+  let RATES = {
+    CPM_NGN: 450,
+    ENGAGEMENT_MULTIPLIER: 5.0,
     REPLIES_WEIGHT: 5.0,
     REPOSTS_WEIGHT: 2.5,
     LIKES_WEIGHT: 1.0,
-    USD_TO_NGN: 1600, // Exchange rate
+    USD_TO_NGN: 1600
   };
 
-  // Mock Database (In-memory for demo)
-  // In a real app, this would be a real DB like PostgreSQL or MongoDB
-  let creatorStats: Record<string, any> = {};
+  app.use(express.json());
+
+  // Monetization Constants (Dynamically updated from DB where possible)
+  const getSystemConfig = async () => {
+    const { data } = await supabase.from('system_config').select('config').eq('id', 'default').single();
+    return data?.config || {};
+  };
+
+  const getMonetizationConfig = async () => {
+    const config = await getSystemConfig();
+    const rates = {
+      CPM_NGN: config.earnRates?.adClick || 450,
+      ENGAGEMENT_MULTIPLIER: config.engagementWeights?.multiplier || 5.0,
+      REPLIES_WEIGHT: config.engagementWeights?.replies || 5.0,
+      REPOSTS_WEIGHT: config.engagementWeights?.reposts || 2.5,
+      LIKES_WEIGHT: config.engagementWeights?.likes || 1.0,
+      USD_TO_NGN: config.exchangeRates?.usdToNgn || 1600,
+    };
+    const eligibility = {
+      POINTS_FOLLOWERS: config.eligibility?.pointsFollowers || 700,
+      MONETIZATION_FOLLOWERS: config.eligibility?.monetizationFollowers || 1000,
+      IMPRESSIONS_3_MONTHS: config.eligibility?.impressionsTarget || 2500000,
+    };
+    return { rates, eligibility };
+  };
+
+  // Monetization persistence logic (Replacing in-memory creatorStats)
+  const getMonetizationStats = async (userId: string, defaultImpArr = 0) => {
+    const { data: stats, error } = await supabase
+      .from('user_monetization')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      // Create record if missing
+      const { data: newStats } = await supabase
+        .from('user_monetization')
+        .insert([{ user_id: userId, total_impressions: defaultImpArr }])
+        .select()
+        .single();
+      return newStats || { total_earnings_ngn: 0, pending_balance_ngn: 0, points_earned: 0, total_impressions: defaultImpArr };
+    }
+    return stats;
+  };
 
   // API Routes
-  app.get("/api/monetization/status/:userId", (req, res) => {
+  app.get("/api/monetization/status/:userId", async (req, res) => {
     const { userId } = req.params;
     const { followers, impressions } = req.query;
+    const { rates: RATES, eligibility: ELIGIBILITY } = await getMonetizationConfig();
     
     const followersCount = parseInt(followers as string) || 0;
     const impressionsCount = parseInt(impressions as string) || 0;
@@ -49,35 +84,25 @@ async function startServer() {
     const isEligibleForPoints = followersCount >= ELIGIBILITY.POINTS_FOLLOWERS;
     const isMonetized = followersCount >= ELIGIBILITY.MONETIZATION_FOLLOWERS && impressionsCount >= ELIGIBILITY.IMPRESSIONS_3_MONTHS;
 
-    if (!creatorStats[userId]) {
-      creatorStats[userId] = {
-        totalEarningsNGN: 0,
-        pendingBalanceNGN: 0,
-        pointsEarned: 0,
-        history: []
-      };
-    }
-
-    const stats = creatorStats[userId];
+    const stats = await getMonetizationStats(userId, impressionsCount);
     
     res.json({
       userId,
       isMonetized,
       isEligibleForPoints,
-      totalEarningsNGN: stats.totalEarningsNGN,
-      pendingBalanceNGN: stats.pendingBalanceNGN,
-      pointsEarned: stats.pointsEarned,
-      impressionsLast3Months: impressionsCount,
+      totalEarningsNGN: stats.total_earnings_ngn,
+      pendingBalanceNGN: stats.pending_balance_ngn,
+      pointsEarned: stats.points_earned,
+      impressionsLast3Months: stats.total_impressions,
       eligibility: ELIGIBILITY,
       rates: RATES
     });
   });
 
-  app.post("/api/monetization/calculate", (req, res) => {
+  app.post("/api/monetization/calculate", async (req, res) => {
     const { userId, postStats } = req.body;
-    if (!creatorStats[userId]) {
-      creatorStats[userId] = { totalEarningsNGN: 0, pendingBalanceNGN: 0, pointsEarned: 0, history: [] };
-    }
+    const stats = await getMonetizationStats(userId);
+    const { rates: RATES } = await getMonetizationConfig();
 
     const { impressions, likes, replies, reposts = 0 } = postStats;
     
@@ -86,7 +111,7 @@ async function startServer() {
     const engagementRatio = impressions > 0 ? engagement / impressions : 0;
     
     let earnings = 0;
-    if (engagementRatio <= 0.8) { // Slightly more lenient for high engagement
+    if (engagementRatio <= 0.8) { 
       const monetizationScore = 
         (replies * RATES.REPLIES_WEIGHT) + 
         (reposts * RATES.REPOSTS_WEIGHT) + 
@@ -98,17 +123,23 @@ async function startServer() {
       earnings = baseRevenue + engagementRevenue;
     }
 
-    creatorStats[userId].pendingBalanceNGN += earnings;
-    creatorStats[userId].totalEarningsNGN += earnings;
-    
     // Points calculation (1 point per 100 Naira earned)
     const newPoints = Math.floor(earnings / 100);
-    creatorStats[userId].pointsEarned += newPoints;
+
+    // Update DB
+    await supabase.rpc('update_monetization_earnings', {
+      p_user_id: userId,
+      p_impressions: impressions,
+      p_earnings_ngn: earnings,
+      p_points_earned: newPoints
+    });
+
+    const updatedStats = await getMonetizationStats(userId);
 
     res.json({
       earnings,
       newPoints,
-      totalBalance: creatorStats[userId].pendingBalanceNGN,
+      totalBalance: updatedStats.pending_balance_ngn,
       breakdown: {
         base: (impressions / 1000) * RATES.CPM_NGN,
         engagement: (replies * RATES.REPLIES_WEIGHT + reposts * RATES.REPOSTS_WEIGHT + likes * RATES.LIKES_WEIGHT) * RATES.ENGAGEMENT_MULTIPLIER
@@ -116,28 +147,47 @@ async function startServer() {
     });
   });
 
-  app.post("/api/monetization/payout", (req, res) => {
+  app.post("/api/monetization/payout", async (req, res) => {
     const { userId, amount, bankDetails } = req.body;
-    if (!creatorStats[userId] || creatorStats[userId].pendingBalanceNGN < amount) {
+    const stats = await getMonetizationStats(userId);
+
+    if (!stats || stats.pending_balance_ngn < amount) {
       return res.status(400).json({ error: "Insufficient balance" });
     }
 
-    creatorStats[userId].pendingBalanceNGN -= amount;
-    creatorStats[userId].history.push({
-      id: Math.random().toString(36).substr(2, 9),
-      amount,
-      date: Date.now(),
-      status: 'processed',
-      bankDetails
-    });
+    // 1. Log Withdrawal Request in DB
+    const { error: withdrawErr } = await supabase
+      .from('withdrawal_requests')
+      .insert([{
+        user_id: userId,
+        user_name: 'Creator Payout', // Simplified
+        amount: amount,
+        bank_name: bankDetails.bankName,
+        account_number: bankDetails.accountNumber,
+        account_name: bankDetails.accountName,
+        status: 'pending'
+      }]);
 
-    res.json({ success: true, balance: creatorStats[userId].pendingBalanceNGN });
+    if (withdrawErr) return res.status(500).json({ error: "Payout logging failed" });
+
+    // 2. Reduce pending balance
+    await supabase
+      .from('user_monetization')
+      .update({ 
+        pending_balance_ngn: stats.pending_balance_ngn - amount,
+        last_payout_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+
+    res.json({ success: true, balance: stats.pending_balance_ngn - amount });
   });
 
   // Admin Routes
-  app.get("/api/admin/stats", (req, res) => {
+  app.get("/api/admin/stats", async (req, res) => {
+    const { count } = await supabase.from('user_monetization').select('*', { count: 'exact', head: true });
+    const { rates: RATES, eligibility: ELIGIBILITY } = await getMonetizationConfig();
     res.json({
-      totalCreators: Object.keys(creatorStats).length,
+      totalCreators: count,
       rates: RATES,
       eligibility: ELIGIBILITY
     });

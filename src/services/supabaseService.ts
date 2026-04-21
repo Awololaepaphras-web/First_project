@@ -565,10 +565,10 @@ export const SupabaseService = {
     return (data || []).map(u => this.mapUser(u));
   },
 
-  // Feed
+  // Feed (Parallel Universe / Global)
   async getFeed(limit: number = 20, offset: number = 0): Promise<Post[]> {
     try {
-      const { data, error } = await supabase.rpc('fetch_secure_feed', {
+      const { data, error } = await supabase.rpc('fetch_parallel_universe_feed', {
         limit_count: limit,
         offset_count: offset
       });
@@ -649,6 +649,31 @@ export const SupabaseService = {
     return data;
   },
 
+  async claimDailyPremiumReward() {
+    const { data, error } = await supabase.rpc('claim_daily_premium_reward');
+    if (error) throw error;
+    return data;
+  },
+
+  async getMonetizationStats(userId: string) {
+    const { data, error } = await supabase
+      .from('user_monetization')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    return { data, error };
+  },
+
+  async updateMonetizationEarnings(userId: string, impressions: number, earnings: number, points: number) {
+    const { error } = await supabase.rpc('update_monetization_earnings', {
+      p_user_id: userId,
+      p_impressions: impressions,
+      p_earnings_ngn: earnings,
+      p_points_earned: points
+    });
+    return { error };
+  },
+
   mapPost(p: any): Post {
     return {
       ...p,
@@ -685,6 +710,7 @@ export const SupabaseService = {
       visibility: visibility || 'public',
       is_edited: isEdited || false,
       ad_id: adId,
+      status: 'approved',
       poll: poll || null,
       stats: stats || { linkClicks: 0, profileClicks: 0, mediaViews: 0, detailsExpanded: 0, impressions: 0 }
     };
@@ -1440,23 +1466,8 @@ export const SupabaseService = {
     } as any));
   },
 
-  async getTasks(): Promise<EarnTask[]> {
-    const { data, error } = await supabase.from('earn_tasks').select('*');
-    if (error) return [];
-    return data || [];
-  },
-
-  async getColleges(): Promise<any[]> {
-    const { data, error } = await supabase.from('colleges').select('*');
-    if (error) return [];
-    return data || [];
-  },
-
-  async getUniversities(): Promise<University[]> {
-    const { data, error } = await supabase.from('universities').select('*');
-    if (error) return [];
-    return data || [];
-  },
+  // Remove duplicate/thin definitions to resolve linter errors
+  // Duplicate getTasks, getColleges, getUniversities removed here
 
   // Blocking & Reporting
   async blockUser(userId: string, targetId: string) {
@@ -1586,10 +1597,12 @@ export const SupabaseService = {
     }
   },
 
-  async saveStatusPanelItem(userId: string, url: string) {
+  async saveStatusPanelItem(userId: string, url: string, mediaType: string = 'image', caption?: string) {
     try {
       const { data, error } = await supabase.rpc('handle_status_update', {
-        p_url: url
+        p_url: url,
+        p_media_type: mediaType,
+        p_caption: caption
       });
       if (error) throw error;
       return data;
@@ -1627,14 +1640,15 @@ export const SupabaseService = {
     }
   },
 
-  // Secure Reply
-  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, parentId?: string) {
+  // Secure Post/Reply
+  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, parentId?: string, isParallel: boolean = false) {
     try {
       const { data, error } = await supabase.rpc('create_post_v2', {
         p_content: content,
         p_media_url: mediaUrl,
         p_media_type: mediaType,
-        p_parent_id: parentId
+        p_parent_id: parentId,
+        p_is_parallel: isParallel
       });
       if (error) throw error;
       return data;

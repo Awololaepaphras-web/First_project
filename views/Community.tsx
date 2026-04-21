@@ -382,7 +382,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
   return (
     <div className="w-full max-w-full mx-auto border-x border-brand-border min-h-screen bg-white dark:bg-brand-black pb-32">
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-brand-black/80 backdrop-blur-md border-b border-brand-border p-4 flex items-center justify-between gap-4">
-         <h2 className="text-xl font-black italic tracking-tighter uppercase whitespace-nowrap text-gray-900 dark:text-white">Social Hub</h2>
+         <h2 className="text-xl font-black italic tracking-tighter uppercase whitespace-nowrap text-gray-900 dark:text-white">Parallel Universe</h2>
          <div className="relative flex-grow max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted" />
             <input 
@@ -416,7 +416,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
           onClick={() => setActiveTab('all')}
           className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'all' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
-          All Feeds
+          Infinite Stream
           {activeTab === 'all' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 
@@ -430,7 +430,7 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
           onClick={() => setActiveTab('node')}
           className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'node' ? 'text-brand-proph' : 'text-brand-muted hover:text-gray-900 dark:hover:text-white'}`}
         >
-          My Node
+          Campus Node
           {activeTab === 'node' && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-proph" />}
         </button>
         <button 

@@ -957,28 +957,27 @@ const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !user.premiumTier || user.premiumTier === 'none') return;
+    if (!user || user.status === 'suspended') return;
+    if (!user.isPremium || user.premiumTier === 'none') return;
 
-    const lastRewardDate = localStorage.getItem(`last_reward_${user.id}`);
-    const today = new Date().toDateString();
-
-    if (lastRewardDate !== today) {
-      const rewards = {
-        premium: 1000,
-        premium_plus: 5000,
-        alpha_premium: 15000
-      };
-      const reward = rewards[user.premiumTier as keyof typeof rewards] || 0;
-      if (reward > 0) {
-        const updatedUser = { ...user, points: (user.points || 0) + reward };
-        setUser(updatedUser);
-        SupabaseService.updateUser(updatedUser);
-        localStorage.setItem(`last_reward_${user.id}`, today);
+    const claimReward = async () => {
+      try {
+        const result = await SupabaseService.claimDailyPremiumReward();
+        if (result.success) {
+          // Update local user state with new points
+          const updatedUser = { ...user, points: result.total_points };
+          setUser(updatedUser);
+        }
+      } catch (err) {
+        // Silent fail if already claimed or other DB error
+        console.debug('Reward status:', err);
       }
-    }
+    };
+
+    claimReward();
   }, [user]);
 
-  const handlePost = async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any) => {
+  const handlePost = async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video', parentId?: string, customUser?: any, isParallel: boolean = false) => {
     if (!user && !customUser) return;
     const poster = customUser || user;
     
@@ -991,7 +990,7 @@ const App: React.FC = () => {
     }
 
     try {
-      const result = await SupabaseService.createPostV2(content, mediaUrl, mediaType, parentId);
+      const result = await SupabaseService.createPostV2(content, mediaUrl, mediaType, parentId, isParallel);
       if (result.success) {
         // Update local user points (UI only, DB is handled by RPC)
         if (user && poster.id === user.id) {
@@ -1240,7 +1239,7 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={user ? <Dashboard user={user} questions={questions} activeBadges={[]} globalAds={visibleAds} config={config} /> : <Navigate to="/login" />} />
           <Route path="/post/:id" element={user ? <PostDetail user={user} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onFollow={handleFollow} config={config} /> : <Navigate to="/login" />} />
           <Route path="/profile/:id" element={user ? <Profile currentUser={user} allUsers={allUsers} posts={posts} onFollow={handleFollow} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} config={config} onPost={handlePost} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} onRenewPost={async (id) => {
+          <Route path="/community" element={user ? <Community user={user} allUsers={allUsers} posts={posts} globalAds={visibleAds} config={config} onPost={(c, m, t, p) => handlePost(c, m, t, p, undefined, true)} onLike={(id) => trackEngagement(id, 'like')} onRepost={(id) => trackEngagement(id, 'repost')} onComment={(id, text) => { trackEngagement(id, 'reply', text); }} onLikeComment={()=>{}} onFollow={handleFollow} onDeletePost={handleDeletePost} onEditPost={handleEditPost} onShare={(id) => trackEngagement(id, 'share')} onRenewPost={async (id) => {
             const cost = config.renewPostCost || 50;
             const result = await SupabaseService.renewPost(id, cost);
             if (result.success) {

@@ -514,11 +514,11 @@ export const SupabaseService = {
 
   async getTopPosts(limit: number = 20): Promise<Post[]> {
     const { data, error } = await supabase
-      .from('posts')
+      .from('unified_posts')
       .select('*')
       .eq('status', 'approved')
-      .order('created_at', { ascending: false }) // Initial sort, we'll sort by engagement in JS or via a better query
-      .limit(100); // Fetch more to calculate engagement
+      .order('created_at', { ascending: false }) 
+      .limit(100); 
     
     if (error) {
       console.error('Error fetching top posts:', error);
@@ -537,8 +537,8 @@ export const SupabaseService = {
 
   async getPostById(id: string): Promise<Post | null> {
     const { data, error } = await supabase
-      .from('posts')
-      .select('*, users(name, nickname, profile_picture, university, premium_tier, is_verified, is_sug_verified)')
+      .from('unified_posts')
+      .select('*')
       .eq('id', id)
       .single();
     
@@ -588,7 +588,7 @@ export const SupabaseService = {
         console.error('Error fetching secure feed:', error);
         // Fallback to standard fetch if RPC fails (e.g. during migration)
         const { data: fallbackData, error: fallbackError } = await supabase
-          .from('posts')
+          .from('unified_posts')
           .select('*')
           .eq('visibility', 'public')
           .eq('status', 'approved')

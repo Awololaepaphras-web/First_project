@@ -684,6 +684,7 @@ export const SupabaseService = {
       userAvatar: p.user_avatar,
       mediaUrl: p.media_url,
       mediaType: p.media_type,
+      imageUrl: p.image_url,
       tags: p.tags,
       visibility: p.visibility,
       isEdited: p.is_edited,
@@ -1641,12 +1642,13 @@ export const SupabaseService = {
   },
 
   // Secure Post/Reply
-  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, parentId?: string, isParallel: boolean = false) {
+  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, imageUrl?: string, parentId?: string, isParallel: boolean = false) {
     try {
       const { data, error } = await supabase.rpc('create_post_v2', {
         p_content: content,
         p_media_url: mediaUrl,
         p_media_type: mediaType,
+        p_image_url: imageUrl,
         p_parent_id: parentId,
         p_is_parallel: isParallel
       });

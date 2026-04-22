@@ -56,6 +56,7 @@ export interface Post {
   content: string;
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
+  imageUrl?: string;
   likes: string[];
   comments: PostComment[];
   reposts: string[];

@@ -3,6 +3,8 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
+import cookieParser from "cookie-parser";
+import { createExpressClient } from "./src/utils/supabase/express-server";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +18,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.use(cookieParser());
+  app.use(express.json());
+
   // Global fallbacks for linter safety (populated dynamically in routes)
   let RATES = {
     CPM_NGN: 450,
@@ -26,7 +31,17 @@ async function startServer() {
     USD_TO_NGN: 1600
   };
 
-  app.use(express.json());
+  // Middleware to sync cookies with Supabase session
+  app.use(async (req: any, res: any, next: any) => {
+    try {
+      const supabaseSsr = createExpressClient(req, res);
+      // This call handles refreshing the session cookie if it's expired
+      await supabaseSsr.auth.getUser();
+    } catch (e) {
+      // Quietly ignore auth errors in global middleware
+    }
+    next();
+  });
 
   // Monetization Constants (Dynamically updated from DB where possible)
   const getSystemConfig = async () => {

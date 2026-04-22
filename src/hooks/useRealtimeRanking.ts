@@ -5,8 +5,9 @@ interface UserRank {
   id: string;
   name: string;
   nickname: string;
+  user_avatar?: string;
   post_count: number;
-  total_engagement: number;
+  total_points: number;
 }
 
 export const useRealtimeLeaderboard = () => {
@@ -17,7 +18,7 @@ export const useRealtimeLeaderboard = () => {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      // Fetch initial data from the materialized view
+      // Fetch initial data from the refreshed materialized view
       const { data, error: fetchError } = await supabase
         .from('top_20_users')
         .select('*');
@@ -35,9 +36,7 @@ export const useRealtimeLeaderboard = () => {
   useEffect(() => {
     fetchLeaderboard();
 
-    // Subscribe to changes in the posts table to know when to refresh
-    // Since we have a trigger that refreshes the materialized view,
-    // we can listen for that refresh or simply listen for high-value interactions.
+    // Subscribe to changes in the users table specifically for points
     const channel = supabase
       .channel('leaderboard-updates')
       .on(
@@ -45,14 +44,12 @@ export const useRealtimeLeaderboard = () => {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'posts',
-          // Filter for high-value interactions that trigger a refresh
-          // Note: In a real app, you might use a custom broadcast event from the trigger
+          table: 'users',
         },
         (payload) => {
-          // If shares or bookmarks changed, refresh the leaderboard
-          if (payload.new.shares_count !== payload.old.shares_count || 
-              payload.new.bookmarks_count !== payload.old.bookmarks_count) {
+          // If monthly points changed, it triggers a refresh in the DB
+          // We can refresh the view here too
+          if (payload.new.monthly_points !== payload.old.monthly_points) {
             fetchLeaderboard();
           }
         }

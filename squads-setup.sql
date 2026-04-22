@@ -48,12 +48,14 @@ BEGIN
 END $$;
 
 -- 4. Revenue Distribution Logic for Monetized Squads
-CREATE OR REPLACE FUNCTION public.distribute_group_revenue(p_amount INTEGER)
+CREATE OR REPLACE FUNCTION public.distribute_group_revenue(p_amount NUMERIC)
 RETURNS BOOLEAN AS $$
 BEGIN
-  -- Simple logic: Increase engagement score or generic points for active users
-  -- In a real scenario, this would split amount among squad members or creator
-  RETURN TRUE;
+    -- Distribute to premium users based on their tier
+    UPDATE public.users SET points = COALESCE(points, 0) + floor(p_amount * 0.30) WHERE premium_tier = 'alpha_premium';
+    UPDATE public.users SET points = COALESCE(points, 0) + floor(p_amount * 0.15) WHERE premium_tier = 'premium_plus';
+    UPDATE public.users SET points = COALESCE(points, 0) + floor(p_amount * 0.10) WHERE premium_tier = 'premium';
+    RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

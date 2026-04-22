@@ -14,8 +14,9 @@ const LeaderboardView: React.FC = () => {
   const navigate = useNavigate();
   const [topPosts, setTopPosts] = useState<Post[]>([]);
   const [topReferrers, setTopReferrers] = useState<User[]>([]);
+  const [topEarners, setTopEarners] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'posts' | 'referrers' | 'guide'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'referrers' | 'earners' | 'guide'>('earners');
 
   useEffect(() => {
     loadData();
@@ -24,12 +25,14 @@ const LeaderboardView: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [posts, referrers] = await Promise.all([
+      const [posts, referrers, earners] = await Promise.all([
         SupabaseService.getTopPosts(20),
-        SupabaseService.getTopReferrers(20)
+        SupabaseService.getTopReferrers(20),
+        SupabaseService.getTopEarnersMonthly(20)
       ]);
       setTopPosts(posts);
       setTopReferrers(referrers);
+      setTopEarners(earners);
     } catch (err) {
       console.error('Failed to load leaderboard data:', err);
     } finally {
@@ -67,6 +70,12 @@ const LeaderboardView: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 -mt-8 relative z-10">
         <div className="bg-white dark:bg-brand-card p-2 rounded-[2rem] shadow-2xl border border-brand-border flex gap-2">
           <button 
+            onClick={() => setActiveTab('earners')}
+            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'earners' ? 'bg-brand-proph text-black shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-brand-black'}`}
+          >
+            <Trophy className="w-4 h-4" /> Monthly Champions
+          </button>
+          <button 
             onClick={() => setActiveTab('posts')}
             className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'posts' ? 'bg-brand-proph text-black shadow-lg' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-brand-black'}`}
           >
@@ -92,6 +101,46 @@ const LeaderboardView: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 border-4 border-brand-proph border-t-transparent rounded-full animate-spin" />
             <p className="font-black text-[10px] uppercase tracking-widest text-brand-muted">Synchronizing Data...</p>
+          </div>
+        ) : activeTab === 'earners' ? (
+          <div className="space-y-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-muted px-4 mb-6">Top 20 Monthly Prophy Earners</h2>
+            {topEarners.map((user, index) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                key={user.id}
+                className="bg-white dark:bg-brand-card p-6 rounded-[2.5rem] border border-brand-border flex items-center gap-6"
+              >
+                <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center font-black text-2xl italic text-brand-proph/30">
+                  #{index + 1}
+                </div>
+                <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 border border-brand-border">
+                  <img 
+                    src={CloudinaryService.getOptimizedUrl(user.user_avatar || `https://ui-avatars.com/api/?name=${user.nickname}`)} 
+                    className="w-full h-full object-cover" 
+                    alt="" 
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm dark:text-white truncate uppercase italic">@{user.nickname}</p>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Accumulated this month</p>
+                </div>
+                <div className="flex flex-col items-end">
+                  <div className="flex items-center gap-1.5 text-brand-proph">
+                    <Coins className="w-5 h-5" />
+                    <span className="font-black text-xl italic">{Math.floor(user.total_points || 0).toLocaleString()}</span>
+                  </div>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Prophy Coins</p>
+                </div>
+              </motion.div>
+            ))}
+            {topEarners.length === 0 && (
+              <div className="text-center py-20 bg-gray-50 dark:bg-brand-card/50 rounded-[3rem] border border-dashed border-brand-border">
+                <p className="font-black text-xs text-brand-muted uppercase tracking-[0.2em]">No data available for this month</p>
+              </div>
+            )}
           </div>
         ) : activeTab === 'posts' ? (
           <div className="space-y-4">

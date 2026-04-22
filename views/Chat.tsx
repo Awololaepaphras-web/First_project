@@ -58,19 +58,22 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
     if (!newSquadName.trim()) return;
     try {
       const isPremium = currentUser.premiumTier && currentUser.premiumTier !== 'none';
-      await SupabaseService.createGroup({
-        name: newSquadName,
-        description: newSquadDesc,
-        creatorId: currentUser.id,
-        isMonetized: !!isPremium // Only earn if premium
+      const { data, error } = await SupabaseService.rpc('create_squad_secure', {
+        p_name: newSquadName,
+        p_description: newSquadDesc,
+        p_is_monetized: !!isPremium
       });
+      
+      if (error) throw error;
+      
       setNewSquadName('');
       setNewSquadDesc('');
       setShowCreateSquad(false);
       loadGroups();
-      alert(isPremium ? 'Monetized squad created!' : 'Squad created! (Earning disabled - Upgrade to Premium to earn from squads)');
+      alert(isPremium ? 'Monetized squad initialized!' : 'Squad initialized! (Earning disabled - Upgrade to Premium to earn from squads)');
     } catch (err) {
       console.error('Failed to create squad:', err);
+      alert('Failed to initialize squad matrix: ' + (err as any).message);
     }
   };
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -230,14 +233,18 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
     }
 
     try {
-      await SupabaseService.sendMessage({
+      const msgData = {
         senderId: currentUser.id,
         receiverId: selectedUser?.id || null,
         groupId: selectedGroup?.id,
         text: inputText,
         replyTo: replyingTo?.id,
         replyToContent: replyingTo?.text || (replyingTo?.mediaType ? `Sent a ${replyingTo.mediaType}` : undefined)
-      });
+      };
+      
+      console.log('Sending message:', msgData);
+      await SupabaseService.sendMessage(msgData);
+      
       setInputText('');
       setReplyingTo(null);
       SoundService.playNotification();
@@ -245,6 +252,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, config, onUpdateUser }) => {
       loadRecentConversations();
     } catch (error) {
       console.error('Failed to send message:', error);
+      alert('Link Failure: Message transmission failed. Check your network nodes.');
     }
   };
 

@@ -15,6 +15,7 @@ import { SupabaseService } from '../src/services/supabaseService';
 import { useRealtimeFeed } from '../src/services/useRealtimeFeed';
 import { Lightbox } from '../src/components/Lightbox';
 import StatusPanel from '../src/components/StatusPanel';
+import CloudinaryUploadWidget from '../src/components/CloudinaryUploadWidget';
 
 interface CommunityProps {
   user: User;
@@ -491,7 +492,12 @@ const Community: React.FC<CommunityProps> = ({ user, allUsers, posts: initialPos
                 )}
                 <div className="flex justify-between items-center mt-4 border-t border-brand-border/30 pt-3">
                     <div className="flex items-center gap-2">
-                      <button disabled={isUploading} onClick={() => fileInputRef.current?.click()} className="p-2 text-brand-proph hover:bg-brand-proph/10 rounded-full disabled:opacity-50" title="Attach Media"><ImageIcon className="w-5 h-5" /></button>
+                       <CloudinaryUploadWidget 
+                        buttonText="" 
+                        onSuccess={(url) => {
+                          setMediaFile({ url, type: url.includes('/video/') ? 'video' : (url.includes('/image/') || url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image' : 'image') });
+                        }} 
+                      />
                       <button 
                         onClick={() => setShowPreview(!showPreview)} 
                         className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${showPreview ? 'bg-brand-proph text-black' : 'text-brand-muted hover:bg-black/5 dark:hover:bg-white/5'}`}

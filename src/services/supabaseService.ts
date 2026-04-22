@@ -8,6 +8,16 @@ export const SupabaseService = {
     return await supabase.auth.getSession();
   },
 
+  async rpc(name: string, args: any) {
+    return await supabase.rpc(name, args);
+  },
+
+  async getCurrentUser(): Promise<User | null> {
+    const { data: { session } } = await this.getSession();
+    if (!session) return null;
+    return await this.getUserProfile(session.user.id);
+  },
+
   async signUp(email: string, password: string, userData: Partial<User>) {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -269,22 +279,11 @@ export const SupabaseService = {
   },
 
   async distributeGroupRevenue(amount: number) {
-    const { data: premiumUsers, error } = await supabase
-      .from('users')
-      .select('id, points, premium_tier')
-      .neq('premium_tier', 'none');
-    
-    if (error || !premiumUsers) return;
-
-    for (const user of premiumUsers) {
-      let share = 0;
-      if (user.premium_tier === 'premium') share = amount * 0.10;
-      else if (user.premium_tier === 'premium_plus') share = amount * 0.15;
-      else if (user.premium_tier === 'alpha_premium') share = amount * 0.30;
-
-      if (share > 0) {
-        await supabase.from('users').update({ points: (user.points || 0) + share }).eq('id', user.id);
-      }
+    try {
+      const { error } = await supabase.rpc('distribute_group_revenue', { p_amount: amount });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error in distributeGroupRevenue:', error);
     }
   },
 
@@ -563,6 +562,18 @@ export const SupabaseService = {
       return [];
     }
     return (data || []).map(u => this.mapUser(u));
+  },
+
+  async getTopEarnersMonthly(limit: number = 20): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('top_20_users')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching top earners monthly:', error);
+      return [];
+    }
+    return data || [];
   },
 
   // Feed (Parallel Universe / Global)
@@ -1642,13 +1653,12 @@ export const SupabaseService = {
   },
 
   // Secure Post/Reply
-  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, imageUrl?: string, parentId?: string, isParallel: boolean = false) {
+  async createPostV2(content: string, mediaUrl?: string, mediaType?: string, parentId?: string, isParallel: boolean = false) {
     try {
       const { data, error } = await supabase.rpc('create_post_v2', {
         p_content: content,
         p_media_url: mediaUrl,
         p_media_type: mediaType,
-        p_image_url: imageUrl,
         p_parent_id: parentId,
         p_is_parallel: isParallel
       });

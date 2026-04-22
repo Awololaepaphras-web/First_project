@@ -27,6 +27,7 @@ import UserAds from './views/UserAds';
 import Tasks from './views/Tasks';
 import Messages from './views/Messages';
 import Chat from './views/Chat';
+import GroupWork from './views/GroupWork';
 import Settings from './views/Settings';
 import IncomeAnalysis from './views/IncomeAnalysis';
 import AnonymousUpload from './views/AnonymousUpload';
@@ -278,8 +279,7 @@ const App: React.FC = () => {
       
       if (session?.user) {
         // If we have a Supabase session, try to get the full user profile
-        const users = await SupabaseService.getUsers();
-        const foundUser = users.find(u => u.id === session.user.id || u.email === session.user.email);
+        const foundUser = await SupabaseService.getUserProfile(session.user.id);
         if (foundUser) {
           savedUser = foundUser;
           DB.saveSession(foundUser);
@@ -1270,6 +1270,7 @@ const App: React.FC = () => {
             await DB.sendMessage(newMsg);
           }} /> : <Navigate to="/login" />} />
           <Route path="/chat" element={user ? <Chat currentUser={user} config={config} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
+          <Route path="/group-work" element={user ? <GroupWork /> : <Navigate to="/login" />} />
           <Route path="/ai-assistant" element={user ? <AIAssistant user={user} /> : <Navigate to="/login" />} />
           <Route path="/memory-bank" element={user ? <MemoryBank user={user} questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} /> : <Navigate to="/login" />} />
           <Route path="/study-hub" element={user ? <StudyHub questions={questions} onAction={(c) => setUser({...user!, points: (user!.points || 0) + (c * 10)})} globalAds={visibleAds} /> : <Navigate to="/login" />} />

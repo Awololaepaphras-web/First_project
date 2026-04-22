@@ -86,9 +86,8 @@ export const CloudinaryPostUploader: React.FC<CloudinaryPostUploaderProps> = ({
       // Save to Supabase using the updated createPostV2 RPC
       await SupabaseService.createPostV2(
         message,
-        undefined, // mediaUrl (standard)
+        imageUrl || undefined, // mediaUrl
         imageUrl ? 'image' : undefined, // mediaType
-        imageUrl || undefined, // image_url (our new specific column)
         undefined, // parentId
         isParallel
       );

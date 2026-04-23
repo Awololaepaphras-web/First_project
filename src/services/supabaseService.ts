@@ -660,6 +660,12 @@ export const SupabaseService = {
     return data;
   },
 
+  async claimDailyAllowance() {
+    const { data, error } = await supabase.rpc('claim_daily_allowance');
+    if (error) throw error;
+    return data;
+  },
+
   async claimDailyPremiumReward() {
     const { data, error } = await supabase.rpc('claim_daily_premium_reward');
     if (error) throw error;

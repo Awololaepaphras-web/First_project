@@ -51,6 +51,7 @@ import ForgotPassword from './views/ForgotPassword';
 import ResetPassword from './views/ResetPassword';
 import BlockedUsers from './views/BlockedUsers';
 import { WaterEffect } from './src/components/WaterEffect';
+import DailyRewards from './views/DailyRewards';
 import { SoundService } from './src/services/soundService';
 import OnboardingTutorial from './src/components/OnboardingTutorial';
 import { Database as DB } from './src/services/database';
@@ -293,10 +294,18 @@ const App: React.FC = () => {
         today.setHours(0, 0, 0, 0);
         
         if (lastReset < today) {
-          await SupabaseService.resetDailyPoints(savedUser.id);
-          // Refresh user data after reset
-          const users = await SupabaseService.getUsers();
-          const refreshedUser = users.find(u => u.id === savedUser.id);
+          try {
+            const reward = await SupabaseService.claimDailyAllowance();
+            if (reward.success) {
+              console.log('Daily reward claimed:', reward.amount);
+              // Small notification or sound could go here
+            }
+          } catch (err) {
+            console.error('Auto-claim daily reward failed:', err);
+          }
+          
+          // Refresh user data after reward
+          const refreshedUser = await SupabaseService.getUserProfile(savedUser.id);
           if (refreshedUser) {
             savedUser = refreshedUser;
             DB.saveSession(refreshedUser);
@@ -1350,6 +1359,7 @@ const App: React.FC = () => {
           <Route path="/earn-manual" element={user ? <EarnManual config={config} /> : <Navigate to="/login" />} />
           <Route path="/referrals" element={user ? <Referrals user={user} /> : <Navigate to="/login" />} />
           <Route path="/leaderboard" element={<LeaderboardView />} />
+          <Route path="/rewards" element={user ? <DailyRewards user={user} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
           <Route path="/storage" element={user ? <div className="p-6 lg:p-12 max-w-4xl mx-auto"><CloudinaryUploader userId={user.id} /></div> : <Navigate to="/login" />} />
           <Route path="/transfer" element={user ? <PointTransfer user={user} /> : <Navigate to="/login" />} />
           <Route path="/blocked-users" element={user ? <BlockedUsers user={user} allUsers={allUsers} onUnblock={handleUnblock} /> : <Navigate to="/login" />} />

@@ -5,7 +5,7 @@ import {
   ChevronDown, Info, Layers, BookOpen, ExternalLink, Megaphone,
   Trophy, Star, Award, Clock, Brain, Upload, Users, Lock, ChevronRight,
   GraduationCap, Zap, LayoutGrid, List, Plus, Wallet, Database,
-  Swords, Shield, Heart, Activity, Camera, Book, ListChecks, Coins, Flame, Repeat2
+  Swords, Shield, Heart, Activity, Camera, Book, ListChecks, Coins, Flame, Repeat2, Gift
 } from 'lucide-react';
 import { User, PastQuestion, Announcement, Badge, Advertisement, SystemConfig, Post } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
@@ -50,6 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     { name: 'Bounty Forge', icon: <ListChecks className="w-5 h-5" />, path: '/tasks', color: 'bg-yellow-500', desc: 'Earn rewards' },
     { name: 'Memory Bank', icon: <Database className="w-5 h-5" />, path: '/memory-bank', color: 'bg-purple-500', desc: 'Archival storage' },
     { name: 'Financial Hub', icon: <Wallet className="w-5 h-5" />, path: '/withdraw', color: 'bg-green-600', desc: 'Convert rewards' },
+    { name: 'Claim Daily Rewards', icon: <Gift className="w-5 h-5" />, path: '/rewards', color: 'bg-brand-proph', desc: 'Get your daily coins' },
     { name: 'Earn Manual', icon: <Book className="w-5 h-5" />, path: '/earn-manual', color: 'bg-orange-500', desc: 'How to earn' },
   ];
 
